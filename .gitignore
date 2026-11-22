@@ -1,0 +1,32 @@
+# Build artifacts
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+*.app/
+
+# Frontend dependencies
+frontend/node_modules/
+
+# Environment & local secrets (keep .env.example tracked)
+.env
+.env.*
+!.env.example
+
+# Local databases, logs, coverage, and temp files
+*.db
+*.db-shm
+*.db-wal
+*.tmp
+*.log
+*.jsonl
+coverage.out
+coverage.html
+
+# External enterprise module packs (keep proprietary branch/org JSON untracked from public/personal git tree)
+modules-enterprise/*.json
+
+# OS files
+.DS_Store
+Thumbs.db
