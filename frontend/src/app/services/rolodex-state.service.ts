@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 
 export interface ToastMessage {
   id: number;
@@ -21,6 +21,7 @@ export class RolodexStateService {
   readonly clockNow = signal<Date>(new Date());
   readonly theme = signal<ThemeMode>(this.loadInitialTheme());
 
+  private readonly destroyRef = inject(DestroyRef);
   private nextToastId = 1;
   private shakeTimer: ReturnType<typeof setTimeout> | null = null;
   private hasManualTheme = false;
@@ -29,18 +30,27 @@ export class RolodexStateService {
     this.applyThemeAttr(this.theme());
 
     if (typeof window !== 'undefined') {
-      setInterval(() => {
+      const clockTimer = setInterval(() => {
         this.clockNow.set(new Date());
       }, 30_000);
 
       // Follow OS color scheme changes dynamically when user hasn't manually overridden
       const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
-      mq?.addEventListener?.('change', (ev) => {
+      const onThemeMediaChange = (ev: MediaQueryListEvent) => {
         if (!this.hasManualTheme) {
           const next: ThemeMode = ev.matches ? 'dark' : 'light';
           this.theme.set(next);
           this.applyThemeAttr(next);
         }
+      };
+      mq?.addEventListener?.('change', onThemeMediaChange);
+
+      this.destroyRef.onDestroy(() => {
+        clearInterval(clockTimer);
+        if (this.shakeTimer) {
+          clearTimeout(this.shakeTimer);
+        }
+        mq?.removeEventListener?.('change', onThemeMediaChange);
       });
     }
   }

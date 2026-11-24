@@ -7,12 +7,14 @@ description: Post-phase, pre-release, and pre-merge documentation drift checklis
 
 Run this targeted 6-point audit **at the end of every implementation phase** and before merging to `main` or cutting a release. **Rule**: Fix every genuine mismatch between code and documentation — never leave stale stack, flag, count, or schema claims behind.
 
-## 1. Package, Frontend Stack & Architecture Sync
+## 1. Package, Frontend Stack & Cross-Agent Sync
 - List directories under `internal/` and verify every package matches:
   - `.agent/skills/vex-architecture/SKILL.md` (Acyclic Package Dependency Graph)
   - `.agent/rules/vex-workflow.md` (Architecture Guardrails)
+  - `AGENTS.md` and `.github/copilot-instructions.md` (Cross-agent Gemini + Copilot parity)
+  - `llms.txt` (LLM codebase index)
   - `docs/ARCHITECTURE.md` (Mermaid diagram & feature sections)
-- Verify frontend framework, template registry (`CardTemplateRegistry`), and build pipeline (`ngc` + `esbuild` / `angular.json`) match `.agent/skills/vex-rolodex-ui/SKILL.md` and `.agent/skills/vex-template-authoring/SKILL.md`.
+- Verify frontend framework, template registry (`CardTemplateRegistry`), test harness (`vitest.config.mts` / `scripts/test-aot.mjs`), and build pipeline (`ngc` + `esbuild` / `angular.json`) match `.agent/skills/vex-rolodex-ui/SKILL.md`, `.agent/skills/vex-frontend-testing/SKILL.md`, and `.agent/skills/vex-template-authoring/SKILL.md`.
 
 ## 2. Live MCP Contracts & JSON Schema Sync
 - Compare `models.SearchCard`, `models.CardNode`, `models.GlanceChip`, `models.ModuleManifest`, and `models.PatternRule` (`internal/models/`) against `models.CardJSONSchema()` (`schema://search-card`).
@@ -25,7 +27,7 @@ Run this targeted 6-point audit **at the end of every implementation phase** and
   - `.agent/skills/vex-architecture/SKILL.md`
 
 ## 4. Build Commands & Dependency Prerequisites
-- Confirm Go & frontend build commands (`-tags private_mac_apis -o bin/macos/vex .` on macOS, `bin/windows/vex.exe` placeholder on Windows, Deno `deno task typecheck && deno task build`, `go test -race -count=1 ./...`) match across `README.md`, `SKILL.md`, and `.agent/rules/vex-workflow.md`.
+- Confirm Go & frontend commands (`-tags private_mac_apis -o bin/macos/vex .` on macOS, `go build -o bin\windows\vex.exe .` on Windows, Deno `deno task typecheck && deno task test && deno task build`, `go test -race -count=1 ./...`) match across `README.md`, `AGENTS.md`, `SKILL.md`, `TODO.md`, and `.agent/rules/vex-workflow.md`.
 - Confirm `AppVersion` in `buildinfo.go` matches docs.
 
 ## 5. TODO.md & Repo Hygiene

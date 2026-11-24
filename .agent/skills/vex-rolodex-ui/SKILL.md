@@ -1,9 +1,9 @@
 ---
 name: vex-rolodex-ui
-description: Authoritative UI design system, layout contract, and Angular 19 component guide for the Vex Full-Width Stacked Nested Card System (Light/Dark Mode). Use whenever creating, styling, or updating Angular UI elements, Rolodex cards, chips, modals, or toasts in Vex.
+description: Authoritative UI design system, layout contract, and Angular 22 (Zoneless + Signals) component guide for the Vex Full-Width Stacked Nested Card System (Light/Dark Mode). Use whenever creating, styling, or updating Angular UI elements, Rolodex cards, chips, modals, or toasts in Vex.
 ---
 
-# Vex — Full-Width Stacked Nested Card System (Angular 19 + Light/Dark Mode)
+# Vex — Full-Width Stacked Nested Card System (Angular 22 + Light/Dark Mode)
 
 Use this skill whenever building or modifying UI elements in `frontend/`.
 
@@ -81,17 +81,24 @@ All templates extend `BaseCardTemplate<T>` (`frontend/src/app/templates/base-car
 
 Extended domain templates (`container-blueprint`, `dictionary-guide`, `kv-grid`, and legacy `branch-contact`) also consume the same Light/Dark tokens cleanly.
 
-## 4. Light/Dark Mode & Accessibility Checklist
+## 4. Angular 22 Zoneless & Signal Conventions
+
+- **Zoneless by Default**: Vex runs without `zone.js`; all components are standalone with `ChangeDetectionStrategy.OnPush` and signal-driven state.
+- **Input-Derived Mutable State**: Use `linkedSignal(() => ...)` (as in `RolodexCardShellComponent.isExpanded`) instead of writing to a `signal` inside an `effect()`.
+- **Forms in Zoneless Mode**: Bind template form controls with explicit signal bindings (`[ngModel]="mySignal()"` + `(ngModelChange)="mySignal.set($event)"`) rather than `[(ngModel)]` on plain mutable class fields so programmatic updates always schedule change detection.
+
+## 5. Light/Dark Mode & Accessibility Checklist
 
 - Include `<meta name="color-scheme" content="light dark">` in `frontend/src/index.html` and set `color-scheme: light` / `color-scheme: dark` on `[data-theme="light"]` / `[data-theme="dark"]` so native controls and scrollbars match automatically.
 - Listen to `window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ...)` in `RolodexStateService` while letting the user override via the header toggle.
 - Never animate `scrollbar-color`.
 - Use native `<dialog>` + `.showModal()` for modals, native `<button type="button">` for interactive triggers (`aria-expanded`, `aria-pressed`), `:focus-visible` outlines, and `popover="manual"` + `aria-live="polite"` for toasts.
 
-## 5. Frontend Build & Typecheck Commands
+## 6. Frontend Build, Test & Typecheck Commands
 
 ```bash
 cd frontend
 /opt/homebrew/Cellar/deno/2.9.8/bin/deno task typecheck   # Angular ngc strict AOT check
+/opt/homebrew/Cellar/deno/2.9.8/bin/deno task test        # Vitest 5 + happy-dom + Ivy Linker (offline)
 /opt/homebrew/Cellar/deno/2.9.8/bin/deno task build       # AOT compile + esbuild -> frontend/dist/
 ```

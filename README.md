@@ -1,6 +1,6 @@
 # Vex
 
-**Vex** is a desktop-first, platform-agnostic, local-first knowledge Rolodex, configurable pattern decoder, and MCP hub built with **Go + Wails v3** and **Angular 19 (Standalone Components + Signals)**.
+**Vex** is a desktop-first, platform-agnostic, local-first knowledge Rolodex, configurable pattern decoder, and MCP hub built with **Go + Wails v3** and **Angular 22 (Standalone Components + Signals + Zoneless)**.
 
 > **Documentation**: See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for system architecture, **[docs/TEMPLATE_BLUEPRINTS.md](docs/TEMPLATE_BLUEPRINTS.md)** for layout blueprints & data examples of every card template, and **[TODO.md](TODO.md)** for the phased roadmap and open questions.
 
@@ -10,7 +10,7 @@ Press your global shortcut (`Ctrl+Shift+B` by default) or click the tray icon to
 
 ## Key Capabilities
 
-- **Full-Width Stacked Nested Card System (Angular 19, Light/Dark Mode, Platform-Agnostic)**:
+- **Full-Width Stacked Nested Card System (Angular 22, Zoneless, Light/Dark Mode, Platform-Agnostic)**:
   - Responsive `420px–520px` (default `460px`) desktop widget frame with clean internal scrolling (`max-height: 680px`), Light & Dark themes (`[data-theme="light"]` / `[data-theme="dark"]` synced with OS preference + manual toggle), and zero OS-specific window buttons or key symbols.
   - **Zero accordion tree lines**: Nested child cards span **100% of their parent's inner width** stacked vertically (`gap: 8px`) with depth communicated via subtle alternating inset surfaces (L0 → L1 → L2).
   - **Unified Header-Strip Pattern**: `[Icon/Flag]` + `15px` semibold title + L0-only Pin (`3` max with blue-tinted pill, shake & toast feedback) + expand chevron + semantic/stoplight glance chips (`● DEV` green, `● QA` amber, `● PROD` red, blue codes, monospace clocks/temps).
@@ -37,18 +37,18 @@ Press your global shortcut (`Ctrl+Shift+B` by default) or click the tray icon to
 - **Go `1.27+`** (pure-Go SQLite via `modernc.org/sqlite`; no C SQLite compiler required).
   - **macOS**: Xcode Command Line Tools (`xcode-select --install`) for Cocoa/WKWebView.
   - **Windows**: Built-in WebView2 (Windows 10/11).
-- **Frontend (only needed if editing UI code)**: **Deno `2.x`** *or* **Node.js `20+` / Angular CLI**.
+- **Frontend (only needed if editing UI code)**: **Deno `2.x`** *or* **Node.js `22.22+` (`24+` LTS) / Angular CLI `22`**.
   - Pre-built `frontend/dist` assets are embedded via `//go:embed all:frontend/dist`.
 
 ### Build Frontend & Native Desktop Binaries
 
 #### macOS (`bin/macos/vex`)
 ```bash
-# 1. Typecheck & build Angular 19 AOT + Ivy-linked frontend -> frontend/dist/
+# 1. Typecheck, test (Vitest + happy-dom), & build Angular 22 Zoneless AOT frontend -> frontend/dist/
 #    With Deno:
-cd frontend && deno install --node-modules-dir=auto && deno task typecheck && deno task build && cd ..
+cd frontend && deno install --node-modules-dir=auto && deno task typecheck && deno task test && deno task build && cd ..
 #    Or with Node.js / Angular CLI:
-#    cd frontend && npm install && npm run ng:build && cd ..
+#    cd frontend && npm install && npm run ng:test && npm run ng:build && cd ..
 
 # 2. Run full Go test suite with race detector (100% offline)
 go test -race -count=1 ./...
@@ -57,14 +57,27 @@ go test -race -count=1 ./...
 go build -tags private_mac_apis -o bin/macos/vex .
 ```
 
-#### Windows (`bin/windows/vex.exe`)
-<!-- TODO: Complete Windows build template (toolchain paths, WebView2 setup, build command for bin/windows/vex.exe, and test verification). -->
-*(Section intentionally left blank — complete this template on Windows.)*
+#### Windows (`bin\windows\vex.exe`)
+*(Native Windows binary execution and WebView2 rendering are verified on Windows 10/11 hosts.)*
+```powershell
+# 1. Typecheck, test, & build Angular 22 Zoneless AOT frontend -> frontend/dist/
+#    With Deno:
+cd frontend; deno install --node-modules-dir=auto; deno task typecheck; deno task test; deno task build; cd ..
+#    Or with Node.js 22.22+ / Angular CLI:
+#    cd frontend; npm install; npm run ng:test; npm run ng:build; cd ..
+
+# 2. Run full Go test suite with race detector (100% offline)
+go test -race -count=1 ./...
+
+# 3. Build Windows desktop binary (uses built-in Microsoft Edge WebView2)
+go build -o bin\windows\vex.exe .
+```
 
 ### Run & Preview
 ```bash
-# Launch macOS desktop app (default data directory ~/.vex)
-./bin/macos/vex
+# Launch desktop app (default data directory ~/.vex on macOS, %USERPROFILE%\.vex on Windows)
+./bin/macos/vex        # macOS
+# .\bin\windows\vex.exe  # Windows (PowerShell)
 
 # Launch with a clean isolated data directory (opens starter module onboarding)
 ./bin/macos/vex --data-dir /tmp/vex-fresh

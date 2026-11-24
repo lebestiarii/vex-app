@@ -91,7 +91,8 @@ import { VexBridgeService } from '../services/vex-bridge.service';
               id="pattern-json-editor"
               class="json-editor font-mono"
               rows="9"
-              [(ngModel)]="draftJson"
+              [ngModel]="draftJson()"
+              (ngModelChange)="draftJson.set($event)"
             ></textarea>
 
             <div class="tester-row">
@@ -101,7 +102,8 @@ import { VexBridgeService } from '../services/vex-bridge.service';
                 type="text"
                 class="tester-input font-mono"
                 placeholder="Enter test input to evaluate regex match"
-                [(ngModel)]="testSample"
+                [ngModel]="testSample()"
+                (ngModelChange)="testSample.set($event)"
               />
               <button type="button" class="mini-btn" (click)="runTest()">Test</button>
             </div>
@@ -369,9 +371,8 @@ export class PatternsDialogComponent {
   readonly rules = signal<PatternRule[]>([]);
   readonly testPreview = signal<CardNode | null>(null);
   readonly testError = signal<string>('');
-
-  draftJson = '';
-  testSample = '';
+  readonly draftJson = signal<string>('');
+  readonly testSample = signal<string>('');
 
   private readonly dialogEl = viewChild<ElementRef<HTMLDialogElement>>('dialogEl');
 
@@ -395,47 +396,49 @@ export class PatternsDialogComponent {
   }
 
   loadIntoEditor(rule: PatternRule): void {
-    this.draftJson = JSON.stringify(rule, null, 2);
+    this.draftJson.set(JSON.stringify(rule, null, 2));
     this.testError.set('');
     this.testPreview.set(null);
   }
 
   resetDraft(): void {
-    this.draftJson = JSON.stringify(
-      {
-        id: 'custom-ref',
-        name: 'Custom Reference Decoder',
-        priority: 60,
-        normalize: ['trim', 'uppercase'],
-        regex: '^(?P<prefix>REF)-(?P<branch>[A-Z]{3})-(?P<num>\\d{6})$',
-        titleTemplate: 'Reference · {{prefix}}-{{branch}}-{{num}}',
-        template: 'pattern-breakdown',
-        icon: '🧩',
-        defaultExpanded: true,
-        chips: [
-          { label: 'REF', tone: 'blue' },
-          { label: 'Valid ✓', tone: 'green' },
-          { label: 'Origin: {{branch}}', tone: 'neutral' },
-        ],
-        segments: [
-          { value: '{{prefix}}', role: 'TYPE', meaning: 'Standard Ref', tone: 'blue' },
-          { value: '{{branch}}', role: 'BRANCH', meaning: 'Origin {{branch}}', tone: 'amber' },
-          { value: '{{num}}', role: 'SEQUENCE', meaning: 'Record #', tone: 'green' },
-        ],
-        explanationTemplate:
-          'Structured reference linking record {{num}} directly to branch {{branch}}.',
-        linkRules: [
-          { targetEntityKey: 'loc:{{branch}}', autoExpand: true, nestChildren: true, maxDepth: 2 },
-        ],
-      },
-      null,
-      2
+    this.draftJson.set(
+      JSON.stringify(
+        {
+          id: 'custom-ref',
+          name: 'Custom Reference Decoder',
+          priority: 60,
+          normalize: ['trim', 'uppercase'],
+          regex: '^(?P<prefix>REF)-(?P<branch>[A-Z]{3})-(?P<num>\\d{6})$',
+          titleTemplate: 'Reference · {{prefix}}-{{branch}}-{{num}}',
+          template: 'pattern-breakdown',
+          icon: '🧩',
+          defaultExpanded: true,
+          chips: [
+            { label: 'REF', tone: 'blue' },
+            { label: 'Valid ✓', tone: 'green' },
+            { label: 'Origin: {{branch}}', tone: 'neutral' },
+          ],
+          segments: [
+            { value: '{{prefix}}', role: 'TYPE', meaning: 'Standard Ref', tone: 'blue' },
+            { value: '{{branch}}', role: 'BRANCH', meaning: 'Origin {{branch}}', tone: 'amber' },
+            { value: '{{num}}', role: 'SEQUENCE', meaning: 'Record #', tone: 'green' },
+          ],
+          explanationTemplate:
+            'Structured reference linking record {{num}} directly to branch {{branch}}.',
+          linkRules: [
+            { targetEntityKey: 'loc:{{branch}}', autoExpand: true, nestChildren: true, maxDepth: 2 },
+          ],
+        },
+        null,
+        2
+      )
     );
   }
 
   async saveDraft(): Promise<void> {
     try {
-      const parsed = JSON.parse(this.draftJson) as PatternRule;
+      const parsed = JSON.parse(this.draftJson()) as PatternRule;
       const updated = await this.bridge.upsertPatternRule(parsed);
       this.rules.set(updated);
       this.testError.set('');
@@ -456,11 +459,12 @@ export class PatternsDialogComponent {
   async runTest(): Promise<void> {
     this.testError.set('');
     this.testPreview.set(null);
+    const sample = this.testSample();
     try {
-      const parsed = JSON.parse(this.draftJson) as PatternRule;
-      const preview = await this.bridge.testPatternRule(parsed, this.testSample);
+      const parsed = JSON.parse(this.draftJson()) as PatternRule;
+      const preview = await this.bridge.testPatternRule(parsed, sample);
       if (!preview) {
-        this.testError.set(`No match for "${this.testSample}"`);
+        this.testError.set(`No match for "${sample}"`);
       } else {
         this.testPreview.set(preview);
       }
