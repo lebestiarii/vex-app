@@ -1,0 +1,32 @@
+# Vex
+
+> Desktop-first, platform-agnostic, local-first knowledge Rolodex, configurable pattern decoder, and MCP hub built with Go + Wails v3 and Angular 19 (Standalone Components + Signals).
+
+## Core Documentation
+- [README.md](README.md): Overview, capabilities, prerequisites, and platform-specific build/run commands (`bin/macos/vex`, `bin/windows/vex.exe`).
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Acyclic Go package graph, optional module system, full-width stacked card UI, pattern engine, and MCP hub.
+- [docs/TEMPLATE_BLUEPRINTS.md](docs/TEMPLATE_BLUEPRINTS.md): ASCII layout blueprints, field-to-slot mappings, and cross-domain JSON examples for all 5 canonical templates (`location`, `server-matrix`, `website-link`, `pattern-breakdown`, `conversion`) plus extended templates (`container-blueprint`, `dictionary-guide`, `kv-grid`, `branch-contact`).
+- [TODO.md](TODO.md): Phased roadmap, open clarifications, and upcoming backlog.
+
+## Agent Skills & Engineering Rules
+- [.agent/rules/vex-workflow.md](.agent/rules/vex-workflow.md): Build toolchains, branching discipline, architecture guardrails, and phase-end verification gates.
+- [.agent/skills/vex-architecture/SKILL.md](.agent/skills/vex-architecture/SKILL.md): Backend/frontend architecture, MCP tool/resource inventory (19 tools, 7 resources/templates), and schemas.
+- [.agent/skills/vex-rolodex-ui/SKILL.md](.agent/skills/vex-rolodex-ui/SKILL.md): Full-width stacked nested card design system, Light/Dark CSS tokens, and Angular 19 component rules.
+- [.agent/skills/vex-template-authoring/SKILL.md](.agent/skills/vex-template-authoring/SKILL.md): Guide for authoring generic card templates, optional JSON modules (`~/.vex/modules/`), and `PatternRule` decoders.
+- [.agent/skills/doc-drift-sweep/SKILL.md](.agent/skills/doc-drift-sweep/SKILL.md): 6-point post-phase documentation drift checklist.
+
+## Angular 19 UI Shell (`frontend/src/app/`)
+- [frontend/src/styles.css](frontend/src/styles.css): Light (`[data-theme="light"]`) and Dark (`[data-theme="dark"]`) CSS design tokens.
+- [frontend/src/app/models/card-node.model.ts](frontend/src/app/models/card-node.model.ts): TypeScript interfaces for `CardNode`, `GlanceChip`, `PatternRule`, `ModuleStatus`, and template data contracts.
+- [frontend/src/app/components/rolodex-card-shell.component.ts](frontend/src/app/components/rolodex-card-shell.component.ts): Recursive L0/L1/L2 full-width stacked card shell, L0-only pinning (max 3), and Single-Button `website-link` mode.
+- [frontend/src/app/services/card-template-registry.service.ts](frontend/src/app/services/card-template-registry.service.ts): Maps `CardTemplateType` strings to standalone template components via `NgComponentOutlet`.
+- [frontend/src/app/templates/base-card-template.ts](frontend/src/app/templates/base-card-template.ts): Abstract base directive for all card templates.
+- [frontend/src/app/services/vex-bridge.service.ts](frontend/src/app/services/vex-bridge.service.ts): Wails v3 RPC bridge (`/wails/runtime.js`); returns empty arrays outside Wails (zero hardcoded demo data).
+
+## Go Backend & MCP Hub
+- [internal/models/card.go](internal/models/card.go): `SearchCard`, `CardNode`, `ModuleManifest`, `ETLMappingRule`, `ValidateAndNormalizeCard`, and `CardJSONSchema()`.
+- [internal/models/pattern.go](internal/models/pattern.go): `PatternRule`, `PatternSegmentSpec`, `PatternDataLookup`, and `PatternLinkRule`.
+- [internal/indexer/modules.go](internal/indexer/modules.go): Optional, deletable JSON module loader/compiler (`~/.vex/modules/`) and embedded starter catalog (`internal/indexer/starter_modules/*.json`).
+- [internal/search/patterns.go](internal/search/patterns.go): Configurable regex/checksum pattern engine with SQLite `dataLookups` and recursive `linkRules`.
+- [internal/search/converter.go](internal/search/converter.go): Zero-latency unit converter and 3D cargo volume / IATA dimensional weight calculator (`conversion` template).
+- [internal/mcp/server.go](internal/mcp/server.go): Domain MCP server (`--mcp-stdio` and `127.0.0.1:17380/mcp`) with 19 tools, 7 resources/templates (including `list_skills`, `get_skill`, `search://skills`, `skill://{name}`), and 1 prompt.
