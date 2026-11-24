@@ -1,6 +1,6 @@
 ---
 name: vex-architecture
-description: Reference guide for the Vex Wails v3 + Go + Angular 19 Full-Width Stacked Card Rolodex codebase, covering the Homebrew Go & Deno toolchains, sandbox-safe testing conventions, acyclic package boundaries, optional deletable modules, configurable pattern matching, and MCP schemas & skill sharing.
+description: Reference guide for the Vex Wails v3 + Go + Angular 22 Full-Width Stacked Card Rolodex codebase, covering the Homebrew Go & Deno toolchains, sandbox-safe testing conventions, acyclic package boundaries, optional deletable modules, configurable pattern matching, and MCP schemas & skill sharing.
 ---
 
 # Vex Architecture & Conventions
@@ -9,18 +9,24 @@ description: Reference guide for the Vex Wails v3 + Go + Angular 19 Full-Width S
 
 ### macOS (`bin/macos/vex`)
 - **Go Binary**: `/opt/homebrew/Cellar/go/1.27.4/bin/go` (Go 1.27.4 darwin/arm64).
-- **Frontend Toolchain (Deno + Angular 19)**: `/opt/homebrew/Cellar/deno/2.9.8/bin/deno` (`frontend/scripts/build-aot.mjs` runs Angular's official `ngc` AOT compiler + Angular Ivy Linker + `esbuild` offline; standard `frontend/angular.json` also supports `ng serve` / `ng build`).
+- **Frontend Toolchain (Deno + Angular 22 + TypeScript 6.0)**: `/opt/homebrew/Cellar/deno/2.9.8/bin/deno` (`frontend/scripts/build-aot.mjs` runs Angular's official `ngc` AOT compiler + Angular Ivy Linker + dynamically discovered `esbuild@*` offline; standard `frontend/angular.json` also supports `ng serve` / `ng build` under Node.js `^22.22.3 || ^24.15.0 || >=26.0.0`).
+  - **TypeScript 6.0 Note**: `frontend/tsconfig.app.json` must keep `"rootDir": "./src"` explicitly set so `ngc` emit (`TS5011`) roots `out-tsc/app/main.js` cleanly.
 - **Full macOS Regression & Build Gate** (runs 100% offline inside the sandbox):
   ```bash
-  cd frontend && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task typecheck && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task build
+  cd frontend && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task typecheck && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task test && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task build
   /opt/homebrew/Cellar/go/1.27.4/bin/go test -race -count=1 ./...
   /opt/homebrew/Cellar/go/1.27.4/bin/go build -tags private_mac_apis -o bin/macos/vex .
   ```
 
-### Windows (`bin/windows/vex.exe`)
-<!-- TODO: Complete Windows toolchain paths, WebView2 prerequisites, and build commands outputting bin/windows/vex.exe. -->
-- **Binary Path**: `bin/windows/vex.exe`
-- *(Blank template section — complete on Windows)*
+### Windows (`bin\windows\vex.exe`)
+*(Native Windows binary execution and WebView2 rendering are verified on Windows 10/11 hosts.)*
+- **Prerequisites**: Go `1.27+`, built-in Microsoft Edge WebView2, and Deno `2.x` (or Node.js `22.22+` / Angular CLI `22`).
+- **Build & Test (PowerShell)**:
+  ```powershell
+  cd frontend; deno task typecheck; deno task test; deno task build; cd ..
+  go test -race -count=1 ./...
+  go build -o bin\windows\vex.exe .
+  ```
 
 - **HTTP & MCP Mocking Rules**: Never bind loopback TCP ports (`httptest.NewServer`) in unit tests when avoidable — inject an in-memory `http.RoundTripper`, `client.NewInProcessClient(hub.MCPServer())`, and `httptest.NewRecorder()`.
 
@@ -88,7 +94,7 @@ Unified single-version application (no community/enterprise split):
   - **Agent Skill Sharing**: `ServerDeps.SkillsDirs` scans `~/.vex/skills/` and workspace `.agent/skills/` for `<name>/SKILL.md` files so external AI agents can load Vex UI and template-authoring guidelines directly over MCP.
 - **External MCP Client (`client.go`)** & read-only CLI auth probe (`auth_probe.go`: `ProbeCLIAuth`, `RecommendedMCPPresets`).
 
-### 6. Wails v3 Desktop Shell & Angular 19 Full-Width Stacked Card UI (`main.go`, `app_service.go`, `frontend/`)
+### 6. Wails v3 Desktop Shell & Angular 22 Full-Width Stacked Card UI (`main.go`, `app_service.go`, `frontend/`)
 - **Default Widget Frame**: `480×680` (`MinWidth: 420, MinHeight: 480`) hosting a `420px–520px` (default `460px`, `max-height: 680px`) internal-scrolling Rolodex widget with Light & Dark modes (`[data-theme="light"]` / `[data-theme="dark"]`).
 - **Frontend ↔ Go Bridge**: `VexBridgeService` (`frontend/src/app/services/vex-bridge.service.ts`) dynamically imports `/wails/runtime.js`, calls `rt.Call.ByName("main.AppService.<Method>", ...args)`, and returns clean empty state (zero hardcoded demo data) when opened outside Wails.
 - **macOS Main-Thread Rule**: Every Wails UI/window/menu call inside `GlobalShortcut` or background callbacks MUST be wrapped in `application.InvokeAsync(func() { ... })`.

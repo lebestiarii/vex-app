@@ -1,6 +1,6 @@
 # Vex — Cross-Agent Project Instructions
 
-**Vex** is a desktop-first, platform-agnostic, local-first knowledge Rolodex, configurable pattern decoder, and MCP hub built with **Go + Wails v3** and **Angular** (Standalone Components + Signals).
+**Vex** is a desktop-first, platform-agnostic, local-first knowledge Rolodex, configurable pattern decoder, and MCP hub built with **Go + Wails v3** and **Angular 22** (Standalone Components + Signals + Zoneless).
 
 ## Core Architecture & Guardrails
 - **Acyclic Go Packages**: `internal/models` → `internal/indexer` → `internal/search` → `internal/plugins` → (`internal/ai`, `internal/mcp`) → `main`.
@@ -19,10 +19,11 @@
 
 ## Verification Commands
 - **macOS (Homebrew paths for sandboxed agents)**:
-  - Frontend typecheck & build: `cd frontend && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task typecheck && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task build` *(and `deno task test` once configured)*
+  - Frontend typecheck, unit tests & build: `cd frontend && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task typecheck && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task test && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task build`
   - Go tests: `/opt/homebrew/Cellar/go/1.27.4/bin/go test -race -count=1 ./...`
   - macOS binary: `/opt/homebrew/Cellar/go/1.27.4/bin/go build -tags private_mac_apis -o bin/macos/vex .`
-- **Windows (`bin\windows\vex.exe`)**: Use `go test -race -count=1 ./...`, `go build -o bin\windows\vex.exe .`, and `deno` / `ng` in `frontend/` (see `README.md` for Windows prerequisites).
+- **Windows (`bin\windows\vex.exe`)**:
+  - PowerShell: `cd frontend; deno task typecheck; deno task test; deno task build; cd ..; go test -race -count=1 ./...; go build -o bin\windows\vex.exe .` (or `npm run ng:test` / `ng:build` with Node.js `22.22+`; native Windows execution verified on Windows hosts).
 
 ## Canonical References (Single Source of Truth)
 - Overview & build/run: [README.md](README.md)

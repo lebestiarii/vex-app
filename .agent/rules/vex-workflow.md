@@ -9,18 +9,22 @@
     /opt/homebrew/Cellar/go/1.27.4/bin/go build -tags private_mac_apis -o bin/macos/vex .
     ```
   - Optional build-time metadata overrides (`AppName`, `AppVersion`, `UpdateFeedURL`) can be passed via `-ldflags` (single unified app — no edition split).
-- **Frontend Toolchain (Angular + Deno)**: Always invoke `/opt/homebrew/Cellar/deno/2.9.8/bin/deno` inside `frontend/`:
+- **Frontend Toolchain (Angular 22 + Deno)**: Always invoke `/opt/homebrew/Cellar/deno/2.9.8/bin/deno` inside `frontend/`:
   - `deno task typecheck` (Angular `ngc` strict AOT check)
-  - `deno task test` (offline frontend unit tests, once configured in `frontend/package.json`)
+  - `deno task test` (`scripts/test-aot.mjs` → `ngc` + Vitest 5 + `happy-dom` + Ivy Linker offline)
   - `deno task build` (`scripts/build-aot.mjs` → `ngc` AOT + Angular Ivy Linker + `esbuild` bundle into `frontend/dist/`)
-  - Standard `angular.json` is preserved for `ng serve` / `ng build` / `ng test` under Node.js.
+  - Standard `angular.json` is preserved for `ng serve` / `ng build` / `ng test` under Node.js `22.22+`.
 - **Sandbox-Safe Tests**: Never bind loopback TCP ports in unit tests; use injected `http.RoundTripper`, `client.NewInProcessClient`, and `httptest.NewRecorder`.
 
-### Windows (`bin/windows/vex.exe`)
-<!-- TODO: Complete Windows build instructions template (Go/Deno/Node binary paths, WebView2 prerequisites, build command outputting bin/windows/vex.exe, and verification steps). -->
-
-- **Binary Path**: `bin/windows/vex.exe`
-- *(Section intentionally left blank — complete this template on Windows)*
+### Windows (`bin\windows\vex.exe`)
+*(Native Windows binary execution and WebView2 rendering are verified on Windows 10/11 hosts.)*
+- **Prerequisites**: Go `1.27+`, built-in Microsoft Edge WebView2, and Deno `2.x` (or Node.js `22.22+` / Angular CLI `22`).
+- **Verification & Build (PowerShell)**:
+  ```powershell
+  cd frontend; deno task typecheck; deno task test; deno task build; cd ..
+  go test -race -count=1 ./...
+  go build -o bin\windows\vex.exe .
+  ```
 
 ---
 
@@ -55,10 +59,10 @@
 At the end of **every** phase:
 1. **Update Documentation to Prevent Drift**: Run the `doc-drift-sweep` checklist (`.agent/skills/doc-drift-sweep/SKILL.md`) and update `README.md`, `docs/ARCHITECTURE.md`, `docs/TEMPLATE_BLUEPRINTS.md`, `TODO.md`, `llms.txt`, `AGENTS.md`, `.github/copilot-instructions.md`, and workspace skills whenever code, schemas, MCP tools, or templates change.
 2. **Run the Full Verification Gate**:
-   - **Frontend**: `cd frontend && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task typecheck && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task build` (plus `deno task test` once configured)
+   - **Frontend**: `cd frontend && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task typecheck && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task test && /opt/homebrew/Cellar/deno/2.9.8/bin/deno task build`
    - **Go Tests**: `/opt/homebrew/Cellar/go/1.27.4/bin/go test -race -count=1 ./...`
    - **macOS Binary**: `/opt/homebrew/Cellar/go/1.27.4/bin/go build -tags private_mac_apis -o bin/macos/vex .`
-   - **Windows Binary (`bin/windows/vex.exe`)**: *(TODO: Complete Windows verification template)*
+   - **Windows Binary (`bin\windows\vex.exe`)**: `go build -o bin\windows\vex.exe .` *(verified on Windows hosts)*
 3. **Output a Structured After-Action Review (AAR)** covering:
    - **Testing & Build Gate Results** (exact commands and observed outcomes)
    - **What Changed (By Story)** (with clickable `file://` links)

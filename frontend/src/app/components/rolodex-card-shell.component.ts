@@ -3,10 +3,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  effect,
   inject,
   input,
-  signal,
+  linkedSignal,
 } from '@angular/core';
 import { CardNode, GlanceChip, WebsiteLinkData } from '../models/card-node.model';
 import { CardTemplateRegistry } from '../services/card-template-registry.service';
@@ -441,14 +440,7 @@ export class RolodexCardShellComponent {
   private readonly registry = inject(CardTemplateRegistry);
   private readonly state = inject(RolodexStateService);
 
-  readonly isExpanded = signal<boolean>(false);
-
-  constructor() {
-    effect(() => {
-      const current = this.node();
-      this.isExpanded.set(Boolean(current.defaultExpanded));
-    });
-  }
+  readonly isExpanded = linkedSignal<boolean>(() => Boolean(this.node().defaultExpanded));
 
   readonly depthClamped = computed(() => Math.min(2, Math.max(0, this.depth())));
   readonly canPin = computed(() => this.depth() === 0 && this.node().pinnable !== false);

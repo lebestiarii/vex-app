@@ -19,14 +19,22 @@ const req = createRequire(compilerCliPkg);
 const babel = req('@babel/core');
 
 function loadEsbuild() {
-  const candidates = [
-    path.join(rootDir, 'node_modules/esbuild'),
-    path.join(rootDir, 'node_modules/.deno/esbuild@0.25.12/node_modules/esbuild'),
-    path.join(rootDir, 'node_modules/.deno/esbuild@0.28.0/node_modules/esbuild'),
-  ];
-  for (const cand of candidates) {
-    if (fs.existsSync(cand)) {
-      return createRequire(import.meta.url)(cand);
+  const direct = path.join(rootDir, 'node_modules/esbuild');
+  if (fs.existsSync(direct)) {
+    return createRequire(import.meta.url)(direct);
+  }
+  const denoStoreDir = path.join(rootDir, 'node_modules/.deno');
+  if (fs.existsSync(denoStoreDir)) {
+    const matches = fs
+      .readdirSync(denoStoreDir)
+      .filter((entry) => entry.startsWith('esbuild@'))
+      .sort()
+      .reverse();
+    for (const entry of matches) {
+      const cand = path.join(denoStoreDir, entry, 'node_modules/esbuild');
+      if (fs.existsSync(cand)) {
+        return createRequire(import.meta.url)(cand);
+      }
     }
   }
   return createRequire(import.meta.url)('esbuild');
@@ -86,12 +94,9 @@ const angularLinkerEsbuildPlugin = {
   },
 };
 
-// 3. Bundle AOT-compiled Angular app + zone.js + Ivy-linked Angular runtime libraries
-const entryWrapper = path.join(outTscDir, '__entry.js');
-fs.writeFileSync(entryWrapper, `import 'zone.js';\nimport './main.js';\n`, 'utf8');
-
+// 3. Bundle AOT-compiled Angular app + Ivy-linked Angular runtime libraries (zoneless)
 await esbuild.build({
-  entryPoints: [entryWrapper],
+  entryPoints: [path.join(outTscDir, 'main.js')],
   bundle: true,
   format: 'esm',
   target: ['es2022', 'safari16'],

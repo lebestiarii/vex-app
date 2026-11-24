@@ -1,7 +1,7 @@
 # Vex — System Overview, Architecture & Design Decisions
 
 > **What is Vex?**
-> **Vex** is a desktop-first, platform-agnostic, local-first knowledge Rolodex, configurable pattern decoder, and MCP hub built with **Go + Wails v3** and **Angular 19**.
+> **Vex** is a desktop-first, platform-agnostic, local-first knowledge Rolodex, configurable pattern decoder, and MCP hub built with **Go + Wails v3** and **Angular 22 (Zoneless)**.
 
 ---
 
@@ -9,7 +9,7 @@
 
 ```mermaid
 flowchart TD
-    User["User (Hotkey Ctrl+Shift+B / System Tray)"] --> UI["Vex Full-Width Stacked Card UI\n(Angular 19 Standalone + Signals\n+ Light/Dark Mode)"]
+    User["User (Hotkey Ctrl+Shift+B / System Tray)"] --> UI["Vex Full-Width Stacked Card UI\n(Angular 22 Standalone + Signals + Zoneless\n+ Light/Dark Mode)"]
     UI -->|"/wails/runtime.js\nVexBridgeService"| RPC["Wails v3 AppService\n(app_service.go + window_anchor.go)"]
 
     subgraph Core["Go Backend Core (Acyclic Packages)"]

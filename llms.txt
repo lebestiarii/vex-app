@@ -1,21 +1,24 @@
 # Vex
 
-> Desktop-first, platform-agnostic, local-first knowledge Rolodex, configurable pattern decoder, and MCP hub built with Go + Wails v3 and Angular 19 (Standalone Components + Signals).
+> Desktop-first, platform-agnostic, local-first knowledge Rolodex, configurable pattern decoder, and MCP hub built with Go + Wails v3 and Angular 22 (Standalone Components + Signals + Zoneless + Vitest).
 
 ## Core Documentation
-- [README.md](README.md): Overview, capabilities, prerequisites, and platform-specific build/run commands (`bin/macos/vex`, `bin/windows/vex.exe`).
+- [README.md](README.md): Overview, capabilities, prerequisites, and platform-specific build/run commands (`bin/macos/vex`, `bin\windows\vex.exe`).
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Acyclic Go package graph, optional module system, full-width stacked card UI, pattern engine, and MCP hub.
 - [docs/TEMPLATE_BLUEPRINTS.md](docs/TEMPLATE_BLUEPRINTS.md): ASCII layout blueprints, field-to-slot mappings, and cross-domain JSON examples for all 5 canonical templates (`location`, `server-matrix`, `website-link`, `pattern-breakdown`, `conversion`) plus extended templates (`container-blueprint`, `dictionary-guide`, `kv-grid`, `branch-contact`).
 - [TODO.md](TODO.md): Phased roadmap, open clarifications, and upcoming backlog.
 
-## Agent Skills & Engineering Rules
+## Agent Instructions & Skills (Gemini + GitHub Copilot)
+- [AGENTS.md](AGENTS.md): Shared cross-agent instructions, Phase→Story AAR workflow, and macOS/Windows verification commands.
+- [.github/copilot-instructions.md](.github/copilot-instructions.md): GitHub Copilot entry point aligned with `AGENTS.md` and workspace skills.
 - [.agent/rules/vex-workflow.md](.agent/rules/vex-workflow.md): Build toolchains, branching discipline, architecture guardrails, and phase-end verification gates.
 - [.agent/skills/vex-architecture/SKILL.md](.agent/skills/vex-architecture/SKILL.md): Backend/frontend architecture, MCP tool/resource inventory (19 tools, 7 resources/templates), and schemas.
-- [.agent/skills/vex-rolodex-ui/SKILL.md](.agent/skills/vex-rolodex-ui/SKILL.md): Full-width stacked nested card design system, Light/Dark CSS tokens, and Angular 19 component rules.
+- [.agent/skills/vex-rolodex-ui/SKILL.md](.agent/skills/vex-rolodex-ui/SKILL.md): Full-width stacked nested card design system, Light/Dark CSS tokens, and Angular 22 (Zoneless + Signals) component rules.
+- [.agent/skills/vex-frontend-testing/SKILL.md](.agent/skills/vex-frontend-testing/SKILL.md): Offline Vitest 5 + `happy-dom` + Angular 22 Ivy Linker testing guide (`deno task test` / `ng test`).
 - [.agent/skills/vex-template-authoring/SKILL.md](.agent/skills/vex-template-authoring/SKILL.md): Guide for authoring generic card templates, optional JSON modules (`~/.vex/modules/`), and `PatternRule` decoders.
 - [.agent/skills/doc-drift-sweep/SKILL.md](.agent/skills/doc-drift-sweep/SKILL.md): 6-point post-phase documentation drift checklist.
 
-## Angular 19 UI Shell (`frontend/src/app/`)
+## Angular 22 UI Shell (`frontend/src/app/`)
 - [frontend/src/styles.css](frontend/src/styles.css): Light (`[data-theme="light"]`) and Dark (`[data-theme="dark"]`) CSS design tokens.
 - [frontend/src/app/models/card-node.model.ts](frontend/src/app/models/card-node.model.ts): TypeScript interfaces for `CardNode`, `GlanceChip`, `PatternRule`, `ModuleStatus`, and template data contracts.
 - [frontend/src/app/components/rolodex-card-shell.component.ts](frontend/src/app/components/rolodex-card-shell.component.ts): Recursive L0/L1/L2 full-width stacked card shell, L0-only pinning (max 3), and Single-Button `website-link` mode.
