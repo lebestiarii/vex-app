@@ -16,20 +16,47 @@ import (
 type CardTemplateType string
 
 const (
+	// Canonical 5 Generic Full-Width Stacked Templates
+	TemplateLocation         CardTemplateType = "location"
+	TemplateServerMatrix     CardTemplateType = "server-matrix"
+	TemplateWebsiteLink      CardTemplateType = "website-link"
+	TemplatePatternBreakdown CardTemplateType = "pattern-breakdown"
+	TemplateConversion       CardTemplateType = "conversion"
+
+	// Extended & Backward-Compatible Templates
+	TemplateBranchGateway      CardTemplateType = "branch-gateway"
+	TemplateEnvBookmarks       CardTemplateType = "env-bookmarks"
+	TemplateReferenceDecoder   CardTemplateType = "reference-decoder"
+	TemplateContainerBlueprint CardTemplateType = "container-blueprint"
+	TemplateBranchContact      CardTemplateType = "branch-contact"
+	TemplateDictionaryGuide    CardTemplateType = "dictionary-guide"
+
+	// Core Generic Templates (user ETL & freeform cards)
 	TemplateAppShortcut CardTemplateType = "shortcut"    // App, URL, or PWA launcher
 	TemplateKnowledge   CardTemplateType = "knowledge"   // Rich text/markdown/JSON fields for RAG & lookup
-	TemplateCommand     CardTemplateType = "command"     // Parameterized shell/script/webhook action
-	TemplateKeyValue    CardTemplateType = "kv-grid"     // Structured metadata card (server IPs, cheatsheets)
-	TemplateMetric      CardTemplateType = "metric-card" // Dynamic data widget rendered from script/HTTP output
+	TemplateCommand     CardTemplateType = "command"     // Parameterized snippet/webhook action
+	TemplateKeyValue    CardTemplateType = "kv-grid"     // Structured metadata card
+	TemplateMetric      CardTemplateType = "metric-card" // Dynamic data widget rendered from HTTP output
 )
 
 // ValidTemplates lists all supported built-in card templates.
 var ValidTemplates = map[CardTemplateType]bool{
-	TemplateAppShortcut: true,
-	TemplateKnowledge:   true,
-	TemplateCommand:     true,
-	TemplateKeyValue:    true,
-	TemplateMetric:      true,
+	TemplateLocation:           true,
+	TemplateServerMatrix:       true,
+	TemplateWebsiteLink:        true,
+	TemplatePatternBreakdown:   true,
+	TemplateConversion:         true,
+	TemplateBranchGateway:      true,
+	TemplateEnvBookmarks:       true,
+	TemplateReferenceDecoder:   true,
+	TemplateContainerBlueprint: true,
+	TemplateBranchContact:      true,
+	TemplateDictionaryGuide:    true,
+	TemplateAppShortcut:        true,
+	TemplateKnowledge:          true,
+	TemplateCommand:            true,
+	TemplateKeyValue:           true,
+	TemplateMetric:             true,
 }
 
 // ValidActionTypes lists all supported built-in action types.
@@ -42,28 +69,34 @@ var ValidActionTypes = map[string]bool{
 	"ai_prompt":  true,
 }
 
+// GlanceChip represents a styled Row-2 header chip in the Rolodex UI.
+type GlanceChip struct {
+	Label string `json:"label"`
+	Tone  string `json:"tone"`          // "neutral" | "amber" | "green" | "red" | "mono"
+	Dot   string `json:"dot,omitempty"` // Optional stoplight indicator: "green" | "amber" | "red"
+}
+
 // CardAction defines an executable action associated with a SearchCard.
 type CardAction struct {
 	ID       string            `json:"id"`
 	Label    string            `json:"label"`
-	Shortcut string            `json:"shortcut,omitempty"` // e.g. "Enter", "Cmd+K", "Cmd+C"
+	Shortcut string            `json:"shortcut,omitempty"` // Platform-agnostic hint e.g. "Enter"
 	Type     string            `json:"type"`               // open_url, open_pwa, launch_app, copy, http, ai_prompt
 	Target   string            `json:"target"`             // URL, HTTP endpoint, or clipboard value
 	Env      map[string]string `json:"env,omitempty"`
 }
 
 // Provenance tracks where a card or section's information originated, its authority tier,
-// and when it was verified so humans, AI RAG, and MCP clients can fact-check freshness and resolve conflicts.
+// and when it was verified so humans, AI RAG, and MCP clients can fact-check freshness.
 type Provenance struct {
-	SourceName string `json:"sourceName,omitempty"` // e.g. "UNECE UN/LOCODE & IATA", "U.S. Treasury OFAC", "GitHub Catalog"
-	SourceURL  string `json:"sourceUrl,omitempty"`  // Canonical reference URL or internal doc link
-	VerifiedAt string `json:"verifiedAt,omitempty"` // ISO date e.g. "2026-11-21"
+	SourceName string `json:"sourceName,omitempty"`
+	SourceURL  string `json:"sourceUrl,omitempty"`
+	VerifiedAt string `json:"verifiedAt,omitempty"` // ISO date e.g. "2026-11-23"
 	Authority  string `json:"authority,omitempty"`  // "official" | "internal-curated" | "automated-sync"
 	LocalOnly  bool   `json:"localOnly,omitempty"`  // Exclude from external cloud LLM RAG calls
 }
 
-// CardSection represents an attributed, self-contained facet contributed by a module
-// (e.g., an "Air Freight", "Ocean Freight", "Customs", or "Global Technology" block on an AMS card).
+// CardSection represents an attributed, self-contained facet contributed by a module overlay.
 type CardSection struct {
 	ModuleID   string         `json:"moduleId"`
 	ModuleName string         `json:"moduleName"`
@@ -76,47 +109,131 @@ type CardSection struct {
 	LocalOnly  bool           `json:"localOnly,omitempty"`
 }
 
-// SearchCard is the canonical unit stored in JSON files and indexed for search & RAG.
+// SearchCard is the canonical unit stored in JSON files, modules, and indexed for search & RAG.
+// It also natively supports recursive Children and typed GlanceChips for the Rolodex UI.
 type SearchCard struct {
-	ID          string           `json:"id"`
-	EntityKey   string           `json:"entityKey,omitempty"`   // Canonical shared entity key across modules, e.g. "loc:AMS"
-	ModuleID    string           `json:"moduleId,omitempty"`    // Originating module ID if provided by a module
-	Title       string           `json:"title"`
-	Subtitle    string           `json:"subtitle,omitempty"`
-	Description string           `json:"description,omitempty"`
-	Collection  string           `json:"collection"`
-	Template    CardTemplateType `json:"template"`
-	Icon        string           `json:"icon,omitempty"`
-	Tags        []string         `json:"tags,omitempty"`
-	Modifiers   []string         `json:"modifiers,omitempty"`
-	GlancePills []string         `json:"glancePills,omitempty"` // 2-3 high-signal summary pills shown on the compact card row
-	Data        map[string]any   `json:"data,omitempty"`
-	Sections    []CardSection    `json:"sections,omitempty"`    // Composed module overlay sections
-	RelatedKeys []string         `json:"relatedKeys,omitempty"` // Synergy keys linking related cards across modules (e.g. ["AMS", "NL"])
-	Actions     []CardAction     `json:"actions,omitempty"`
-	Provenance  *Provenance      `json:"provenance,omitempty"`
-	LocalOnly   bool             `json:"localOnly,omitempty"` // Exclude from external cloud LLM RAG calls
-	UpdatedAt   time.Time        `json:"updatedAt"`
+	ID              string           `json:"id"`
+	EntityKey       string           `json:"entityKey,omitempty"` // Canonical cross-module entity key, e.g. "loc:AMS", "air-carrier:176"
+	ModuleID        string           `json:"moduleId,omitempty"`  // Originating module ID
+	Title           string           `json:"title"`
+	Subtitle        string           `json:"subtitle,omitempty"`
+	Description     string           `json:"description,omitempty"`
+	Collection      string           `json:"collection"`
+	Template        CardTemplateType `json:"template"`
+	Icon            string           `json:"icon,omitempty"`
+	Tags            []string         `json:"tags,omitempty"`
+	Modifiers       []string         `json:"modifiers,omitempty"`
+	GlancePills     []string         `json:"glancePills,omitempty"`
+	Chips           []GlanceChip     `json:"chips,omitempty"`           // Typed Row-2 header chips for Rolodex UI
+	Data            map[string]any   `json:"data,omitempty"`            // Strongly-typed template payload
+	Children        []SearchCard     `json:"children,omitempty"`        // Recursive nested child cards
+	DefaultExpanded bool             `json:"defaultExpanded,omitempty"` // Whether card starts expanded
+	Pinnable        *bool            `json:"pinnable,omitempty"`        // Defaults to true for top-level cards, false for children
+	Sections        []CardSection    `json:"sections,omitempty"`        // Composed module overlay sections
+	RelatedKeys     []string         `json:"relatedKeys,omitempty"`     // Synergy keys linking related cards across modules
+	Actions         []CardAction     `json:"actions,omitempty"`
+	Provenance      *Provenance      `json:"provenance,omitempty"`
+	LocalOnly       bool             `json:"localOnly,omitempty"` // Exclude from external cloud LLM RAG calls
+	UpdatedAt       time.Time        `json:"updatedAt"`
+}
+
+// CardNode is the recursive UI-ready Rolodex node projected from a SearchCard.
+type CardNode struct {
+	ID              string           `json:"id"`
+	Template        CardTemplateType `json:"template"`
+	Icon            string           `json:"icon"`
+	Title           string           `json:"title"`
+	Subtitle        string           `json:"subtitle,omitempty"`
+	Description     string           `json:"description,omitempty"`
+	Collection      string           `json:"collection,omitempty"`
+	EntityKey       string           `json:"entityKey,omitempty"`
+	ModuleID        string           `json:"moduleId,omitempty"`
+	Chips           []GlanceChip     `json:"chips"`
+	Data            map[string]any   `json:"data"`
+	Children        []CardNode       `json:"children,omitempty"`
+	Actions         []CardAction     `json:"actions,omitempty"`
+	DefaultExpanded bool             `json:"defaultExpanded,omitempty"`
+	Pinnable        bool             `json:"pinnable"`
+}
+
+// ToCardNode converts a SearchCard (and its recursive children/sections) into a Rolodex CardNode.
+func (c SearchCard) ToCardNode(depth int) CardNode {
+	tpl := c.Template
+	if tpl == "" {
+		tpl = TemplateKnowledge
+	}
+	chips := make([]GlanceChip, 0, len(c.Chips)+len(c.GlancePills))
+	if len(c.Chips) > 0 {
+		chips = append(chips, c.Chips...)
+	} else {
+		for i, pill := range c.GlancePills {
+			tone := "neutral"
+			if i == 0 {
+				tone = "amber"
+			}
+			chips = append(chips, GlanceChip{Label: pill, Tone: tone})
+		}
+	}
+	if len(chips) > 4 {
+		chips = chips[:4]
+	}
+
+	pinnable := depth == 0
+	if c.Pinnable != nil {
+		pinnable = *c.Pinnable && depth == 0
+	}
+
+	data := c.Data
+	if data == nil {
+		data = map[string]any{}
+	}
+
+	children := make([]CardNode, 0, len(c.Children))
+	if depth < 2 {
+		for _, ch := range c.Children {
+			children = append(children, ch.ToCardNode(depth+1))
+		}
+	}
+
+	return CardNode{
+		ID:              c.ID,
+		Template:        tpl,
+		Icon:            c.Icon,
+		Title:           c.Title,
+		Subtitle:        c.Subtitle,
+		Description:     c.Description,
+		Collection:      c.Collection,
+		EntityKey:       c.EntityKey,
+		ModuleID:        c.ModuleID,
+		Chips:           chips,
+		Data:            data,
+		Children:        children,
+		Actions:         c.Actions,
+		DefaultExpanded: c.DefaultExpanded,
+		Pinnable:        pinnable,
+	}
 }
 
 // CardOverlay enriches an existing base card (matched by TargetEntityKey or TargetCardID)
-// when its parent module is enabled, or promotes to a standalone card if no base card is active.
+// with either a CardSection and/or nested ChildCards when its parent module is enabled.
 type CardOverlay struct {
-	TargetEntityKey string      `json:"targetEntityKey,omitempty"` // e.g. "loc:AMS"
-	TargetCardID    string      `json:"targetCardId,omitempty"`    // e.g. "port-nlams"
-	FallbackTitle   string      `json:"fallbackTitle,omitempty"`   // Used when rendered standalone without the base module
-	FallbackCol     string      `json:"fallbackCollection,omitempty"`
-	Section         CardSection `json:"section"`
-	AddTags         []string    `json:"addTags,omitempty"`
-	AddModifiers    []string    `json:"addModifiers,omitempty"`
-	AddRelatedKeys  []string    `json:"addRelatedKeys,omitempty"`
+	TargetEntityKey string       `json:"targetEntityKey,omitempty"` // e.g. "loc:AMS"
+	TargetCardID    string       `json:"targetCardId,omitempty"`
+	FallbackTitle   string       `json:"fallbackTitle,omitempty"`
+	FallbackCol     string       `json:"fallbackCollection,omitempty"`
+	Section         CardSection  `json:"section,omitempty"`
+	ChildCards      []SearchCard `json:"childCards,omitempty"` // Nested child cards attached to the target card
+	AddTags         []string     `json:"addTags,omitempty"`
+	AddModifiers    []string     `json:"addModifiers,omitempty"`
+	AddRelatedKeys  []string     `json:"addRelatedKeys,omitempty"`
 }
 
-// ModuleManifest is a shareable, toggleable domain knowledge & template pack.
+// ModuleManifest is a shareable, optional, deletable domain knowledge, template & pattern pack
+// stored as a JSON file in ~/.vex/modules/<id>.json.
 type ModuleManifest struct {
 	ID             string        `json:"id"`
 	Name           string        `json:"name"`
-	Category       string        `json:"category"` // e.g. "Core & Locations", "Product & Operations", "Compliance", "Technology"
+	Category       string        `json:"category"` // e.g. "Gateways", "Air Freight", "Ocean Freight", "Equipment", "Patterns", "Templates"
 	Description    string        `json:"description"`
 	Icon           string        `json:"icon,omitempty"`
 	Version        string        `json:"version"`
@@ -127,7 +244,7 @@ type ModuleManifest struct {
 	Patterns       []PatternRule `json:"patterns,omitempty"`
 }
 
-// ModuleStatus summarizes an installed module and its current enabled state for the UI.
+// ModuleStatus summarizes an installed user module in ~/.vex/modules/ and its current enabled state.
 type ModuleStatus struct {
 	ID             string `json:"id"`
 	Name           string `json:"name"`
@@ -137,10 +254,26 @@ type ModuleStatus struct {
 	Version        string `json:"version"`
 	Enabled        bool   `json:"enabled"`
 	DefaultEnabled bool   `json:"defaultEnabled"`
-	BuiltIn        bool   `json:"builtIn"`
 	LocalOnly      bool   `json:"localOnly,omitempty"`
 	CardCount      int    `json:"cardCount"`
 	OverlayCount   int    `json:"overlayCount"`
+	PatternCount   int    `json:"patternCount"`
+	FilePath       string `json:"filePath,omitempty"`
+}
+
+// StarterModuleInfo describes a packaged optional module available to install/load at onboarding or later.
+type StarterModuleInfo struct {
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Category       string `json:"category"`
+	Description    string `json:"description"`
+	Icon           string `json:"icon,omitempty"`
+	Version        string `json:"version"`
+	DefaultEnabled bool   `json:"defaultEnabled"`
+	Installed      bool   `json:"installed"`
+	CardCount      int    `json:"cardCount"`
+	OverlayCount   int    `json:"overlayCount"`
+	PatternCount   int    `json:"patternCount"`
 }
 
 // CardCollectionFile is an optional envelope structure for user JSON files.
@@ -166,7 +299,7 @@ type ETLMappingRule struct {
 	DefaultIcon      string           `json:"defaultIcon,omitempty"`      // Fallback icon
 	ActionType       string           `json:"actionType,omitempty"`       // e.g. "open_url", "copy", "http"
 	ActionLabel      string           `json:"actionLabel,omitempty"`      // e.g. "Open Link"
-	ActionTarget     string           `json:"actionTarget,omitempty"`     // e.g. "{{url}}" or "ssh {{host}}"
+	ActionTarget     string           `json:"actionTarget,omitempty"`     // e.g. "{{url}}"
 	DataFields       []string         `json:"dataFields,omitempty"`       // Fields to preserve in card.Data (empty = all)
 }
 
@@ -195,7 +328,7 @@ func Slugify(s string) string {
 	return s
 }
 
-// ValidateAndNormalizeCard fills sensible defaults and validates required fields.
+// ValidateAndNormalizeCard fills sensible defaults and validates required fields recursively.
 func ValidateAndNormalizeCard(card *SearchCard, defaultCollection string) error {
 	if card == nil {
 		return errors.New("card is nil")
@@ -219,7 +352,7 @@ func ValidateAndNormalizeCard(card *SearchCard, defaultCollection string) error 
 		card.Template = TemplateKnowledge
 	}
 	if !ValidTemplates[card.Template] {
-		return fmt.Errorf("invalid card template %q (valid: shortcut, knowledge, command, kv-grid, metric-card)", card.Template)
+		return fmt.Errorf("invalid card template %q", card.Template)
 	}
 
 	card.ID = strings.TrimSpace(card.ID)
@@ -262,6 +395,14 @@ func ValidateAndNormalizeCard(card *SearchCard, defaultCollection string) error 
 		card.Modifiers = cleanMods
 	}
 
+	// Normalize chips
+	for i := range card.Chips {
+		card.Chips[i].Label = strings.TrimSpace(card.Chips[i].Label)
+		if card.Chips[i].Tone == "" {
+			card.Chips[i].Tone = "neutral"
+		}
+	}
+
 	// Validate and normalize actions
 	for i := range card.Actions {
 		act := &card.Actions[i]
@@ -279,19 +420,36 @@ func ValidateAndNormalizeCard(card *SearchCard, defaultCollection string) error 
 		}
 	}
 
+	// Recursively normalize nested child cards
+	for i := range card.Children {
+		if card.Children[i].Collection == "" {
+			card.Children[i].Collection = card.Collection
+		}
+		if err := ValidateAndNormalizeCard(&card.Children[i], card.Collection); err != nil {
+			return fmt.Errorf("child %d: %w", i, err)
+		}
+	}
+
 	if card.UpdatedAt.IsZero() {
 		card.UpdatedAt = time.Now().UTC()
 	}
 
 	if len(card.GlancePills) == 0 {
-		card.GlancePills = ComputeGlancePills(*card)
+		if len(card.Chips) > 0 {
+			for i := 0; i < len(card.Chips) && i < 3; i++ {
+				if card.Chips[i].Label != "" {
+					card.GlancePills = append(card.GlancePills, card.Chips[i].Label)
+				}
+			}
+		} else {
+			card.GlancePills = ComputeGlancePills(*card)
+		}
 	}
 
 	return nil
 }
 
-// ComputeGlancePills extracts up to 3 high-signal summary pills from a card's structured Data
-// so users see the most relevant metrics/codes directly on the small card row.
+// ComputeGlancePills extracts up to 3 high-signal summary pills from a card's structured Data.
 func ComputeGlancePills(c SearchCard) []string {
 	if len(c.Data) == 0 {
 		return nil
@@ -320,7 +478,6 @@ func ComputeGlancePills(c SearchCard) []string {
 		return ""
 	}
 
-	// 1. Location / Gateway cards (UN/LOCODE, IATA, Country/Currency)
 	if loc := strVal("unlocode"); loc != "" {
 		if iata := strVal("iata"); iata != "" && iata != loc {
 			add(loc + " · " + iata)
@@ -336,7 +493,6 @@ func ComputeGlancePills(c SearchCard) []string {
 		return pills
 	}
 
-	// 2. GitHub Repository / Taxonomy cards (Portfolio, Team, Product)
 	if portfolio := strVal("portfolio"); portfolio != "" {
 		add("Portfolio: " + portfolio)
 		if team := strVal("team"); team != "" {
@@ -348,11 +504,10 @@ func ComputeGlancePills(c SearchCard) []string {
 		return pills
 	}
 
-	// 3. ULD / Container / Aircraft / Trailer cards
 	for _, k := range []string{
-		"iata_prefix", "iso_code", "hs_code", "acronym", "event_code", "incoterm",
+		"prefix", "scac", "iata_prefix", "iso_code", "hs_code", "acronym", "event_code", "incoterm",
 		"capacity_cbm", "internal_volume", "max_volume", "max_gross_weight", "max_payload",
-		"base_dimensions", "general_duty", "pallet_capacity", "nose_cargo_door", "main_deck_side_door",
+		"dimensions", "base_dimensions", "general_duty", "pallet_capacity",
 	} {
 		if v := strVal(k); v != "" {
 			add(v)
@@ -380,15 +535,36 @@ func defaultActionLabel(actionType string) string {
 	}
 }
 
-// SearchableBody flattens Description, Data map, Sections, and Action targets for FTS5 and embeddings.
+// SearchableBody flattens Description, Data, Chips, Children, Sections, and Action targets for FTS5 and embeddings.
 func (c SearchCard) SearchableBody() string {
 	var b strings.Builder
+	writeCardBody(&b, c, 0)
+	return strings.TrimSpace(b.String())
+}
+
+func writeCardBody(b *strings.Builder, c SearchCard, depth int) {
+	if depth > 3 {
+		return
+	}
+	if depth > 0 && c.Title != "" {
+		b.WriteString(c.Title)
+		b.WriteByte('\n')
+	}
 	if c.EntityKey != "" {
 		b.WriteString(c.EntityKey)
 		b.WriteByte('\n')
 	}
 	if c.Description != "" {
 		b.WriteString(c.Description)
+		b.WriteByte('\n')
+	}
+	for _, ch := range c.Chips {
+		if ch.Label != "" {
+			b.WriteString(ch.Label)
+			b.WriteByte(' ')
+		}
+	}
+	if len(c.Chips) > 0 {
 		b.WriteByte('\n')
 	}
 	if len(c.Data) > 0 {
@@ -451,6 +627,9 @@ func (c SearchCard) SearchableBody() string {
 			b.WriteByte('\n')
 		}
 	}
+	for _, child := range c.Children {
+		writeCardBody(b, child, depth+1)
+	}
 	if c.Provenance != nil {
 		if c.Provenance.SourceName != "" {
 			b.WriteString("source: ")
@@ -462,7 +641,6 @@ func (c SearchCard) SearchableBody() string {
 			b.WriteByte('\n')
 		}
 	}
-	return strings.TrimSpace(b.String())
 }
 
 // ContentHash computes a deterministic SHA-256 hash of the card's searchable fields.
@@ -476,7 +654,9 @@ func (c SearchCard) ContentHash() string {
 		Template    CardTemplateType `json:"template"`
 		Tags        []string         `json:"tags"`
 		Modifiers   []string         `json:"modifiers"`
+		Chips       []GlanceChip     `json:"chips,omitempty"`
 		Data        map[string]any   `json:"data"`
+		Children    []SearchCard     `json:"children,omitempty"`
 		Sections    []CardSection    `json:"sections,omitempty"`
 		Actions     []CardAction     `json:"actions"`
 	}{
@@ -488,7 +668,9 @@ func (c SearchCard) ContentHash() string {
 		Template:    c.Template,
 		Tags:        c.Tags,
 		Modifiers:   c.Modifiers,
+		Chips:       c.Chips,
 		Data:        c.Data,
+		Children:    c.Children,
 		Sections:    c.Sections,
 		Actions:     c.Actions,
 	}
@@ -497,66 +679,77 @@ func (c SearchCard) ContentHash() string {
 	return hex.EncodeToString(sum[:])
 }
 
-// CardJSONSchema returns the formal JSON Schema describing SearchCard and ETLMappingRule.
-// Exposed via MCP (schema://search-card) and used by AI models to generate cards or ETL mappings.
+// CardJSONSchema returns the formal JSON Schema describing SearchCard, ModuleManifest, PatternRule, and ETLMappingRule.
 func CardJSONSchema() string {
 	return `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Vex SearchCard & ETL Schema",
-  "description": "Schema for SearchCard items stored in ~/.vex/data/<collection>.json and ETLMappingRule objects used to convert CSV/JSON files into SearchCards.",
+  "title": "Vex Desk Rolodex Schema (SearchCard, ModuleManifest, PatternRule, ETLMappingRule)",
+  "description": "Canonical schema for Vex SearchCard items (~/.vex/data/*.json), optional ModuleManifest packs (~/.vex/modules/*.json), and PatternRule definitions (~/.vex/patterns/*.json).",
   "definitions": {
+    "GlanceChip": {
+      "type": "object",
+      "required": ["label", "tone"],
+      "properties": {
+        "label": { "type": "string" },
+        "tone": { "type": "string", "enum": ["neutral", "blue", "amber", "green", "red", "mono"] },
+        "dot": { "type": "string", "enum": ["green", "amber", "red"], "description": "Optional stoplight status dot for environment chips (DEV, QA, PROD)." }
+      }
+    },
+    "PatternSegment": {
+      "type": "object",
+      "required": ["value", "role", "meaning"],
+      "description": "One of 3 equal-width breakdown tiles rendered by pattern-breakdown cards.",
+      "properties": {
+        "value": { "type": "string", "description": "Matched raw segment value (supports {{templates}})." },
+        "role": { "type": "string", "description": "Uppercase micro role label e.g. MODE, BRANCH, SEQUENCE." },
+        "meaning": { "type": "string", "description": "Decoded human-readable meaning (supports {{lookup.*}} / {{alias.*}})." },
+        "tone": { "type": "string", "enum": ["blue", "amber", "green", "neutral"] }
+      }
+    },
     "SearchCard": {
       "type": "object",
       "required": ["title", "collection", "template"],
       "properties": {
-        "id": { "type": "string", "description": "Optional unique identifier (auto-generated if omitted)." },
-        "entityKey": { "type": "string", "description": "Canonical cross-module entity key (e.g. loc:AMS, uld:AKE, repo:gt-customs-core-decl-api)." },
-        "moduleId": { "type": "string", "description": "Originating module ID when supplied by a toggleable module." },
-        "title": { "type": "string", "description": "Primary display title of the card." },
-        "subtitle": { "type": "string", "description": "Secondary line shown beside or beneath the title." },
-        "description": { "type": "string", "description": "Rich text or markdown body used for preview and RAG retrieval." },
-        "collection": { "type": "string", "description": "Logical collection/file name (e.g. ports, air-freight, customs, shortcuts)." },
+        "id": { "type": "string" },
+        "entityKey": { "type": "string", "description": "Canonical cross-module entity key (e.g. loc:AMS, air-carrier:176, ocean-carrier:MAEU, guide:hbl)." },
+        "moduleId": { "type": "string" },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "description": { "type": "string" },
+        "collection": { "type": "string" },
         "template": {
           "type": "string",
-          "enum": ["shortcut", "knowledge", "command", "kv-grid", "metric-card"],
-          "description": "UI template: shortcut (apps/URLs/PWAs), knowledge (markdown/RAG notes), command (parameterized shell/http), kv-grid (key-value cheatsheet), metric-card (dynamic status widget)."
+          "enum": [
+            "location",
+            "server-matrix",
+            "website-link",
+            "pattern-breakdown",
+            "conversion",
+            "branch-gateway",
+            "env-bookmarks",
+            "reference-decoder",
+            "container-blueprint",
+            "branch-contact",
+            "dictionary-guide",
+            "shortcut",
+            "knowledge",
+            "command",
+            "kv-grid",
+            "metric-card"
+          ],
+          "description": "Prefer the 5 canonical full-width stacked templates: location (header-only entity nesting children), server-matrix (DEV/QA/PROD rows with Copy/SSH/Open), website-link (multi-link expandable OR 1-link single-button card with no chevron), pattern-breakdown (3-tile breakdown + explanation + nested cards), conversion (Input ⇄ Output strip + equivalents)."
         },
-        "icon": { "type": "string", "description": "Lucide icon name (e.g. globe, terminal, book-open) or emoji." },
-        "tags": { "type": "array", "items": { "type": "string" }, "description": "Filterable via #tag." },
-        "modifiers": { "type": "array", "items": { "type": "string" }, "description": "Quick aliases triggered via /modifier." },
-        "glancePills": { "type": "array", "items": { "type": "string" }, "description": "Up to 3 high-signal summary badges shown on compact list rows." },
-        "relatedKeys": { "type": "array", "items": { "type": "string" }, "description": "Cross-card synergy keys (e.g. [\"AMS\", \"NL\"])." },
-        "localOnly": { "type": "boolean", "description": "When true, excluded from external cloud LLM RAG calls while remaining searchable locally and via Ollama." },
-        "provenance": {
-          "type": "object",
-          "description": "Source attribution & freshness metadata for human trust and LLM/MCP fact-checking.",
-          "properties": {
-            "sourceName": { "type": "string" },
-            "sourceUrl": { "type": "string" },
-            "verifiedAt": { "type": "string", "description": "ISO date e.g. 2026-11-21" },
-            "authority": { "type": "string", "enum": ["official", "internal-curated", "automated-sync"] },
-            "localOnly": { "type": "boolean" }
-          }
-        },
-        "sections": {
-          "type": "array",
-          "description": "Attributed module overlay perspectives merged onto this card.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "moduleId": { "type": "string" },
-              "moduleName": { "type": "string" },
-              "title": { "type": "string" },
-              "badge": { "type": "string" },
-              "notes": { "type": "string" },
-              "fields": { "type": "object", "additionalProperties": true },
-              "actions": { "type": "array" },
-              "provenance": { "type": "object" },
-              "localOnly": { "type": "boolean" }
-            }
-          }
-        },
-        "data": { "type": "object", "additionalProperties": true, "description": "Arbitrary structured JSON fields rendered by kv-grid/metric-card and indexed for RAG." },
+        "icon": { "type": "string", "description": "Emoji, flag emoji, or icon key." },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "modifiers": { "type": "array", "items": { "type": "string" } },
+        "chips": { "type": "array", "maxItems": 4, "items": { "$ref": "#/definitions/GlanceChip" } },
+        "glancePills": { "type": "array", "items": { "type": "string" } },
+        "data": { "type": "object", "additionalProperties": true },
+        "children": { "type": "array", "items": { "$ref": "#/definitions/SearchCard" }, "description": "Recursive nested child cards (up to 2 levels deep)." },
+        "defaultExpanded": { "type": "boolean" },
+        "pinnable": { "type": "boolean" },
+        "relatedKeys": { "type": "array", "items": { "type": "string" } },
+        "localOnly": { "type": "boolean" },
         "actions": {
           "type": "array",
           "items": {
@@ -565,59 +758,88 @@ func CardJSONSchema() string {
             "properties": {
               "id": { "type": "string" },
               "label": { "type": "string" },
-              "shortcut": { "type": "string", "description": "e.g. Enter, Cmd+C, Cmd+Enter" },
+              "shortcut": { "type": "string" },
               "type": { "type": "string", "enum": ["open_url", "open_pwa", "launch_app", "copy", "http", "ai_prompt"] },
-              "target": { "type": "string", "description": "URL, command template supporting {{arg1}} or {{data.key}}, or text to copy." },
-              "env": { "type": "object", "additionalProperties": { "type": "string" } }
+              "target": { "type": "string" }
             }
           }
         }
       }
     },
-    "ETLMappingRule": {
+    "ModuleManifest": {
       "type": "object",
-      "required": ["sourceFormat", "targetCollection", "defaultTemplate", "titleField"],
-      "properties": {
-        "name": { "type": "string" },
-        "sourceFormat": { "type": "string", "enum": ["csv", "tsv", "json", "jsonl"] },
-        "rootPath": { "type": "string", "description": "Dot-separated path to array inside a JSON object (e.g. items or roots.bookmark_bar.children)." },
-        "targetCollection": { "type": "string" },
-        "defaultTemplate": { "type": "string", "enum": ["shortcut", "knowledge", "command", "kv-grid", "metric-card"] },
-        "titleField": { "type": "string", "description": "Column/key name or mustache template like {{Name}}." },
-        "subtitleField": { "type": "string" },
-        "descriptionField": { "type": "string" },
-        "tagsField": { "type": "string" },
-        "staticTags": { "type": "array", "items": { "type": "string" } },
-        "modifiers": { "type": "array", "items": { "type": "string" } },
-        "iconField": { "type": "string" },
-        "defaultIcon": { "type": "string" },
-        "actionType": { "type": "string", "enum": ["open_url", "open_pwa", "launch_app", "copy", "http", "ai_prompt"] },
-        "actionLabel": { "type": "string" },
-        "actionTarget": { "type": "string", "description": "e.g. {{URL}} or ssh {{User}}@{{Host}}" },
-        "dataFields": { "type": "array", "items": { "type": "string" } }
-      }
-    },
-    "PatternRule": {
-      "type": "object",
-      "required": ["id", "name", "regex", "titleTemplate"],
-      "description": "Declarative reference-number decoder and live MCP lookup rule stored in ~/.vex/patterns/*.json or ModuleManifest.patterns.",
+      "required": ["id", "name"],
+      "description": "Optional, deletable module stored in ~/.vex/modules/<id>.json containing cards, overlays, and/or pattern rules.",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
         "category": { "type": "string" },
         "description": { "type": "string" },
-        "regex": { "type": "string", "description": "Go RE2 regex supporting named capture groups (?P<name>...)." },
+        "icon": { "type": "string" },
+        "version": { "type": "string" },
+        "defaultEnabled": { "type": "boolean" },
+        "localOnly": { "type": "boolean" },
+        "cards": { "type": "array", "items": { "$ref": "#/definitions/SearchCard" } },
+        "overlays": { "type": "array" },
+        "patterns": { "type": "array", "items": { "$ref": "#/definitions/PatternRule" } }
+      }
+    },
+    "PatternRule": {
+      "type": "object",
+      "required": ["id", "name", "regex", "titleTemplate"],
+      "description": "Loadable & configurable pattern decoder and cross-card link rule stored in ~/.vex/patterns/*.json or ModuleManifest.patterns.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "enabled": { "type": "boolean", "default": true },
+        "priority": { "type": "integer", "default": 0 },
+        "normalize": { "type": "array", "items": { "type": "string", "enum": ["trim", "uppercase", "lowercase", "strip-spaces", "strip-dashes"] } },
+        "regex": { "type": "string" },
         "caseInsensitive": { "type": "boolean" },
-        "checksum": { "type": "string", "enum": ["", "iata-mod7", "iso6346"] },
+        "checksum": { "type": "string", "enum": ["", "iata-mod7", "iso6346", "luhn"] },
         "lookups": { "type": "object", "additionalProperties": { "type": "object", "additionalProperties": { "type": "string" } } },
+        "dataLookups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["alias", "targetEntityKey"],
+            "properties": {
+              "alias": { "type": "string" },
+              "targetEntityKey": { "type": "string" },
+              "extractFields": { "type": "object", "additionalProperties": { "type": "string" } },
+              "fallbackValues": { "type": "object", "additionalProperties": { "type": "string" } }
+            }
+          }
+        },
         "titleTemplate": { "type": "string" },
         "subtitleTemplate": { "type": "string" },
         "descriptionTemplate": { "type": "string" },
         "collection": { "type": "string" },
-        "template": { "type": "string", "enum": ["shortcut", "knowledge", "command", "kv-grid", "metric-card"] },
+        "template": { "type": "string" },
+        "icon": { "type": "string" },
+        "defaultExpanded": { "type": "boolean" },
+        "chips": { "type": "array", "items": { "$ref": "#/definitions/GlanceChip" } },
         "fields": { "type": "object", "additionalProperties": { "type": "string" } },
-        "glancePills": { "type": "array", "items": { "type": "string" } },
-        "linkEntityKeys": { "type": "array", "items": { "type": "string" }, "description": "Templates resolving to canonical EntityKeys (e.g. loc:SEA) to enrich with indexed cards." },
+        "linkEntityKeys": { "type": "array", "items": { "type": "string" } },
+        "linkRules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "targetEntityKey": { "type": "string" },
+              "targetCollection": { "type": "string" },
+              "targetTag": { "type": "string" },
+              "relationLabel": { "type": "string" },
+              "autoExpand": { "type": "boolean" },
+              "nestChildren": { "type": "boolean" },
+              "copyChildrenOnly": { "type": "boolean" },
+              "maxDepth": { "type": "integer" },
+              "includeFields": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
         "liveMcp": {
           "type": "object",
           "properties": {
@@ -627,6 +849,29 @@ func CardJSONSchema() string {
           }
         },
         "localOnly": { "type": "boolean" }
+      }
+    },
+    "ETLMappingRule": {
+      "type": "object",
+      "required": ["sourceFormat", "targetCollection", "defaultTemplate", "titleField"],
+      "properties": {
+        "name": { "type": "string" },
+        "sourceFormat": { "type": "string", "enum": ["csv", "tsv", "json", "jsonl"] },
+        "rootPath": { "type": "string" },
+        "targetCollection": { "type": "string" },
+        "defaultTemplate": { "type": "string" },
+        "titleField": { "type": "string" },
+        "subtitleField": { "type": "string" },
+        "descriptionField": { "type": "string" },
+        "tagsField": { "type": "string" },
+        "staticTags": { "type": "array", "items": { "type": "string" } },
+        "modifiers": { "type": "array", "items": { "type": "string" } },
+        "iconField": { "type": "string" },
+        "defaultIcon": { "type": "string" },
+        "actionType": { "type": "string", "enum": ["open_url", "open_pwa", "launch_app", "copy", "http", "ai_prompt"] },
+        "actionLabel": { "type": "string" },
+        "actionTarget": { "type": "string" },
+        "dataFields": { "type": "array", "items": { "type": "string" } }
       }
     }
   }

@@ -6,8 +6,10 @@ bin/
 *.dylib
 *.app/
 
-# Frontend dependencies
+# Frontend dependencies & build caches
 frontend/node_modules/
+frontend/.angular/
+frontend/out-tsc/
 
 # Environment & local secrets (keep .env.example tracked)
 .env
@@ -23,9 +25,6 @@ frontend/node_modules/
 *.jsonl
 coverage.out
 coverage.html
-
-# External enterprise module packs (keep proprietary branch/org JSON untracked from public/personal git tree)
-modules-enterprise/*.json
 
 # OS files
 .DS_Store

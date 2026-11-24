@@ -26,51 +26,42 @@ func (s *stubLivePatternExecutor) ExecutePatternMCP(_ context.Context, serverID,
 	return s.text, s.localOnly, s.err
 }
 
-func TestPatternEngineIATAAWBAndISO6346(t *testing.T) {
-	eng := NewPatternEngine(nil)
-	ctx := context.Background()
+func TestPatternEngineModuleDrivenHBLAndMAWBAndISO6346(t *testing.T) {
+	modulesDir := t.TempDir()
+	_, err := indexer.InstallStarterModules(modulesDir, []string{
+		"air-carriers",
+		"ocean-carriers",
+		"logistics-dictionary",
+		"reference-patterns",
+	})
+	if err != nil {
+		t.Fatalf("InstallStarterModules: %v", err)
+	}
+	// Seed an ephemeral test-only location module inside TempDir to verify cross-module HBL -> Location nesting
+	_, err = indexer.SaveCustomModule(modulesDir, models.ModuleManifest{
+		ID:             "test-locations",
+		Name:           "Test Locations",
+		Category:       "Locations",
+		Version:        "1.0.0",
+		DefaultEnabled: true,
+		Cards: []models.SearchCard{
+			{
+				ID:         "loc-sea",
+				EntityKey:  "loc:SEA",
+				Title:      "Seattle Gateway (SEA)",
+				Collection: "locations",
+				Template:   models.TemplateLocation,
+				Children: []models.SearchCard{
+					{ID: "sea-srv", Title: "SEA EDI Servers", Collection: "locations", Template: models.TemplateServerMatrix},
+					{ID: "sea-ace", Title: "CBP ACE Portal", Collection: "locations", Template: models.TemplateWebsiteLink, Data: map[string]any{"url": "https://ace.cbp.dhs.gov"}},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("SaveModuleFile(test-locations): %v", err)
+	}
 
-	// 1. Valid IATA AWB: 1234567 % 7 == 5 -> Emirates SkyCargo (176)
-	awb := eng.Match(ctx, "176-12345675", nil, nil)
-	if awb == nil {
-		t.Fatalf("expected IATA AWB match for 176-12345675")
-	}
-	if awb.Card.Data["carrier"] != "Emirates SkyCargo (EK)" {
-		t.Fatalf("unexpected carrier: %+v", awb.Card.Data)
-	}
-	if !strings.Contains(fmt.Sprintf("%v", awb.Card.Data["check_digit"]), "Valid") {
-		t.Fatalf("expected Valid Mod-7 check digit, got %v", awb.Card.Data["check_digit"])
-	}
-
-	// 2. Invalid IATA AWB check digit
-	awbBad := eng.Match(ctx, "176-12345674", nil, nil)
-	if awbBad == nil || !strings.Contains(fmt.Sprintf("%v", awbBad.Card.Data["check_digit"]), "Invalid") {
-		t.Fatalf("expected Invalid Mod-7 check digit, got %+v", awbBad)
-	}
-
-	// 3. Valid ISO 6346 container (MSCU123456 + official check digit)
-	check := computeISO6346CheckDigit("MSCU123456")
-	validContainer := fmt.Sprintf("MSCU123456%d", check)
-	ctr := eng.Match(ctx, validContainer, nil, nil)
-	if ctr == nil {
-		t.Fatalf("expected ISO 6346 match for %s", validContainer)
-	}
-	if ctr.Card.Data["carrier_owner"] != "MSC Mediterranean Shipping" {
-		t.Fatalf("unexpected container owner: %+v", ctr.Card.Data)
-	}
-	if !strings.Contains(fmt.Sprintf("%v", ctr.Card.Data["check_digit"]), "Valid") {
-		t.Fatalf("expected Valid ISO 6346 check digit, got %v", ctr.Card.Data["check_digit"])
-	}
-
-	// 4. Invalid ISO 6346 check digit
-	badContainer := fmt.Sprintf("MSCU123456%d", (check+1)%10)
-	ctrBad := eng.Match(ctx, badContainer, nil, nil)
-	if ctrBad == nil || !strings.Contains(fmt.Sprintf("%v", ctrBad.Card.Data["check_digit"]), "Invalid") {
-		t.Fatalf("expected Invalid ISO 6346 check digit for %s, got %+v", badContainer, ctrBad)
-	}
-}
-
-func TestPatternEngineCustomHouseBillAndEntityEnrichment(t *testing.T) {
 	store, err := indexer.OpenStore(":memory:")
 	if err != nil {
 		t.Fatalf("OpenStore: %v", err)
@@ -78,72 +69,101 @@ func TestPatternEngineCustomHouseBillAndEntityEnrichment(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	compiled := indexer.CompileActiveModules(indexer.BuiltInModules(), []string{"geographies"})
-	if err := store.ReplaceSourceFile(ctx, indexer.CompiledModulesSource, compiled); err != nil {
-		t.Fatalf("ReplaceSourceFile: %v", err)
+	if _, err := indexer.SyncModules(ctx, store, modulesDir, nil); err != nil {
+		t.Fatalf("SyncModules: %v", err)
 	}
 
-	svc := NewService(store)
-	svc.SetPatternRules([]models.PatternRule{
-		{
-			ID:       "house-bill-10",
-			Name:     "10-Digit Shipment Reference",
-			Category: "logistics",
-			Regex:    `^(?P<mode>[0-9])(?P<branch>[0-9]{2})(?P<seq>[0-9]{7})$`,
-			Lookups: map[string]map[string]string{
-				"mode": {
-					"7": "Ocean Import",
-					"8": "Ocean Export",
-				},
-				"branch": {
-					"03": "Seattle (SEA)",
-				},
-				"branch_entity": {
-					"03": "loc:SEA",
-				},
-			},
-			TitleTemplate:    "{{lookup.mode}} · {{match}}",
-			SubtitleTemplate: "Origin Branch: {{lookup.branch}}",
-			Collection:       "ocean-freight",
-			Fields: map[string]string{
-				"shipment_type": "{{lookup.mode}}",
-				"origin_branch": "{{lookup.branch}}",
-				"sequence":      "{{seq}}",
-			},
-			GlancePills:    []string{"{{lookup.mode}}", "{{lookup.branch}}"},
-			LinkEntityKeys: []string{"{{lookup.branch_entity}}"},
-			LocalOnly:      true,
-		},
-	})
-
-	resp, err := svc.Search(ctx, "7031234567", 10)
-	if err != nil {
-		t.Fatalf("Search 7031234567: %v", err)
-	}
-	if len(resp.Results) < 2 {
-		t.Fatalf("expected decoded card + enriched SEA branch card, got %d results", len(resp.Results))
+	// Empty engine has zero hardcoded rules
+	emptyEng := NewPatternEngine(nil)
+	if len(emptyEng.Rules()) != 0 {
+		t.Fatalf("expected 0 hardcoded rules when no pattern modules loaded, got %d", len(emptyEng.Rules()))
 	}
 
-	hero := resp.Results[0]
-	if hero.MatchSource != "pattern" || hero.Card.Data["shipment_type"] != "Ocean Import" || hero.Card.Data["origin_branch"] != "Seattle (SEA)" {
-		t.Fatalf("unexpected decoded hero card: %+v", hero)
-	}
-	if !hero.Card.LocalOnly {
-		t.Fatalf("expected custom rule LocalOnly=true to propagate to synthesized card")
-	}
-	if len(hero.Card.Sections) == 0 || !strings.Contains(hero.Card.Sections[0].Title, "Seattle") {
-		t.Fatalf("expected linked Seattle section on decoded card, got %+v", hero.Card.Sections)
+	// Load rules from the installed reference-patterns module
+	rules := indexer.LoadActivePatternRules("", modulesDir, nil)
+	if len(rules) < 3 {
+		t.Fatalf("expected >= 3 rules from reference-patterns module, got %d", len(rules))
 	}
 
-	runnerUp := resp.Results[1]
-	if runnerUp.MatchSource != "pattern-enrichment" || runnerUp.Card.EntityKey != "loc:SEA" {
-		t.Fatalf("expected enriched loc:SEA runner-up card, got %+v", runnerUp)
+	eng := NewPatternEngine(rules)
+
+	// 1. House Bill 7031234567 -> 3-segment pattern-breakdown nesting Seattle Gateway (SEA) auto-expanded with EDI Servers & CBP ACE Portal
+	hbl := eng.Match(ctx, "7031234567", store, nil)
+	if hbl == nil {
+		t.Fatalf("expected HBL match for 7031234567")
+	}
+	if hbl.Card.Title != "House Bill · 7031234567" || hbl.Card.Template != models.TemplatePatternBreakdown {
+		t.Fatalf("unexpected HBL card: title=%q template=%q", hbl.Card.Title, hbl.Card.Template)
+	}
+	segs, ok := hbl.Card.Data["segments"].([]map[string]string)
+	if !ok || len(segs) != 3 || segs[0]["value"] != "7" || segs[1]["value"] != "03" || segs[2]["value"] != "1234567" {
+		t.Fatalf("expected 3 decoded segments on HBL card, got %+v", hbl.Card.Data["segments"])
+	}
+	if len(hbl.Card.Children) != 1 || hbl.Card.Children[0].EntityKey != "loc:SEA" || !hbl.Card.Children[0].DefaultExpanded {
+		t.Fatalf("expected auto-expanded loc:SEA child on HBL card, got %+v", hbl.Card.Children)
+	}
+	seaChildren := hbl.Card.Children[0].Children
+	if len(seaChildren) < 2 {
+		t.Fatalf("expected >= 2 nested Level-2 children under Seattle Gateway (EDI Servers, CBP ACE Portal), got %d", len(seaChildren))
+	}
+
+	// 2. Valid IATA AWB 176-12345675 -> dynamically looks up Emirates from air-carriers module + nests guide:mawb & Airline Tracking Links
+	awb := eng.Match(ctx, "176-12345675", store, nil)
+	if awb == nil {
+		t.Fatalf("expected IATA AWB match for 176-12345675")
+	}
+	if awb.Card.Title != "Emirates MAWB · 176-12345675" {
+		t.Fatalf("unexpected MAWB title: %q", awb.Card.Title)
+	}
+	if !strings.Contains(fmt.Sprintf("%v", awb.Card.Data["check_digit"]), "Valid") {
+		t.Fatalf("expected Valid Mod-7 check digit, got %v", awb.Card.Data["check_digit"])
+	}
+	if len(awb.Card.Children) < 2 {
+		t.Fatalf("expected guide:mawb + Airline Tracking Links children on MAWB card, got %d", len(awb.Card.Children))
+	}
+
+	// 3. Invalid IATA AWB check digit flips chip tone to red
+	awbBad := eng.Match(ctx, "176-12345674", store, nil)
+	if awbBad == nil || !strings.Contains(fmt.Sprintf("%v", awbBad.Card.Data["check_digit"]), "Invalid") {
+		t.Fatalf("expected Invalid Mod-7 check digit, got %+v", awbBad)
+	}
+	if len(awbBad.Card.Chips) < 2 || awbBad.Card.Chips[1].Tone != "red" {
+		t.Fatalf("expected Mod-7 chip tone to flip to red on invalid checksum, got %+v", awbBad.Card.Chips)
+	}
+
+	// 4. Valid ISO 6346 container (MSCU123456 + official check digit) with space normalization
+	check := computeISO6346CheckDigit("MSCU123456")
+	validContainer := fmt.Sprintf("mscu 123456-%d", check)
+	ctr := eng.Match(ctx, validContainer, store, nil)
+	if ctr == nil {
+		t.Fatalf("expected ISO 6346 match for %s", validContainer)
+	}
+	if !strings.Contains(ctr.Card.Title, "MSC") {
+		t.Fatalf("expected dynamic ocean-carrier lookup for MSC, got title %q", ctr.Card.Title)
+	}
+	if !strings.Contains(fmt.Sprintf("%v", ctr.Card.Data["check_digit"]), "Valid") {
+		t.Fatalf("expected Valid ISO 6346 check digit, got %v", ctr.Card.Data["check_digit"])
 	}
 }
 
-func TestPatternEngineLiveMCPLookupAndOfflineFallback(t *testing.T) {
-	eng := NewPatternEngine(nil)
+func TestPatternEngineLiveMCPLookupAndDisableToggle(t *testing.T) {
+	disabled := false
+	adoRule := models.PatternRule{
+		ID:              "ado-work-item",
+		Name:            "Azure DevOps Work Item",
+		Regex:           `^(?:AB#|ADO[-#])(?P<id>\d{3,9})$`,
+		CaseInsensitive: true,
+		TitleTemplate:   "ADO Work Item #{{id}}",
+		LiveMCP: &models.PatternMCPLookup{
+			ServerID:  "azure-devops",
+			ToolName:  "wit_get_work_item",
+			Arguments: map[string]string{"id": "{{id}}"},
+		},
+		LocalOnly: true,
+	}
+
 	ctx := context.Background()
+	eng := NewPatternEngine([]models.PatternRule{adoRule})
 
 	// 1. Offline fallback (no MCP executor attached)
 	offline := eng.Match(ctx, "AB#48219", nil, nil)
@@ -169,7 +189,14 @@ func TestPatternEngineLiveMCPLookupAndOfflineFallback(t *testing.T) {
 	if live.Card.Subtitle != "Fix Customs EDI Timeout" || live.Card.Data["state"] != "Active" || !live.Card.LocalOnly {
 		t.Fatalf("expected unpacked live ADO template card, got %+v", live.Card)
 	}
-	if len(live.Card.Actions) == 0 || live.Card.Actions[0].Type != "open_url" {
-		t.Fatalf("expected Open in Browser primary action from live URL, got %+v", live.Card.Actions)
+
+	// 3. Disabling the rule stops matching while preserving it in Rules()
+	adoRule.Enabled = &disabled
+	eng.SetCustomRules([]models.PatternRule{adoRule})
+	if got := eng.Match(ctx, "AB#48219", nil, stub); got != nil {
+		t.Fatalf("expected disabled rule not to match, got %+v", got)
+	}
+	if len(eng.Rules()) != 1 {
+		t.Fatalf("expected disabled rule to remain listed in Rules(), got %d", len(eng.Rules()))
 	}
 }

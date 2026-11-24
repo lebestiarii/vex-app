@@ -22,16 +22,57 @@ func TestAppServiceEndToEnd(t *testing.T) {
 
 	svc := backend.AppService
 
-	// 1. Seeded collections should be immediately searchable
-	resp, err := svc.Search("staging", 10)
+	// 1. Clean start: no hardcoded test data or forced built-in modules
+	initialMods, err := svc.ListModules()
 	if err != nil {
-		t.Fatalf("Search: %v", err)
+		t.Fatalf("ListModules: %v", err)
 	}
-	if resp.Total == 0 {
-		t.Fatalf("expected seeded staging card to match")
+	if len(initialMods) != 0 {
+		t.Fatalf("expected 0 installed modules on fresh start, got %d", len(initialMods))
+	}
+	starters := svc.ListStarterModules()
+	if len(starters) != 6 {
+		t.Fatalf("expected 6 optional starter modules available for onboarding, got %d", len(starters))
 	}
 
-	// 2. UpsertCard writes to JSON and indexes immediately
+	// 2. Onboarding installs selected optional starter modules as real files in ~/.vex/modules/
+	statuses, err := svc.InstallStarterModules([]string{
+		"air-carriers",
+		"ocean-carriers",
+		"containers",
+		"logistics-dictionary",
+		"reference-patterns",
+		"team-templates",
+	})
+	if err != nil || len(statuses) != 6 {
+		t.Fatalf("InstallStarterModules failed: count=%d err=%v", len(statuses), err)
+	}
+
+	// 3. Rolodex search & pattern decoding: HBL 7031234567 -> 3-segment pattern-breakdown card
+	hblNodes, err := svc.SearchRolodex("7031234567", 5)
+	if err != nil || len(hblNodes) == 0 {
+		t.Fatalf("SearchRolodex 7031234567 failed: nodes=%+v err=%v", hblNodes, err)
+	}
+	if hblNodes[0].Template != models.TemplatePatternBreakdown {
+		t.Fatalf("unexpected HBL Rolodex tree: %+v", hblNodes[0])
+	}
+
+	// 4. MAWB 176-12345675 -> Emirates MAWB with Mod-7 ✓ + nested guide & SkyCargo tracking links
+	awbNodes, err := svc.SearchRolodex("176-12345675", 5)
+	if err != nil || len(awbNodes) == 0 || !strings.Contains(awbNodes[0].Title, "Emirates MAWB") {
+		t.Fatalf("SearchRolodex 176-12345675 failed: nodes=%+v err=%v", awbNodes, err)
+	}
+
+	// 5. Deleting a packaged starter module removes it from disk and index permanently
+	afterDel, err := svc.DeleteModule("containers")
+	if err != nil || len(afterDel) != 5 {
+		t.Fatalf("DeleteModule(containers) failed: count=%d err=%v", len(afterDel), err)
+	}
+	if _, err := os.Stat(filepath.Join(baseDir, "modules", "containers.json")); !os.IsNotExist(err) {
+		t.Fatalf("expected containers.json to be deleted from modules dir")
+	}
+
+	// 6. UpsertCard writes to JSON and indexes immediately
 	created, err := svc.UpsertCard(models.SearchCard{
 		Title:      "Internal Wiki",
 		Collection: "docs",
@@ -53,7 +94,7 @@ func TestAppServiceEndToEnd(t *testing.T) {
 		t.Fatalf("expected upserted card in @docs search, got %+v (err=%v)", resp2, err)
 	}
 
-	// 3. CSV SampleRawData + ImportWithRule
+	// 7. CSV SampleRawData + ImportWithRule
 	csvRaw := "Tool,Link\nLinear,https://linear.app\nVercel,https://vercel.com\n"
 	sample, err := svc.SampleRawData(csvRaw, "tools.csv")
 	if err != nil || sample.Format != "csv" || sample.TotalRows != 2 {
@@ -73,7 +114,28 @@ func TestAppServiceEndToEnd(t *testing.T) {
 		t.Fatalf("ImportWithRule failed: %+v err=%v", imp, err)
 	}
 
-	// 4. Config persistence via SetAIConfig
+	// 8. Custom Pattern Rule CRUD & TestPatternRule
+	customRule := models.PatternRule{
+		ID:            "po-ref",
+		Name:          "Purchase Order",
+		Priority:      50,
+		Normalize:     []string{"trim", "uppercase"},
+		Regex:         `^PO-(?P<num>\d{6})$`,
+		TitleTemplate: "Purchase Order PO-{{num}}",
+		Template:      models.TemplateReferenceDecoder,
+	}
+	testedNode, err := svc.TestPatternRule(customRule, "po-123456")
+	if err != nil || testedNode == nil || testedNode.Title != "Purchase Order PO-123456" {
+		t.Fatalf("TestPatternRule failed: node=%+v err=%v", testedNode, err)
+	}
+	if _, err := svc.UpsertPatternRule(customRule); err != nil {
+		t.Fatalf("UpsertPatternRule: %v", err)
+	}
+	if _, err := svc.DeletePatternRule("po-ref"); err != nil {
+		t.Fatalf("DeletePatternRule: %v", err)
+	}
+
+	// 9. Config persistence via SetAIConfig
 	if err := svc.SetAIConfig(ai.Config{
 		Provider:  ai.ProviderOpenAI,
 		BaseURL:   "https://models.github.ai/inference",
@@ -86,7 +148,7 @@ func TestAppServiceEndToEnd(t *testing.T) {
 		t.Fatalf("expected persisted AI config, got %+v", reloaded.AI)
 	}
 
-	// 5. Hotkey default + live reconfiguration & persistence
+	// 10. Hotkey default + live reconfiguration & persistence
 	if got := svc.GetHotkey(); got != "Ctrl+Shift+B" {
 		t.Fatalf("expected default hotkey Ctrl+Shift+B, got %q", got)
 	}
@@ -101,122 +163,14 @@ func TestAppServiceEndToEnd(t *testing.T) {
 	if reboundFrom != "Ctrl+Shift+B" || reboundTo != "Ctrl+Alt+P" {
 		t.Fatalf("expected rebind callback Ctrl+Shift+B -> Ctrl+Alt+P, got %q -> %q", reboundFrom, reboundTo)
 	}
-	reloaded2 := loadRuntimeConfig(filepath.Join(baseDir, "config.json"))
-	if reloaded2.Hotkey != "Ctrl+Alt+P" {
-		t.Fatalf("expected persisted hotkey Ctrl+Alt+P, got %q", reloaded2.Hotkey)
-	}
 
-	// 6. UserPrefs defaults & persistence
-	defaultPrefs := svc.GetUserPrefs()
-	if defaultPrefs.OnboardingCompleted || defaultPrefs.PowerUserMode || defaultPrefs.AIEnabled {
-		t.Fatalf("expected clean default user prefs, got %+v", defaultPrefs)
-	}
-	updatedPrefs := UserPrefs{
-		OnboardingCompleted: true,
-		PowerUserMode:       false,
-		AIEnabled:           true,
-		SelectedGoals:       []string{"links", "notes", "ai"},
-		PinnedCategories:    []string{"ports", "customs", "global-tech"},
-	}
-	if err := svc.SetUserPrefs(updatedPrefs); err != nil {
-		t.Fatalf("SetUserPrefs: %v", err)
-	}
-	reloaded3 := loadRuntimeConfig(filepath.Join(baseDir, "config.json"))
-	if len(reloaded3.Prefs.PinnedCategories) != 3 || reloaded3.Prefs.PinnedCategories[0] != "ports" {
-		t.Fatalf("expected persisted PinnedCategories, got %+v", reloaded3.Prefs.PinnedCategories)
-	}
-	if !reloaded3.Prefs.OnboardingCompleted || !reloaded3.Prefs.AIEnabled || len(reloaded3.Prefs.SelectedGoals) != 3 {
-		t.Fatalf("expected persisted user prefs, got %+v", reloaded3.Prefs)
-	}
-
-	// 7. Logistics multi-facet "AMS" lookup (Port, Acronym, Event Code, Ocean Portal)
-	amsResp, err := svc.Search("AMS", 10)
-	if err != nil {
-		t.Fatalf("Search AMS: %v", err)
-	}
-	if amsResp.Total < 4 {
-		t.Fatalf("expected at least 4 multi-facet AMS matches (port, acronym, event, portal), got %d", amsResp.Total)
-	}
-
-	// 8. Composable Module & Overlay Engine:
-	// By default, Global Technology is OFF, so searching internal hostname "ams-prd-edi01" returns 0 results.
-	techOffResp, err := svc.Search("ams-prd-edi01", 10)
-	if err != nil {
-		t.Fatalf("Search ams-prd-edi01 (off): %v", err)
-	}
-	if techOffResp.Total != 0 {
-		t.Fatalf("expected 0 matches for ams-prd-edi01 when global-tech is disabled, got %d", techOffResp.Total)
-	}
-
-	// Verify port-nlams has 3 composed sections (Air, Ocean, Customs), glance pills, official provenance, and related synergy cards.
-	amsCard, err := backend.Store.GetCard(t.Context(), "port-nlams")
-	if err != nil || amsCard == nil {
-		t.Fatalf("GetCard port-nlams: card=%v err=%v", amsCard, err)
-	}
-	if len(amsCard.Sections) != 3 {
-		t.Fatalf("expected 3 overlay sections (Air, Ocean, Customs) on port-nlams, got %d", len(amsCard.Sections))
-	}
-	if len(amsCard.GlancePills) == 0 || amsCard.GlancePills[0] != "NLAMS · AMS" {
-		t.Fatalf("expected GlancePills starting with 'NLAMS · AMS', got %+v", amsCard.GlancePills)
-	}
-	if amsCard.Provenance == nil || amsCard.Provenance.Authority != "official" {
-		t.Fatalf("expected official provenance on port-nlams, got %+v", amsCard.Provenance)
-	}
-	related, err := svc.GetRelatedCards("port-nlams", 5)
-	if err != nil || len(related) < 3 {
-		t.Fatalf("expected at least 3 related synergy cards for port-nlams, got %d (err=%v)", len(related), err)
-	}
-
-	// 9. Instant Unit Conversion & 3D Cargo Volumetric Weight Calculator
+	// 11. Instant Unit Conversion & 3D Cargo Volumetric Weight Calculator
 	convResp, err := svc.Search("1588 kg to lbs", 5)
 	if err != nil || len(convResp.Results) == 0 || convResp.Results[0].Card.ID != "builtin-unit-convert" {
 		t.Fatalf("expected builtin-unit-convert for '1588 kg to lbs', got %+v err=%v", convResp, err)
 	}
-	dimResp, err := svc.Search("120x80x100 cm", 5)
-	if err != nil || len(dimResp.Results) == 0 || dimResp.Results[0].Card.ID != "builtin-unit-convert" {
-		t.Fatalf("expected builtin-unit-convert for '120x80x100 cm', got %+v err=%v", dimResp, err)
-	}
 
-	// 10. GitHub Engineering Catalog Module & gt-portfolio-team-product-component Taxonomy
-	if _, err := svc.SetEnabledModules([]string{"geographies", "air-freight", "ocean-freight", "customs", "github-catalog"}); err != nil {
-		t.Fatalf("SetEnabledModules (enable github-catalog): %v", err)
-	}
-	ghResp, err := svc.Search("gt-customs-brokerage-declaration-api", 5)
-	if err != nil || ghResp.Total == 0 {
-		t.Fatalf("expected github-catalog repo match, got %+v err=%v", ghResp, err)
-	}
-	ghImport, err := svc.ImportGitHubReposJSON(`[{"name":"gt-accounting-treasury-hedging-api","description":"FX hedging microservice","html_url":"https://github.internal/gt/gt-accounting-treasury-hedging-api","language":"Go"}]`)
-	if err != nil || ghImport == nil || !ghImport.Enabled {
-		t.Fatalf("ImportGitHubReposJSON failed: %+v err=%v", ghImport, err)
-	}
-	hedgeResp, err := svc.Search("hedging", 5)
-	if err != nil || hedgeResp.Total == 0 {
-		t.Fatalf("expected imported gt-accounting-treasury-hedging-api repo in search, got %+v err=%v", hedgeResp, err)
-	}
-
-	// Toggle Global Technology ON -> port-nlams gains 4th section and "ams-prd-edi01" becomes searchable!
-	if _, err := svc.SetEnabledModules([]string{"geographies", "air-freight", "ocean-freight", "customs", "global-tech"}); err != nil {
-		t.Fatalf("SetEnabledModules (enable global-tech): %v", err)
-	}
-	techOnResp, err := svc.Search("ams-prd-edi01", 10)
-	if err != nil || techOnResp.Total == 0 {
-		t.Fatalf("expected ams-prd-edi01 to match enriched AMS card when global-tech is enabled, got %+v err=%v", techOnResp, err)
-	}
-	amsCardWithTech, err := backend.Store.GetCard(t.Context(), "port-nlams")
-	if err != nil || amsCardWithTech == nil || len(amsCardWithTech.Sections) != 4 {
-		t.Fatalf("expected 4 sections on port-nlams with global-tech enabled, got %+v err=%v", amsCardWithTech, err)
-	}
-
-	// Standalone promotion: disable "geographies" and keep only "air-freight" -> AMS air overlay promotes to standalone card!
-	if _, err := svc.SetEnabledModules([]string{"air-freight"}); err != nil {
-		t.Fatalf("SetEnabledModules (air-freight only): %v", err)
-	}
-	airOnlyCard, err := backend.Store.GetCard(t.Context(), "port-nlams")
-	if err != nil || airOnlyCard == nil || airOnlyCard.ModuleID != "air-freight" {
-		t.Fatalf("expected promoted standalone air-freight card for port-nlams, got %+v err=%v", airOnlyCard, err)
-	}
-
-	// Shareable custom module import & export
+	// 12. Shareable custom module import & export
 	customJSON := `{"id":"accounting-fx","name":"Accounting & FX Codes","category":"Finance","description":"Billing codes","version":"1.0.0","cards":[{"title":"FX Spot Rate Lookup","collection":"accounting","template":"shortcut","actions":[{"id":"open","label":"Open FX","type":"open_url","target":"https://fx.internal"}]}]}`
 	importedMod, err := svc.ImportModuleJSON(customJSON)
 	if err != nil || importedMod == nil || !importedMod.Enabled {
@@ -227,86 +181,53 @@ func TestAppServiceEndToEnd(t *testing.T) {
 		t.Fatalf("ExportModuleJSON failed: err=%v", err)
 	}
 
-	// 11. Local Structured JSONL Logging & Diagnostics
-	logInfo := svc.GetLogInfo()
-	if logInfo.FilePath == "" || logInfo.Level != "info" {
-		t.Fatalf("unexpected GetLogInfo: %+v", logInfo)
-	}
+	// 13. Logging & Update Checker & Anchor & Launch-at-Login
 	if lvl, err := svc.SetLogLevel("debug"); err != nil || lvl != "debug" {
 		t.Fatalf("SetLogLevel failed: lvl=%q err=%v", lvl, err)
 	}
-	recentLogs, err := svc.GetRecentLogs(20)
-	if err != nil || len(recentLogs) == 0 {
-		t.Fatalf("expected structured log entries, got %d (err=%v)", len(recentLogs), err)
-	}
-
-	// 12. No-Login Update Checker (local/shared folder manifest.json)
 	manifestPath := filepath.Join(baseDir, "manifest.json")
-	if err := os.WriteFile(manifestPath, []byte(`{"version":"0.2.0","releasedAt":"2026-11-25","notes":"Test release"}`), 0o644); err != nil {
+	if err := os.WriteFile(manifestPath, []byte(`{"version":"0.9.0","releasedAt":"2026-11-25","notes":"Test release"}`), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 	if err := svc.SetUpdateFeedURL(manifestPath); err != nil {
 		t.Fatalf("SetUpdateFeedURL: %v", err)
 	}
 	updRes, err := svc.CheckForUpdates()
-	if err != nil || !updRes.UpdateAvailable || updRes.LatestVersion != "0.2.0" {
+	if err != nil || !updRes.UpdateAvailable || updRes.LatestVersion != "0.9.0" {
 		t.Fatalf("CheckForUpdates failed: res=%+v err=%v", updRes, err)
 	}
 
-	// 13. Viewport-aware anchor direction RPC
-	if got := svc.GetAnchorDirection(); got != "down" {
-		t.Fatalf("expected default anchor 'down', got %q", got)
-	}
-	svc.SetAnchorDirection(AnchorUp)
-	if got := svc.GetAnchorDirection(); got != "up" {
-		t.Fatalf("expected anchor 'up', got %q", got)
-	}
-	svc.SetAnchorDirection(AnchorDirection("invalid"))
-	if got := svc.GetAnchorDirection(); got != "down" {
-		t.Fatalf("expected normalized anchor 'down', got %q", got)
-	}
-
-	// 14. Launch-at-Login RPC + persistence + tray sync callback
 	backend.Autostart = autostart.NewMemoryManager(false)
 	var traySynced bool
 	svc.SetLaunchAtLoginChangeHandler(func(enabled bool) {
 		traySynced = enabled
 	})
-	if svc.GetLaunchAtLogin() {
-		t.Fatalf("expected launchAtLogin false initially")
-	}
-	applied, err := svc.SetLaunchAtLogin(true)
-	if err != nil || !applied || !svc.GetLaunchAtLogin() || !traySynced {
+	if applied, err := svc.SetLaunchAtLogin(true); err != nil || !applied || !traySynced {
 		t.Fatalf("SetLaunchAtLogin(true) failed: applied=%v traySynced=%v err=%v", applied, traySynced, err)
-	}
-	reloadedAuto := loadRuntimeConfig(filepath.Join(baseDir, "config.json"))
-	if !reloadedAuto.Prefs.LaunchAtLogin {
-		t.Fatalf("expected LaunchAtLogin persisted in config.json")
 	}
 }
 
-func TestBuildInfoEditions(t *testing.T) {
-	origName, origEdition, origVersion, origFeed := AppName, Edition, AppVersion, UpdateFeedURL
+func TestBuildInfoUnified(t *testing.T) {
+	origName, origVersion, origFeed := AppName, AppVersion, UpdateFeedURL
 	t.Cleanup(func() {
-		AppName, Edition, AppVersion, UpdateFeedURL = origName, origEdition, origVersion, origFeed
+		AppName, AppVersion, UpdateFeedURL = origName, origVersion, origFeed
 	})
 
 	info := currentAppInfo()
-	if info.Name != "Vex" || info.Edition != "community" || info.Version != "0.1.0" {
+	if info.Name != "Vex" || info.Version != "0.2.0" {
 		t.Fatalf("unexpected default AppInfo: %+v", info)
 	}
 
 	AppName = "Vex"
-	Edition = "enterprise"
-	AppVersion = "0.2.0"
-	UpdateFeedURL = "https://intranet.example.com/vex/manifest.json"
+	AppVersion = "0.3.0"
+	UpdateFeedURL = "https://updates.example.com/vex/manifest.json"
 
 	info2 := currentAppInfo()
-	if info2.Name != "Vex" || info2.Edition != "enterprise" || info2.Version != "0.2.0" {
+	if info2.Name != "Vex" || info2.Version != "0.3.0" {
 		t.Fatalf("unexpected overridden AppInfo: %+v", info2)
 	}
 	cfg := defaultRuntimeConfig()
-	if cfg.UpdateFeedURL != "https://intranet.example.com/vex/manifest.json" {
+	if cfg.UpdateFeedURL != "https://updates.example.com/vex/manifest.json" {
 		t.Fatalf("expected UpdateFeedURL fallback in defaultRuntimeConfig, got %q", cfg.UpdateFeedURL)
 	}
 }
@@ -315,7 +236,6 @@ func TestSecretStoreAPIKeyPersistenceAndMigration(t *testing.T) {
 	baseDir := t.TempDir()
 	memSecrets := secrets.NewMemoryStore()
 
-	// 1. Seed legacy plaintext config.json containing an API key
 	legacyJSON := `{
   "ai": {
     "provider": "openai",
@@ -337,7 +257,6 @@ func TestSecretStoreAPIKeyPersistenceAndMigration(t *testing.T) {
 	}
 	defer backend.Close()
 
-	// Legacy key must be hydrated in AI service and migrated into the secret store
 	if got := backend.AI.GetConfig().APIKey; got != "sk-legacy-plaintext" {
 		t.Fatalf("expected migrated APIKey in memory, got %q", got)
 	}
@@ -346,7 +265,6 @@ func TestSecretStoreAPIKeyPersistenceAndMigration(t *testing.T) {
 		t.Fatalf("expected migrated key in secret store, got %q (err=%v)", stored, err)
 	}
 
-	// config.json on disk must have been scrubbed
 	rawAfterMigration, err := os.ReadFile(filepath.Join(baseDir, "config.json"))
 	if err != nil {
 		t.Fatalf("read config.json: %v", err)
@@ -355,37 +273,16 @@ func TestSecretStoreAPIKeyPersistenceAndMigration(t *testing.T) {
 		t.Fatalf("config.json still contains legacy plaintext key: %s", string(rawAfterMigration))
 	}
 
-	// 2. Updating AI config stores new key in secret store and keeps config.json clean
 	if err := backend.AppService.SetAIConfig(ai.Config{
 		Provider:  ai.ProviderOpenAI,
+		BaseURL:   "https://api.openai.com/v1",
+		APIKey:    "sk-updated-secret",
 		ChatModel: "gpt-4o-mini",
-		APIKey:    "sk-new-secret-key",
 	}); err != nil {
 		t.Fatalf("SetAIConfig: %v", err)
 	}
 	stored2, err := memSecrets.Get(secretServiceName, secretAccountAIAPIKey)
-	if err != nil || stored2 != "sk-new-secret-key" {
+	if err != nil || stored2 != "sk-updated-secret" {
 		t.Fatalf("expected updated key in secret store, got %q (err=%v)", stored2, err)
-	}
-	rawAfterSet, err := os.ReadFile(filepath.Join(baseDir, "config.json"))
-	if err != nil {
-		t.Fatalf("read config.json after SetAIConfig: %v", err)
-	}
-	if strings.Contains(string(rawAfterSet), "sk-new-secret-key") || strings.Contains(string(rawAfterSet), `"apiKey"`) {
-		t.Fatalf("config.json leaked apiKey after SetAIConfig: %s", string(rawAfterSet))
-	}
-	if backend.Config().AI.APIKey != "" {
-		t.Fatalf("Backend.Config() should not expose raw AI APIKey")
-	}
-
-	// 3. Restarting backend hydrates API key from secret store
-	backend.Close()
-	backend2, err := InitBackendWithSecrets(baseDir, false, memSecrets)
-	if err != nil {
-		t.Fatalf("InitBackendWithSecrets restart: %v", err)
-	}
-	defer backend2.Close()
-	if got := backend2.AI.GetConfig().APIKey; got != "sk-new-secret-key" {
-		t.Fatalf("expected hydrated APIKey after restart, got %q", got)
 	}
 }

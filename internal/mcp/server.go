@@ -27,13 +27,16 @@ import (
 
 // ServerDeps wires Vex's core backend services into the Domain MCP Server.
 type ServerDeps struct {
-	Store         *indexer.Store
-	Search        *search.Service
-	Plugins       *plugins.Manager
-	Runner        *plugins.Runner
+	Store             *indexer.Store
+	Search            *search.Service
+	Plugins           *plugins.Manager
+	Runner            *plugins.Runner
 	Metrics           *logging.Metrics
 	DataDir           string
+	ModulesDir        string
 	PatternsDir       string
+	SkillsDirs        []string // Optional directories containing <skill>/SKILL.md files for MCP agent skill sharing
+	OnModulesChanged  func()
 	OnPatternsChanged func()
 	Version           string
 }
@@ -297,6 +300,108 @@ func (s *HubServer) registerResources() {
 			}, nil
 		},
 	)
+
+	// 4. search://modules
+	s.mcpServer.AddResource(
+		mcplib.NewResource(
+			"search://modules",
+			"Installed Optional Modules",
+			mcplib.WithResourceDescription("Lists all installed optional ModuleManifest files in ~/.vex/modules/ and available starter modules."),
+			mcplib.WithMIMEType("application/json"),
+		),
+		func(_ context.Context, request mcplib.ReadResourceRequest) ([]mcplib.ResourceContents, error) {
+			mods, paths, err := indexer.LoadAllModules(s.deps.ModulesDir)
+			if err != nil {
+				return nil, err
+			}
+			payload := map[string]any{
+				"installed": mods,
+				"paths":     paths,
+				"starters":  indexer.ListStarterModules(s.deps.ModulesDir),
+			}
+			raw, err := json.MarshalIndent(payload, "", "  ")
+			if err != nil {
+				return nil, err
+			}
+			return []mcplib.ResourceContents{
+				mcplib.TextResourceContents{
+					URI:      request.Params.URI,
+					MIMEType: "application/json",
+					Text:     string(raw),
+				},
+			}, nil
+		},
+	)
+
+	// 5. search://patterns
+	s.mcpServer.AddResource(
+		mcplib.NewResource(
+			"search://patterns",
+			"Active Pattern Matching Rules",
+			mcplib.WithResourceDescription("Lists all currently loaded PatternRules from enabled modules and ~/.vex/patterns/."),
+			mcplib.WithMIMEType("application/json"),
+		),
+		func(_ context.Context, request mcplib.ReadResourceRequest) ([]mcplib.ResourceContents, error) {
+			raw, err := json.MarshalIndent(s.deps.Search.PatternRules(), "", "  ")
+			if err != nil {
+				return nil, err
+			}
+			return []mcplib.ResourceContents{
+				mcplib.TextResourceContents{
+					URI:      request.Params.URI,
+					MIMEType: "application/json",
+					Text:     string(raw),
+				},
+			}, nil
+		},
+	)
+
+	// 6. search://skills (Agent Skill Sharing)
+	s.mcpServer.AddResource(
+		mcplib.NewResource(
+			"search://skills",
+			"Shared Agent Skills Index",
+			mcplib.WithResourceDescription("Lists available Vex agent skills (UI design system, generic template authoring, architecture, doc drift) shareable across MCP clients."),
+			mcplib.WithMIMEType("application/json"),
+		),
+		func(_ context.Context, request mcplib.ReadResourceRequest) ([]mcplib.ResourceContents, error) {
+			raw, err := json.MarshalIndent(s.discoverSkills(), "", "  ")
+			if err != nil {
+				return nil, err
+			}
+			return []mcplib.ResourceContents{
+				mcplib.TextResourceContents{
+					URI:      request.Params.URI,
+					MIMEType: "application/json",
+					Text:     string(raw),
+				},
+			}, nil
+		},
+	)
+
+	// 7. skill://{name}
+	s.mcpServer.AddResourceTemplate(
+		mcplib.NewResourceTemplate(
+			"skill://{name}",
+			"Agent Skill Markdown Document",
+			mcplib.WithTemplateDescription("Reads a shared SKILL.md instruction document by skill slug (e.g. skill://vex-rolodex-ui, skill://vex-template-authoring)."),
+			mcplib.WithTemplateMIMEType("text/markdown"),
+		),
+		func(_ context.Context, request mcplib.ReadResourceRequest) ([]mcplib.ResourceContents, error) {
+			name := models.Slugify(strings.TrimPrefix(request.Params.URI, "skill://"))
+			content, err := s.readSkillMarkdown(name)
+			if err != nil {
+				return nil, err
+			}
+			return []mcplib.ResourceContents{
+				mcplib.TextResourceContents{
+					URI:      request.Params.URI,
+					MIMEType: "text/markdown",
+					Text:     content,
+				},
+			}, nil
+		},
+	)
 }
 
 // --- Tools ---
@@ -412,6 +517,91 @@ func (s *HubServer) registerTools() {
 		),
 		s.handleUpsertPatternRule,
 	)
+
+	// 11. list_pattern_rules
+	s.mcpServer.AddTool(
+		mcplib.NewTool("list_pattern_rules",
+			mcplib.WithDescription("List all active PatternRules loaded from enabled modules and ~/.vex/patterns/."),
+			mcplib.WithReadOnlyHintAnnotation(true),
+		),
+		s.handleListPatternRules,
+	)
+
+	// 12. delete_pattern_rule
+	s.mcpServer.AddTool(
+		mcplib.NewTool("delete_pattern_rule",
+			mcplib.WithDescription("Delete a standalone pattern rule file from ~/.vex/patterns/<id>.json and reload the live PatternEngine."),
+			mcplib.WithString("rule_id", mcplib.Required(), mcplib.Description("ID of the pattern rule to delete.")),
+		),
+		s.handleDeletePatternRule,
+	)
+
+	// 13. list_modules
+	s.mcpServer.AddTool(
+		mcplib.NewTool("list_modules",
+			mcplib.WithDescription("List installed user modules in ~/.vex/modules/ and optional packaged starter modules available for installation."),
+			mcplib.WithReadOnlyHintAnnotation(true),
+		),
+		s.handleListModules,
+	)
+
+	// 14. get_module
+	s.mcpServer.AddTool(
+		mcplib.NewTool("get_module",
+			mcplib.WithDescription("Return the full ModuleManifest JSON (including cards, nested children, overlays, and patterns) for an installed module ID so you can inspect and update it."),
+			mcplib.WithReadOnlyHintAnnotation(true),
+			mcplib.WithString("module_id", mcplib.Required(), mcplib.Description("Installed module ID (e.g. gateways-starter, air-carriers, containers, reference-patterns).")),
+		),
+		s.handleGetModule,
+	)
+
+	// 15. upsert_module
+	s.mcpServer.AddTool(
+		mcplib.NewTool("upsert_module",
+			mcplib.WithDescription("Create or update a ModuleManifest JSON file in ~/.vex/modules/<id>.json (cards, nested children, templates, overlays, and pattern rules) and immediately re-index Vex."),
+			mcplib.WithIdempotentHintAnnotation(true),
+			mcplib.WithObject("module", mcplib.Description("ModuleManifest JSON object conforming to schema://search-card#/definitions/ModuleManifest.")),
+			mcplib.WithString("module_json", mcplib.Description("Optional raw JSON string representation of a ModuleManifest.")),
+		),
+		s.handleUpsertModule,
+	)
+
+	// 16. delete_module
+	s.mcpServer.AddTool(
+		mcplib.NewTool("delete_module",
+			mcplib.WithDescription("Permanently remove an installed module JSON file from ~/.vex/modules/<id>.json and re-sync the index."),
+			mcplib.WithString("module_id", mcplib.Required(), mcplib.Description("ID of the module to delete.")),
+		),
+		s.handleDeleteModule,
+	)
+
+	// 17. install_starter_module
+	s.mcpServer.AddTool(
+		mcplib.NewTool("install_starter_module",
+			mcplib.WithDescription("Install an optional packaged starter module (e.g. gateways-starter, air-carriers, ocean-carriers, containers, logistics-dictionary, reference-patterns, team-templates) into ~/.vex/modules/."),
+			mcplib.WithString("module_id", mcplib.Required(), mcplib.Description("Starter module ID to install.")),
+		),
+		s.handleInstallStarterModule,
+	)
+
+	// 18. list_skills
+	s.mcpServer.AddTool(
+		mcplib.NewTool("list_skills",
+			mcplib.WithDescription("List shared Vex agent skills (UI layout rules, generic template authoring, architecture) available for MCP clients."),
+			mcplib.WithReadOnlyHintAnnotation(true),
+		),
+		s.handleListSkills,
+	)
+
+	// 19. get_skill
+	s.mcpServer.AddTool(
+		mcplib.NewTool("get_skill",
+			mcplib.WithDescription("Read the full SKILL.md markdown guide for a shared Vex agent skill (e.g. vex-rolodex-ui, vex-template-authoring, vex-architecture)."),
+			mcplib.WithReadOnlyHintAnnotation(true),
+			mcplib.WithString("name", mcplib.Required(), mcplib.Description("Skill slug name (from list_skills).")),
+		),
+		s.handleGetSkill,
+	)
 }
 
 func (s *HubServer) handleSearchKnowledge(ctx context.Context, req mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
@@ -452,6 +642,7 @@ func (s *HubServer) handleSearchKnowledge(ctx context.Context, req mcplib.CallTo
 		Score       float64           `json:"score"`
 		MatchSource string            `json:"matchSource"`
 		Card        models.SearchCard `json:"card"`
+		CardNode    models.CardNode   `json:"cardNode"`
 	}
 	items := make([]mcpSearchItem, 0, len(resp.Results))
 	for _, r := range resp.Results {
@@ -460,6 +651,7 @@ func (s *HubServer) handleSearchKnowledge(ctx context.Context, req mcplib.CallTo
 			Score:       r.Score,
 			MatchSource: r.MatchSource,
 			Card:        r.Card,
+			CardNode:    r.Card.ToCardNode(0),
 		})
 	}
 	return jsonToolResult(map[string]any{
@@ -770,6 +962,239 @@ func (s *HubServer) handleUpsertPatternRule(_ context.Context, req mcplib.CallTo
 		"ruleId":   models.Slugify(rule.ID),
 		"filePath": savedPath,
 	})
+}
+
+func (s *HubServer) handleListPatternRules(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
+	return jsonToolResult(s.deps.Search.PatternRules())
+}
+
+func (s *HubServer) handleDeletePatternRule(_ context.Context, req mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
+	if strings.TrimSpace(s.deps.PatternsDir) == "" {
+		return mcplib.NewToolResultError("patterns directory is not configured on this MCP server"), nil
+	}
+	ruleID := strings.TrimSpace(req.GetString("rule_id", ""))
+	if ruleID == "" {
+		return mcplib.NewToolResultError("rule_id is required"), nil
+	}
+	if err := indexer.DeletePatternRule(s.deps.PatternsDir, ruleID); err != nil {
+		return mcplib.NewToolResultErrorFromErr("delete pattern rule", err), nil
+	}
+	if s.deps.OnPatternsChanged != nil {
+		s.deps.OnPatternsChanged()
+	}
+	return jsonToolResult(map[string]any{
+		"status": "deleted_and_reloaded",
+		"ruleId": models.Slugify(ruleID),
+	})
+}
+
+func (s *HubServer) handleListModules(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
+	mods, paths, err := indexer.LoadAllModules(s.deps.ModulesDir)
+	if err != nil {
+		return mcplib.NewToolResultErrorFromErr("list modules", err), nil
+	}
+	summaries := make([]map[string]any, 0, len(mods))
+	for _, m := range mods {
+		summaries = append(summaries, map[string]any{
+			"id":           m.ID,
+			"name":         m.Name,
+			"category":     m.Category,
+			"version":      m.Version,
+			"cardCount":    len(m.Cards),
+			"overlayCount": len(m.Overlays),
+			"patternCount": len(m.Patterns),
+			"filePath":     paths[m.ID],
+		})
+	}
+	return jsonToolResult(map[string]any{
+		"installed": summaries,
+		"starters":  indexer.ListStarterModules(s.deps.ModulesDir),
+	})
+}
+
+func (s *HubServer) handleGetModule(_ context.Context, req mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
+	moduleID := models.Slugify(req.GetString("module_id", ""))
+	if moduleID == "" || moduleID == "item" {
+		return mcplib.NewToolResultError("module_id is required"), nil
+	}
+	mods, _, err := indexer.LoadAllModules(s.deps.ModulesDir)
+	if err != nil {
+		return mcplib.NewToolResultErrorFromErr("load modules", err), nil
+	}
+	for _, m := range mods {
+		if m.ID == moduleID {
+			return jsonToolResult(m)
+		}
+	}
+	return mcplib.NewToolResultError(fmt.Sprintf("module %q is not installed", moduleID)), nil
+}
+
+func (s *HubServer) handleUpsertModule(_ context.Context, req mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
+	if strings.TrimSpace(s.deps.ModulesDir) == "" {
+		return mcplib.NewToolResultError("modules directory is not configured on this MCP server"), nil
+	}
+	var mod models.ModuleManifest
+	if rawStr := strings.TrimSpace(req.GetString("module_json", "")); rawStr != "" {
+		if err := json.Unmarshal([]byte(rawStr), &mod); err != nil {
+			return mcplib.NewToolResultErrorFromErr("invalid module_json", err), nil
+		}
+	} else if args := req.GetArguments(); args != nil {
+		if rawObj, ok := args["module"]; ok && rawObj != nil {
+			if err := decodeArg(rawObj, &mod); err != nil {
+				return mcplib.NewToolResultErrorFromErr("decode ModuleManifest", err), nil
+			}
+		}
+	}
+	saved, err := indexer.SaveCustomModule(s.deps.ModulesDir, mod)
+	if err != nil {
+		return mcplib.NewToolResultErrorFromErr("save module", err), nil
+	}
+	if s.deps.OnModulesChanged != nil {
+		s.deps.OnModulesChanged()
+	}
+	return jsonToolResult(map[string]any{
+		"status":       "saved_and_reindexed",
+		"moduleId":     saved.ID,
+		"cardCount":    len(saved.Cards),
+		"patternCount": len(saved.Patterns),
+	})
+}
+
+func (s *HubServer) handleDeleteModule(_ context.Context, req mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
+	if strings.TrimSpace(s.deps.ModulesDir) == "" {
+		return mcplib.NewToolResultError("modules directory is not configured on this MCP server"), nil
+	}
+	moduleID := strings.TrimSpace(req.GetString("module_id", ""))
+	if moduleID == "" {
+		return mcplib.NewToolResultError("module_id is required"), nil
+	}
+	if err := indexer.DeleteModule(s.deps.ModulesDir, moduleID); err != nil {
+		return mcplib.NewToolResultErrorFromErr("delete module", err), nil
+	}
+	if s.deps.OnModulesChanged != nil {
+		s.deps.OnModulesChanged()
+	}
+	return jsonToolResult(map[string]any{
+		"status":   "deleted_and_reindexed",
+		"moduleId": models.Slugify(moduleID),
+	})
+}
+
+func (s *HubServer) handleInstallStarterModule(_ context.Context, req mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
+	if strings.TrimSpace(s.deps.ModulesDir) == "" {
+		return mcplib.NewToolResultError("modules directory is not configured on this MCP server"), nil
+	}
+	moduleID := strings.TrimSpace(req.GetString("module_id", ""))
+	if moduleID == "" {
+		return mcplib.NewToolResultError("module_id is required"), nil
+	}
+	saved, err := indexer.InstallStarterModule(s.deps.ModulesDir, moduleID)
+	if err != nil {
+		return mcplib.NewToolResultErrorFromErr("install starter module", err), nil
+	}
+	if s.deps.OnModulesChanged != nil {
+		s.deps.OnModulesChanged()
+	}
+	return jsonToolResult(map[string]any{
+		"status":       "installed_and_indexed",
+		"moduleId":     saved.ID,
+		"cardCount":    len(saved.Cards),
+		"patternCount": len(saved.Patterns),
+	})
+}
+
+type sharedSkillSummary struct {
+	Name        string `json:"name"`
+	URI         string `json:"uri"`
+	Description string `json:"description,omitempty"`
+}
+
+func (s *HubServer) discoverSkills() []sharedSkillSummary {
+	seen := make(map[string]bool)
+	var out []sharedSkillSummary
+	for _, dir := range s.deps.SkillsDirs {
+		dir = strings.TrimSpace(dir)
+		if dir == "" {
+			continue
+		}
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			slug := models.Slugify(e.Name())
+			if slug == "" || seen[slug] {
+				continue
+			}
+			skillPath := filepath.Join(dir, e.Name(), "SKILL.md")
+			raw, err := os.ReadFile(skillPath)
+			if err != nil {
+				continue
+			}
+			seen[slug] = true
+			out = append(out, sharedSkillSummary{
+				Name:        slug,
+				URI:         "skill://" + slug,
+				Description: extractSkillFrontmatterDesc(string(raw)),
+			})
+		}
+	}
+	return out
+}
+
+func (s *HubServer) readSkillMarkdown(slug string) (string, error) {
+	clean := models.Slugify(slug)
+	if clean == "" || clean == "item" {
+		return "", errors.New("valid skill name is required")
+	}
+	for _, dir := range s.deps.SkillsDirs {
+		dir = strings.TrimSpace(dir)
+		if dir == "" {
+			continue
+		}
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			if e.IsDir() && models.Slugify(e.Name()) == clean {
+				raw, readErr := os.ReadFile(filepath.Join(dir, e.Name(), "SKILL.md"))
+				if readErr == nil {
+					return string(raw), nil
+				}
+			}
+		}
+	}
+	return "", fmt.Errorf("skill %q not found", clean)
+}
+
+func extractSkillFrontmatterDesc(md string) string {
+	for _, line := range strings.Split(md, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "description:") {
+			return strings.Trim(strings.TrimSpace(strings.TrimPrefix(trimmed, "description:")), `"'`)
+		}
+	}
+	return ""
+}
+
+func (s *HubServer) handleListSkills(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
+	return jsonToolResult(s.discoverSkills())
+}
+
+func (s *HubServer) handleGetSkill(_ context.Context, req mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
+	name := strings.TrimSpace(req.GetString("name", ""))
+	if name == "" {
+		return mcplib.NewToolResultError("name is required"), nil
+	}
+	md, err := s.readSkillMarkdown(name)
+	if err != nil {
+		return mcplib.NewToolResultErrorFromErr("read skill", err), nil
+	}
+	return mcplib.NewToolResultText(md), nil
 }
 
 // --- Prompts ---

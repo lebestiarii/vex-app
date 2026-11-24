@@ -137,8 +137,8 @@ func InitBackendWithSecrets(baseDir string, startWatcher bool, secretStore secre
 	if err := os.MkdirAll(pluginsDir, 0o755); err != nil {
 		return nil, fmt.Errorf("create plugins dir: %w", err)
 	}
-	if err := indexer.SeedDefaultCollections(dataDir); err != nil {
-		return nil, fmt.Errorf("seed default collections: %w", err)
+	if err := indexer.EnsureDataDir(dataDir); err != nil {
+		return nil, fmt.Errorf("ensure data dir: %w", err)
 	}
 
 	cfg := loadRuntimeConfig(configPath)
@@ -227,6 +227,23 @@ func InitBackendWithSecrets(baseDir string, startWatcher bool, secretStore secre
 		}
 		searchSvc.SetPatternRules(indexer.LoadActivePatternRules(patternsDir, modulesDir, enabledMods))
 	}
+	reloadModules := func() {
+		var enabledMods []string
+		if b != nil {
+			enabledMods = b.Config().Prefs.EnabledModules
+		} else {
+			enabledMods = cfg.Prefs.EnabledModules
+		}
+		if statuses, syncErr := indexer.SyncModules(context.Background(), store, modulesDir, enabledMods); syncErr == nil {
+			updateInventoryGauges(context.Background(), store, logMgr.Metrics, statuses)
+		}
+		reloadPatterns()
+	}
+
+	skillsDirs := []string{filepath.Join(baseDir, "skills")}
+	if wd, wdErr := os.Getwd(); wdErr == nil {
+		skillsDirs = append(skillsDirs, filepath.Join(wd, ".agent", "skills"))
+	}
 
 	mcpHub, err := mcp.NewHubServer(mcp.ServerDeps{
 		Store:             store,
@@ -235,7 +252,10 @@ func InitBackendWithSecrets(baseDir string, startWatcher bool, secretStore secre
 		Runner:            runner,
 		Metrics:           logMgr.Metrics,
 		DataDir:           dataDir,
+		ModulesDir:        modulesDir,
 		PatternsDir:       patternsDir,
+		SkillsDirs:        skillsDirs,
+		OnModulesChanged:  reloadModules,
 		OnPatternsChanged: reloadPatterns,
 		Version:           currentAppInfo().Version,
 	})
@@ -252,6 +272,7 @@ func InitBackendWithSecrets(baseDir string, startWatcher bool, secretStore secre
 	var watcher *indexer.Watcher
 	if startWatcher {
 		watcher = indexer.NewWatcher(store, dataDir, nil)
+		watcher.SetModulesWatcher(modulesDir, reloadModules)
 		watcher.SetPatternsWatcher(patternsDir, reloadPatterns)
 		_ = watcher.Start(ctx)
 	}
@@ -695,9 +716,14 @@ func (s *AppService) ImportModuleJSON(rawJSON string) (*models.ModuleStatus, err
 
 	// Automatically enable the newly imported module
 	prefs := s.GetUserPrefs()
-	enabled := prefs.EnabledModules
-	if enabled == nil {
-		enabled = indexer.DefaultEnabledModuleIDs()
+	enabled := append([]string(nil), prefs.EnabledModules...)
+	if prefs.EnabledModules == nil {
+		installed, _, _ := indexer.LoadAllModules(s.backend.ModulesDir)
+		for _, m := range installed {
+			if m.DefaultEnabled {
+				enabled = append(enabled, m.ID)
+			}
+		}
 	}
 	has := false
 	for _, id := range enabled {
@@ -727,7 +753,63 @@ func (s *AppService) ImportModuleJSON(rawJSON string) (*models.ModuleStatus, err
 		Enabled:      true,
 		CardCount:    len(saved.Cards),
 		OverlayCount: len(saved.Overlays),
+		PatternCount: len(saved.Patterns),
 	}, nil
+}
+
+// ListStarterModules lists all packaged optional modules that can be installed/loaded
+// at onboarding or from the Module Catalog.
+func (s *AppService) ListStarterModules() []models.StarterModuleInfo {
+	return indexer.ListStarterModules(s.backend.ModulesDir)
+}
+
+// InstallStarterModules installs the selected optional starter modules as editable,
+// deletable JSON files in ~/.vex/modules/ and enables them.
+func (s *AppService) InstallStarterModules(starterIDs []string) ([]models.ModuleStatus, error) {
+	installed, err := indexer.InstallStarterModules(s.backend.ModulesDir, starterIDs)
+	if err != nil {
+		return nil, err
+	}
+	prefs := s.GetUserPrefs()
+	enabled := append([]string(nil), prefs.EnabledModules...)
+	if prefs.EnabledModules == nil {
+		all, _, _ := indexer.LoadAllModules(s.backend.ModulesDir)
+		for _, m := range all {
+			if m.DefaultEnabled {
+				enabled = append(enabled, m.ID)
+			}
+		}
+	}
+	seen := make(map[string]bool, len(enabled))
+	for _, id := range enabled {
+		seen[id] = true
+	}
+	for _, m := range installed {
+		if !seen[m.ID] {
+			seen[m.ID] = true
+			enabled = append(enabled, m.ID)
+		}
+	}
+	return s.SetEnabledModules(enabled)
+}
+
+// DeleteModule permanently removes a module JSON file from ~/.vex/modules/ and re-syncs.
+func (s *AppService) DeleteModule(moduleID string) ([]models.ModuleStatus, error) {
+	if err := indexer.DeleteModule(s.backend.ModulesDir, moduleID); err != nil {
+		return nil, err
+	}
+	target := models.Slugify(moduleID)
+	prefs := s.GetUserPrefs()
+	var next []string
+	if prefs.EnabledModules != nil {
+		next = make([]string, 0, len(prefs.EnabledModules))
+		for _, id := range prefs.EnabledModules {
+			if models.Slugify(id) != target {
+				next = append(next, id)
+			}
+		}
+	}
+	return s.SetEnabledModules(next)
 }
 
 func (s *AppService) ExportModuleJSON(moduleID string) (string, error) {
@@ -819,37 +901,62 @@ func (s *AppService) ListPatternRules() []models.PatternRule {
 	return s.backend.Search.PatternRules()
 }
 
-// ProbeEnterpriseCLIAuth runs read-only identity checks (`gh auth status`, `az account show`)
+// UpsertPatternRule validates, saves to ~/.vex/patterns/<id>.json, and hot-reloads the live PatternEngine.
+func (s *AppService) UpsertPatternRule(rule models.PatternRule) ([]models.PatternRule, error) {
+	if _, err := indexer.SavePatternRule(s.backend.PatternsDir, rule); err != nil {
+		return nil, err
+	}
+	prefs := s.GetUserPrefs()
+	s.backend.Search.SetPatternRules(indexer.LoadActivePatternRules(s.backend.PatternsDir, s.backend.ModulesDir, prefs.EnabledModules))
+	return s.backend.Search.PatternRules(), nil
+}
+
+// DeletePatternRule removes a standalone pattern rule from ~/.vex/patterns/ and reloads the PatternEngine.
+func (s *AppService) DeletePatternRule(ruleID string) ([]models.PatternRule, error) {
+	if err := indexer.DeletePatternRule(s.backend.PatternsDir, ruleID); err != nil {
+		return nil, err
+	}
+	prefs := s.GetUserPrefs()
+	s.backend.Search.SetPatternRules(indexer.LoadActivePatternRules(s.backend.PatternsDir, s.backend.ModulesDir, prefs.EnabledModules))
+	return s.backend.Search.PatternRules(), nil
+}
+
+// TestPatternRule evaluates a draft PatternRule against sampleInput and returns the resulting Rolodex CardNode.
+func (s *AppService) TestPatternRule(rule models.PatternRule, sampleInput string) (*models.CardNode, error) {
+	res, err := search.TestRule(context.Background(), rule, sampleInput, s.backend.Store, s.backend.MCPClients)
+	if err != nil {
+		return nil, err
+	}
+	if res == nil {
+		return nil, nil
+	}
+	node := res.Card.ToCardNode(0)
+	return &node, nil
+}
+
+// SearchRolodex executes search + pattern decoding and projects results directly into Rolodex CardNodes.
+func (s *AppService) SearchRolodex(rawQuery string, limit int) ([]models.CardNode, error) {
+	resp, err := s.Search(rawQuery, limit)
+	if err != nil {
+		return nil, err
+	}
+	nodes := make([]models.CardNode, 0, len(resp.Results))
+	for _, r := range resp.Results {
+		nodes = append(nodes, r.Card.ToCardNode(0))
+	}
+	return nodes, nil
+}
+
+// ProbeCLIAuth runs read-only identity checks (`gh auth status`, `az account show`)
 // without ever requesting or caching bearer tokens.
-func (s *AppService) ProbeEnterpriseCLIAuth() []mcp.CLIAuthStatus {
+func (s *AppService) ProbeCLIAuth() []mcp.CLIAuthStatus {
 	return mcp.ProbeCLIAuth(context.Background(), nil)
 }
 
-// GetEnterpriseMCPPresets returns opt-in, localOnly-enforced MCP server config templates
+// GetRecommendedMCPPresets returns opt-in, localOnly-enforced MCP server config templates
 // for official GitHub and Azure DevOps MCP servers.
-func (s *AppService) GetEnterpriseMCPPresets() []mcp.ExternalServerConfig {
-	return mcp.EnterpriseMCPPresets()
-}
-
-// LoadLogisticsDemoPack writes and immediately indexes the curated logistics reference collections
-// (UN/LOCODE & IATA ports, ISO containers, HS codes, acronyms/events, and portals).
-func (s *AppService) LoadLogisticsDemoPack() (int, error) {
-	count, err := indexer.SeedLogisticsDemoPack(s.backend.DataDir)
-	if err != nil {
-		return 0, err
-	}
-	ctx := context.Background()
-	for col := range indexer.LogisticsDemoCollections() {
-		full := filepath.Join(s.backend.DataDir, col+".json")
-		loadedCol, loadedCards, loadErr := indexer.LoadCollectionFile(full)
-		if loadErr != nil {
-			return count, loadErr
-		}
-		if err := s.backend.Store.ReplaceCollection(ctx, loadedCol, loadedCards, full); err != nil {
-			return count, err
-		}
-	}
-	return count, nil
+func (s *AppService) GetRecommendedMCPPresets() []mcp.ExternalServerConfig {
+	return mcp.RecommendedMCPPresets()
 }
 
 // FetchWeather fetches lightweight current weather from Open-Meteo (no API key required)

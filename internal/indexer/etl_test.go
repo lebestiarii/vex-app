@@ -115,8 +115,17 @@ func TestETLNestedIncompatibleJSON(t *testing.T) {
 
 func TestWatcherLiveReload(t *testing.T) {
 	tmpDir := t.TempDir()
-	if err := SeedDefaultCollections(tmpDir); err != nil {
-		t.Fatalf("SeedDefaultCollections: %v", err)
+	if err := EnsureDataDir(tmpDir); err != nil {
+		t.Fatalf("EnsureDataDir: %v", err)
+	}
+	if _, err := UpsertCardToDisk(tmpDir, models.SearchCard{
+		ID:          "initial-card-1",
+		Title:       "Initial Card",
+		Description: "Verifies startup scan.",
+		Collection:  "notes",
+		Template:    models.TemplateKnowledge,
+	}); err != nil {
+		t.Fatalf("UpsertCardToDisk initial: %v", err)
 	}
 
 	store, err := OpenStore(":memory:")
@@ -141,13 +150,13 @@ func TestWatcherLiveReload(t *testing.T) {
 	}
 	defer watcher.Stop()
 
-	// Verify initial seed cards were indexed
+	// Verify initial card was indexed
 	initial, err := store.ListCards(ctx, "")
 	if err != nil {
 		t.Fatalf("ListCards: %v", err)
 	}
-	if len(initial) < 4 {
-		t.Fatalf("expected at least 4 seeded cards, got %d", len(initial))
+	if len(initial) != 1 {
+		t.Fatalf("expected 1 initial card, got %d", len(initial))
 	}
 
 	// Add a brand new collection file and wait for fsnotify live indexing

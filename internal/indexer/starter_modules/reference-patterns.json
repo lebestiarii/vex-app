@@ -1,0 +1,247 @@
+{
+  "id": "reference-patterns",
+  "name": "Reference Number Decoders & Link Rules",
+  "category": "Patterns",
+  "description": "Configurable pattern-matching module emitting 3-column segment breakdown cards for House Bills, IATA MAWBs (Mod-7), and ISO 6346 Containers (Mod-11) with full-width nested entities.",
+  "icon": "🧩",
+  "version": "1.1.0",
+  "defaultEnabled": true,
+  "patterns": [
+    {
+      "id": "hbl-ocean-import",
+      "name": "House Bill Decoder (HBL)",
+      "category": "ocean",
+      "description": "Decodes 10-digit House Bill of Lading numbers (e.g. 7031234567 / 7441234567) into 3 segment tiles (Mode / Branch / Sequence) and nests the origin location card.",
+      "enabled": true,
+      "priority": 100,
+      "normalize": ["trim", "strip-spaces", "strip-dashes"],
+      "regex": "^(?P<mode>[78])(?P<branch>03|44|01|12|20|30|40)(?P<serial>\\d{7})$",
+      "lookups": {
+        "mode": {
+          "7": "Ocean Import",
+          "8": "Ocean Export"
+        },
+        "branch": {
+          "03": "SEA",
+          "44": "AMS",
+          "01": "LAX",
+          "12": "ORD",
+          "20": "HKG",
+          "30": "SIN",
+          "40": "FRA"
+        },
+        "branch_label": {
+          "03": "Seattle SEA",
+          "44": "Amsterdam AMS",
+          "01": "Los Angeles LAX",
+          "12": "Chicago ORD",
+          "20": "Hong Kong HKG",
+          "30": "Singapore SIN",
+          "40": "Frankfurt FRA"
+        }
+      },
+      "titleTemplate": "House Bill · {{match}}",
+      "subtitleTemplate": "{{lookup.mode}} · Origin {{lookup.branch_label}}",
+      "explanationTemplate": "Forwarder-issued House Bill of Lading linking an individual ocean import shipment to a master consolidation.",
+      "segments": [
+        { "value": "{{mode}}", "role": "MODE", "meaning": "{{lookup.mode}}", "tone": "blue" },
+        { "value": "{{branch}}", "role": "BRANCH", "meaning": "{{lookup.branch_label}}", "tone": "amber" },
+        { "value": "{{serial}}", "role": "SEQUENCE", "meaning": "Shipment #", "tone": "green" }
+      ],
+      "collection": "patterns",
+      "template": "pattern-breakdown",
+      "icon": "🧩",
+      "defaultExpanded": true,
+      "chips": [
+        { "label": "HBL", "tone": "blue" },
+        { "label": "Valid ✓", "tone": "green" },
+        { "label": "Origin: {{lookup.branch}}", "tone": "neutral" }
+      ],
+      "fields": {
+        "reference_type": "House Bill of Lading (HBL)",
+        "reference_number": "{{match}}",
+        "mode": "{{lookup.mode}}",
+        "origin_branch": "{{lookup.branch}}",
+        "serial": "{{serial}}"
+      },
+      "linkRules": [
+        {
+          "targetEntityKey": "loc:{{lookup.branch}}",
+          "relationLabel": "Origin Gateway",
+          "autoExpand": true,
+          "nestChildren": true,
+          "maxDepth": 2
+        }
+      ],
+      "actions": [
+        { "id": "copy-hbl", "label": "Copy HBL", "shortcut": "Enter", "type": "copy", "target": "{{match}}" }
+      ]
+    },
+    {
+      "id": "iata-awb",
+      "name": "IATA Master Air Waybill (MAWB)",
+      "category": "air",
+      "description": "Decodes 11-digit IATA MAWB numbers (e.g. 176-12345675), validates Mod-7 check digit, resolves airline details from Air Carriers, and nests tracking links.",
+      "enabled": true,
+      "priority": 95,
+      "normalize": ["trim", "strip-spaces"],
+      "regex": "^(?P<prefix>\\d{3})-?(?P<serial>\\d{7})(?P<check>\\d)$",
+      "checksum": "iata-mod7",
+      "dataLookups": [
+        {
+          "alias": "carrier",
+          "targetEntityKey": "air-carrier:{{prefix}}",
+          "extractFields": {
+            "name": "data.shortName",
+            "fullName": "title",
+            "iata": "data.iataCode",
+            "trackingUrl": "data.trackingUrl"
+          },
+          "fallbackValues": {
+            "name": "IATA Carrier",
+            "fullName": "Air Carrier (Prefix {{prefix}})"
+          }
+        }
+      ],
+      "titleTemplate": "{{carrier.name}} MAWB · {{prefix}}-{{serial}}{{check}}",
+      "subtitleTemplate": "{{carrier.fullName}} · Mod-7 {{checksum.status}}",
+      "explanationTemplate": "Airline-issued Master Air Waybill covering an air cargo shipment or consolidation. The trailing check digit validates the 7-digit serial via Mod-7.",
+      "segments": [
+        { "value": "{{prefix}}", "role": "PREFIX", "meaning": "{{carrier.name}}", "tone": "blue" },
+        { "value": "{{serial}}", "role": "SERIAL", "meaning": "Air Waybill #", "tone": "amber" },
+        { "value": "{{check}}", "role": "MOD-7", "meaning": "{{checksum.status}}", "tone": "green" }
+      ],
+      "collection": "air-freight",
+      "template": "pattern-breakdown",
+      "icon": "✈️",
+      "defaultExpanded": true,
+      "chips": [
+        { "label": "MAWB", "tone": "blue" },
+        { "label": "Mod-7 {{checksum.symbol}}", "tone": "green" },
+        { "label": "Prefix {{prefix}}", "tone": "neutral" }
+      ],
+      "fields": {
+        "reference_type": "IATA Master Air Waybill (MAWB)",
+        "awb_number": "{{prefix}}-{{serial}}{{check}}",
+        "airline_prefix": "{{prefix}}",
+        "carrier": "{{carrier.fullName}}",
+        "serial_number": "{{serial}}",
+        "check_digit": "{{check}} ({{checksum.status}})"
+      },
+      "linkRules": [
+        {
+          "targetEntityKey": "air-carrier:{{prefix}}",
+          "relationLabel": "Carrier Tracking",
+          "copyChildrenOnly": true,
+          "autoExpand": false
+        },
+        {
+          "targetEntityKey": "guide:mawb",
+          "relationLabel": "Air Waybill Guide",
+          "autoExpand": false
+        }
+      ],
+      "actions": [
+        { "id": "copy-awb", "label": "Copy MAWB", "shortcut": "Enter", "type": "copy", "target": "{{prefix}}-{{serial}}{{check}}" }
+      ]
+    },
+    {
+      "id": "iso-container",
+      "name": "ISO 6346 Shipping Container",
+      "category": "ocean",
+      "description": "Decodes 11-character ISO 6346 intermodal container numbers (e.g. MSCU1234565), validates Mod-11 check digit, resolves owner SCAC from Ocean Carriers, and nests tracking links.",
+      "enabled": true,
+      "priority": 90,
+      "normalize": ["trim", "uppercase", "strip-spaces", "strip-dashes"],
+      "regex": "^(?P<bic>(?P<owner>[A-Z]{3})(?P<category>[UJZ]))(?P<serial>\\d{6})(?P<check>\\d)$",
+      "caseInsensitive": true,
+      "checksum": "iso6346",
+      "lookups": {
+        "bic_scac": {
+          "MSCU": "MSCU",
+          "MEDU": "MSCU",
+          "MSDU": "MSCU",
+          "MAEU": "MAEU",
+          "MSKU": "MAEU",
+          "MRKU": "MAEU",
+          "CMAU": "CMDU",
+          "CGMU": "CMDU",
+          "HLXU": "HLCU",
+          "HLCU": "HLCU",
+          "OOLU": "OOLU",
+          "COSU": "COSU",
+          "CBHU": "COSU",
+          "EGLV": "EGLV",
+          "EMCU": "EGLV",
+          "EGHU": "EGLV",
+          "ONEU": "ONEY",
+          "NYKU": "ONEY",
+          "YMLU": "YMLU",
+          "ZIMU": "ZIMU",
+          "HDMU": "HDMU",
+          "WHLU": "WHLC"
+        },
+        "category": {
+          "U": "Freight Container",
+          "J": "Detachable Equipment",
+          "Z": "Trailer / Chassis"
+        }
+      },
+      "dataLookups": [
+        {
+          "alias": "ocean",
+          "targetEntityKey": "ocean-carrier:{{lookup.bic_scac}}",
+          "extractFields": {
+            "name": "data.shortName",
+            "scac": "data.scac"
+          },
+          "fallbackValues": {
+            "name": "BIC {{bic}}",
+            "scac": "{{bic}}"
+          }
+        }
+      ],
+      "titleTemplate": "{{ocean.name}} Container · {{bic}}{{serial}}{{check}}",
+      "subtitleTemplate": "ISO 6346 {{lookup.category}} · Mod-11 {{checksum.status}}",
+      "explanationTemplate": "Globally unique ISO 6346 intermodal container code pairing a 4-letter BIC owner prefix, 6-digit serial, and weighted Mod-11 check digit.",
+      "segments": [
+        { "value": "{{bic}}", "role": "OWNER", "meaning": "{{ocean.name}}", "tone": "blue" },
+        { "value": "{{serial}}", "role": "SERIAL", "meaning": "{{lookup.category}}", "tone": "amber" },
+        { "value": "{{check}}", "role": "MOD-11", "meaning": "{{checksum.status}}", "tone": "green" }
+      ],
+      "collection": "ocean-freight",
+      "template": "pattern-breakdown",
+      "icon": "🚢",
+      "defaultExpanded": true,
+      "chips": [
+        { "label": "ISO 6346", "tone": "blue" },
+        { "label": "Mod-11 {{checksum.symbol}}", "tone": "green" },
+        { "label": "BIC {{bic}}", "tone": "neutral" }
+      ],
+      "fields": {
+        "reference_type": "ISO 6346 Container",
+        "container_number": "{{bic}}{{serial}}{{check}}",
+        "bic_prefix": "{{bic}}",
+        "carrier": "{{ocean.name}}",
+        "category": "{{lookup.category}}",
+        "check_digit": "{{check}} ({{checksum.status}})"
+      },
+      "linkRules": [
+        {
+          "targetEntityKey": "ocean-carrier:{{lookup.bic_scac}}",
+          "relationLabel": "Carrier Tracking",
+          "copyChildrenOnly": true,
+          "autoExpand": false
+        },
+        {
+          "targetEntityKey": "guide:iso-container",
+          "relationLabel": "ISO 6346 Guide",
+          "autoExpand": false
+        }
+      ],
+      "actions": [
+        { "id": "copy-container", "label": "Copy Container ID", "shortcut": "Enter", "type": "copy", "target": "{{bic}}{{serial}}{{check}}" }
+      ]
+    }
+  ]
+}

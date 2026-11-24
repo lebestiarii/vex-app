@@ -21,8 +21,8 @@ type LivePatternExecutor interface {
 	ExecutePatternMCP(ctx context.Context, serverID, toolName string, args map[string]any) (text string, localOnly bool, err error)
 }
 
-// PatternMatchResult bundles the synthesized decoded card and any linked local
-// cards discovered via LinkEntityKeys for runner-up enrichment.
+// PatternMatchResult bundles the synthesized decoded card (with nested Children populated)
+// and any linked local cards discovered via LinkRules/LinkEntityKeys.
 type PatternMatchResult struct {
 	Card          models.SearchCard
 	EnrichedCards []models.SearchCard
@@ -33,28 +33,29 @@ type compiledPattern struct {
 	re   *regexp.Regexp
 }
 
-// PatternEngine evaluates declarative PatternRules against user queries,
-// validates standard checksums (IATA Mod-7, ISO 6346), enriches results from
-// the local SQLite Store via EntityKey, and optionally queries connected MCP servers.
+// PatternEngine evaluates declarative, module-loaded PatternRules against user queries,
+// normalizes inputs, validates standard checksums (IATA Mod-7, ISO 6346, Luhn),
+// runs cross-card DataLookups & LinkRules from SQLite, and optionally queries MCP servers.
+// No rules are hardcoded — all pattern rules are loadable and configurable via modules or ~/.vex/patterns/.
 type PatternEngine struct {
 	mu       sync.RWMutex
 	compiled []compiledPattern
 	allRules []models.PatternRule
 }
 
-// NewPatternEngine constructs a PatternEngine pre-loaded with built-in generic standards.
-func NewPatternEngine(customRules []models.PatternRule) *PatternEngine {
+// NewPatternEngine constructs a PatternEngine from the supplied user/module pattern rules.
+func NewPatternEngine(rules []models.PatternRule) *PatternEngine {
 	e := &PatternEngine{}
-	e.SetCustomRules(customRules)
+	e.SetCustomRules(rules)
 	return e
 }
 
-// SetCustomRules replaces custom user/module rules (evaluated ahead of built-in standards).
-func (e *PatternEngine) SetCustomRules(customRules []models.PatternRule) {
+// SetCustomRules replaces active pattern rules, deduplicating by ID and sorting by Priority DESC.
+func (e *PatternEngine) SetCustomRules(rules []models.PatternRule) {
 	seen := make(map[string]bool)
-	merged := make([]models.PatternRule, 0, len(customRules)+4)
+	merged := make([]models.PatternRule, 0, len(rules))
 
-	for _, r := range customRules {
+	for _, r := range rules {
 		id := strings.TrimSpace(r.ID)
 		if id == "" || strings.TrimSpace(r.Regex) == "" || seen[id] {
 			continue
@@ -62,13 +63,13 @@ func (e *PatternEngine) SetCustomRules(customRules []models.PatternRule) {
 		seen[id] = true
 		merged = append(merged, r)
 	}
-	for _, r := range BuiltInPatternRules() {
-		if seen[r.ID] {
-			continue
+
+	sort.SliceStable(merged, func(i, j int) bool {
+		if merged[i].Priority != merged[j].Priority {
+			return merged[i].Priority > merged[j].Priority
 		}
-		seen[r.ID] = true
-		merged = append(merged, r)
-	}
+		return merged[i].ID < merged[j].ID
+	})
 
 	compiled := make([]compiledPattern, 0, len(merged))
 	validRules := make([]models.PatternRule, 0, len(merged))
@@ -81,8 +82,10 @@ func (e *PatternEngine) SetCustomRules(customRules []models.PatternRule) {
 		if err != nil {
 			continue
 		}
-		compiled = append(compiled, compiledPattern{rule: r, re: re})
 		validRules = append(validRules, r)
+		if r.IsEnabled() {
+			compiled = append(compiled, compiledPattern{rule: r, re: re})
+		}
 	}
 
 	e.mu.Lock()
@@ -91,7 +94,7 @@ func (e *PatternEngine) SetCustomRules(customRules []models.PatternRule) {
 	e.mu.Unlock()
 }
 
-// Rules returns a copy of all active compiled PatternRules (custom + built-in).
+// Rules returns a copy of all loaded PatternRules (including disabled rules so UI can toggle them).
 func (e *PatternEngine) Rules() []models.PatternRule {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
@@ -100,288 +103,343 @@ func (e *PatternEngine) Rules() []models.PatternRule {
 	return out
 }
 
-// BuiltInPatternRules returns Vex's generic, public-standard pattern rules.
-// Company-specific rules belong in ~/.vex/patterns/*.json or ModuleManifest.Patterns.
-func BuiltInPatternRules() []models.PatternRule {
-	return []models.PatternRule{
-		{
-			ID:          "iata-awb",
-			Name:        "IATA Air Waybill (AWB)",
-			Category:    "logistics",
-			Description: "Decodes 11-digit IATA Master Air Waybill numbers with airline prefix lookup and Mod-7 check-digit validation.",
-			Regex:       `^(?P<prefix>\d{3})[-\s]?(?P<serial>\d{7})(?P<check>\d)$`,
-			Checksum:    "iata-mod7",
-			Lookups: map[string]map[string]string{
-				"prefix": {
-					"001": "American Airlines Cargo (AA)",
-					"006": "Delta Cargo (DL)",
-					"016": "United Cargo (UA)",
-					"020": "Lufthansa Cargo (LH)",
-					"023": "FedEx Express (FX)",
-					"057": "Air France Cargo (AF)",
-					"074": "KLM Cargo (KL)",
-					"125": "IAG Cargo / British Airways (BA)",
-					"157": "Qatar Airways Cargo (QR)",
-					"160": "Cathay Cargo (CX)",
-					"176": "Emirates SkyCargo (EK)",
-					"180": "Korean Air Cargo (KE)",
-					"205": "ANA Cargo (NH)",
-					"235": "Turkish Cargo (TK)",
-					"406": "UPS Air Cargo (5X)",
-					"618": "Singapore Airlines Cargo (SQ)",
-				},
-			},
-			TitleTemplate:       "AWB {{prefix}}-{{serial}}{{check}}",
-			SubtitleTemplate:    "{{lookup.prefix}} · Check Digit {{checksum.status}}",
-			DescriptionTemplate: "Decoded 11-digit IATA Air Waybill (Prefix {{prefix}}, Serial {{serial}}, Check Digit {{check}} — {{checksum.status}}).",
-			Collection:          "air-freight",
-			Template:            models.TemplateKeyValue,
-			Icon:                "plane",
-			Fields: map[string]string{
-				"reference_type": "IATA Air Waybill (MAWB)",
-				"airline_prefix": "{{prefix}}",
-				"carrier":        "{{lookup.prefix}}",
-				"serial_number":  "{{serial}}",
-				"check_digit":    "{{check}} ({{checksum.status}})",
-			},
-			GlancePills: []string{"AWB", "{{lookup.prefix}}", "Mod-7: {{checksum.status}}"},
-			Actions: []models.CardAction{
-				{ID: "copy-awb", Label: "Copy AWB Number", Shortcut: "Enter", Type: "copy", Target: "{{prefix}}-{{serial}}{{check}}"},
-			},
-			Provenance: &models.Provenance{
-				SourceName: "IATA Resolution 600a (AWB Standard)",
-				Authority:  "official",
-			},
-		},
-		{
-			ID:              "iso-container",
-			Name:            "ISO 6346 Shipping Container",
-			Category:        "logistics",
-			Description:     "Decodes 11-character ISO 6346 intermodal container numbers with BIC owner prefix and weighted Mod-11 check-digit validation.",
-			Regex:           `^(?P<bic>(?P<owner>[A-Z]{3})(?P<category>[UJZ]))(?P<serial>\d{6})(?P<check>\d)$`,
-			CaseInsensitive: true,
-			Checksum:        "iso6346",
-			Lookups: map[string]map[string]string{
-				"bic": {
-					"MSCU": "MSC Mediterranean Shipping",
-					"MEDU": "MSC Mediterranean Shipping",
-					"MAEU": "Maersk Line",
-					"MSKU": "Maersk Line",
-					"MRKU": "Maersk Line",
-					"CMAU": "CMA CGM",
-					"HLXU": "Hapag-Lloyd",
-					"HLCU": "Hapag-Lloyd",
-					"OOLU": "OOCL",
-					"COSU": "COSCO Shipping",
-					"EGLV": "Evergreen Marine",
-					"EMCU": "Evergreen Marine",
-					"ONEU": "Ocean Network Express (ONE)",
-					"YMLU": "Yang Ming Marine",
-					"ZIMU": "ZIM Integrated Shipping",
-				},
-				"category": {
-					"U": "Freight Container",
-					"J": "Detachable Freight Equipment",
-					"Z": "Trailer / Chassis",
-				},
-			},
-			TitleTemplate:       "Container {{bic}}{{serial}}{{check}}",
-			SubtitleTemplate:    "{{lookup.bic}} · {{lookup.category}} · Check Digit {{checksum.status}}",
-			DescriptionTemplate: "Decoded ISO 6346 intermodal container identifier (Owner {{owner}}, Category {{category}}, Check Digit {{check}} — {{checksum.status}}).",
-			Collection:          "ocean-freight",
-			Template:            models.TemplateKeyValue,
-			Icon:                "box",
-			Fields: map[string]string{
-				"reference_type": "ISO 6346 Container",
-				"owner_code":     "{{bic}}",
-				"carrier_owner":  "{{lookup.bic}}",
-				"equipment_type": "{{lookup.category}}",
-				"serial_number":  "{{serial}}",
-				"check_digit":    "{{check}} ({{checksum.status}})",
-			},
-			GlancePills: []string{"ISO 6346", "{{lookup.bic}}", "Check: {{checksum.status}}"},
-			Actions: []models.CardAction{
-				{ID: "copy-container", Label: "Copy Container ID", Shortcut: "Enter", Type: "copy", Target: "{{bic}}{{serial}}{{check}}"},
-			},
-			Provenance: &models.Provenance{
-				SourceName: "ISO 6346 / BIC Container Standard",
-				Authority:  "official",
-			},
-		},
-		{
-			ID:                  "ado-work-item",
-			Name:                "Azure DevOps Work Item",
-			Category:            "work-items",
-			Description:         "Recognizes Azure DevOps Work Item IDs (AB#12345 or ADO-12345) and queries the connected azure-devops MCP server when available.",
-			Regex:               `^(?:AB#|ADO[-#])(?P<id>\d{3,9})$`,
-			CaseInsensitive:     true,
-			TitleTemplate:       "ADO Work Item #{{id}}",
-			SubtitleTemplate:    "Azure DevOps · {{match}}",
-			DescriptionTemplate: "Matched Azure DevOps Work Item #{{id}}.",
-			Collection:          "work-items",
-			Template:            models.TemplateKeyValue,
-			Icon:                "git-pull-request",
-			Fields: map[string]string{
-				"work_item_id": "{{id}}",
-				"source":       "Azure DevOps (MCP)",
-			},
-			GlancePills: []string{"ADO", "#{{id}}"},
-			Actions: []models.CardAction{
-				{ID: "copy-ado-id", Label: "Copy Work Item ID", Shortcut: "Enter", Type: "copy", Target: "{{id}}"},
-			},
-			LiveMCP: &models.PatternMCPLookup{
-				ServerID: "azure-devops",
-				ToolName: "wit_get_work_item",
-				Arguments: map[string]string{
-					"id": "{{id}}",
-				},
-			},
-			LocalOnly: true,
-			Provenance: &models.Provenance{
-				SourceName: "Azure DevOps MCP Bridge",
-				Authority:  "automated-sync",
-				LocalOnly:  true,
-			},
-		},
-		{
-			ID:                  "github-issue",
-			Name:                "GitHub Issue / Pull Request",
-			Category:            "engineering",
-			Description:         "Recognizes owner/repo#123 references and queries the connected github MCP server when available.",
-			Regex:               `^(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)#(?P<number>\d+)$`,
-			TitleTemplate:       "GitHub {{owner}}/{{repo}}#{{number}}",
-			SubtitleTemplate:    "GitHub Issue / PR Reference",
-			DescriptionTemplate: "Matched GitHub reference {{owner}}/{{repo}}#{{number}}.",
-			Collection:          "github-catalog",
-			Template:            models.TemplateKeyValue,
-			Icon:                "git-branch",
-			Fields: map[string]string{
-				"repository": "{{owner}}/{{repo}}",
-				"number":     "#{{number}}",
-				"source":     "GitHub (MCP)",
-			},
-			GlancePills: []string{"GitHub", "#{{number}}"},
-			Actions: []models.CardAction{
-				{ID: "copy-gh-ref", Label: "Copy Reference", Shortcut: "Enter", Type: "copy", Target: "{{owner}}/{{repo}}#{{number}}"},
-			},
-			LiveMCP: &models.PatternMCPLookup{
-				ServerID: "github",
-				ToolName: "get_issue",
-				Arguments: map[string]string{
-					"owner":        "{{owner}}",
-					"repo":         "{{repo}}",
-					"issue_number": "{{number}}",
-				},
-			},
-			LocalOnly: true,
-			Provenance: &models.Provenance{
-				SourceName: "GitHub MCP Bridge",
-				Authority:  "automated-sync",
-				LocalOnly:  true,
-			},
-		},
+// Match evaluates rawText against enabled compiled PatternRules, returning the highest-priority match
+// enriched with cross-card DataLookups, recursive LinkRules, and optional live MCP data.
+func (e *PatternEngine) Match(ctx context.Context, rawText string, store *indexer.Store, liveExec LivePatternExecutor) *PatternMatchResult {
+	matches := e.MatchAll(ctx, rawText, store, liveExec, 1)
+	if len(matches) == 0 {
+		return nil
 	}
+	return matches[0]
 }
 
-// Match evaluates rawText against compiled PatternRules, returning the first match
-// enriched with local EntityKey cards and optional live MCP data.
-func (e *PatternEngine) Match(ctx context.Context, rawText string, store *indexer.Store, liveExec LivePatternExecutor) *PatternMatchResult {
+// MatchAll evaluates rawText against all enabled compiled PatternRules and returns up to limit matches.
+func (e *PatternEngine) MatchAll(ctx context.Context, rawText string, store *indexer.Store, liveExec LivePatternExecutor, limit int) []*PatternMatchResult {
 	input := strings.TrimSpace(rawText)
 	if input == "" {
 		return nil
+	}
+	if limit <= 0 {
+		limit = 5
 	}
 
 	e.mu.RLock()
 	compiled := e.compiled
 	e.mu.RUnlock()
 
+	var results []*PatternMatchResult
 	for _, cp := range compiled {
-		sub := cp.re.FindStringSubmatch(input)
-		if sub == nil {
+		res := evaluateCompiledPattern(ctx, cp, input, store, liveExec)
+		if res != nil {
+			results = append(results, res)
+			if len(results) >= limit {
+				break
+			}
+		}
+	}
+	return results
+}
+
+// TestRule compiles and evaluates a single PatternRule against sampleText without persisting it.
+func TestRule(ctx context.Context, rule models.PatternRule, sampleText string, store *indexer.Store, liveExec LivePatternExecutor) (*PatternMatchResult, error) {
+	expr := strings.TrimSpace(rule.Regex)
+	if expr == "" {
+		return nil, fmt.Errorf("pattern regex is required")
+	}
+	if rule.CaseInsensitive && !strings.HasPrefix(expr, "(?i)") {
+		expr = "(?i)" + expr
+	}
+	re, err := regexp.Compile(expr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid regex: %w", err)
+	}
+	return evaluateCompiledPattern(ctx, compiledPattern{rule: rule, re: re}, strings.TrimSpace(sampleText), store, liveExec), nil
+}
+
+func evaluateCompiledPattern(ctx context.Context, cp compiledPattern, rawInput string, store *indexer.Store, liveExec LivePatternExecutor) *PatternMatchResult {
+	normalized := applyPatternNormalizers(rawInput, cp.rule.Normalize)
+	sub := cp.re.FindStringSubmatch(normalized)
+	if sub == nil {
+		return nil
+	}
+
+	captures := make(map[string]string, len(sub)+8)
+	captures["raw"] = rawInput
+	captures["match"] = normalized
+	names := cp.re.SubexpNames()
+	for i, name := range names {
+		if i == 0 || name == "" || i >= len(sub) {
 			continue
 		}
-
-		captures := make(map[string]string, len(sub))
-		captures["match"] = input
-		names := cp.re.SubexpNames()
-		for i, name := range names {
-			if i == 0 || name == "" || i >= len(sub) {
-				continue
-			}
-			val := sub[i]
-			if cp.rule.CaseInsensitive {
-				val = strings.ToUpper(val)
-			}
-			captures[name] = val
+		val := sub[i]
+		if cp.rule.CaseInsensitive {
+			val = strings.ToUpper(val)
 		}
+		captures[name] = val
+	}
 
-		// Optional standard checksum verification
-		if cp.rule.Checksum != "" {
-			valid, detail := validatePatternChecksum(cp.rule.Checksum, captures)
-			if valid {
-				captures["checksum.status"] = "Valid"
-			} else {
-				captures["checksum.status"] = "Invalid"
-			}
-			if detail != "" {
-				captures["checksum.detail"] = detail
-			}
+	// Optional standard checksum verification
+	if cp.rule.Checksum != "" {
+		valid, detail := validatePatternChecksum(cp.rule.Checksum, captures)
+		if valid {
+			captures["checksum.status"] = "Valid"
+			captures["checksum.symbol"] = "✓"
+		} else {
+			captures["checksum.status"] = "Invalid"
+			captures["checksum.symbol"] = "✗"
 		}
-
-		card := buildPatternCard(cp.rule, captures)
-
-		// Optional live MCP lookup (tight timeout so disconnected/slow servers never stall search)
-		if cp.rule.LiveMCP != nil {
-			enrichCardFromLiveMCP(ctx, &card, cp.rule, captures, liveExec)
-		}
-
-		// Optional cross-card EntityKey enrichment (e.g. "loc:SEA" -> Seattle gateway card)
-		var enriched []models.SearchCard
-		if store != nil && len(cp.rule.LinkEntityKeys) > 0 {
-			resolvedKeys := make([]string, 0, len(cp.rule.LinkEntityKeys))
-			for _, keyTmpl := range cp.rule.LinkEntityKeys {
-				k := strings.TrimSpace(interpolatePattern(keyTmpl, cp.rule, captures))
-				if k != "" {
-					resolvedKeys = append(resolvedKeys, k)
-				}
-			}
-			if len(resolvedKeys) > 0 {
-				if linked, err := store.FindCardsByEntityKeys(ctx, resolvedKeys); err == nil && len(linked) > 0 {
-					enriched = linked
-					for _, lc := range linked {
-						if lc.EntityKey != "" {
-							card.RelatedKeys = appendUniquePatternStr(card.RelatedKeys, lc.EntityKey)
-						}
-						secFields := make(map[string]any)
-						for _, fieldKey := range []string{"unlocode", "iata", "country", "currency", "timezone", "region"} {
-							if v, ok := lc.Data[fieldKey]; ok && v != nil && fmt.Sprintf("%v", v) != "" {
-								secFields[fieldKey] = v
-							}
-						}
-						card.Sections = append(card.Sections, models.CardSection{
-							ModuleID:   "linked-" + lc.ID,
-							ModuleName: lc.Title,
-							Title:      lc.Title,
-							Badge:      firstNonEmptyPattern(lc.EntityKey, lc.Collection),
-							Notes:      firstNonEmptyPattern(lc.Subtitle, lc.Description),
-							Fields:     secFields,
-							Actions:    lc.Actions,
-							Provenance: lc.Provenance,
-							LocalOnly:  lc.LocalOnly,
-						})
-					}
-				}
-			}
-		}
-
-		card.UpdatedAt = time.Now().UTC()
-		return &PatternMatchResult{
-			Card:          card,
-			EnrichedCards: enriched,
+		if detail != "" {
+			captures["checksum.detail"] = detail
 		}
 	}
 
-	return nil
+	// Optional dynamic DataLookups against indexed module cards in SQLite
+	if store != nil && len(cp.rule.DataLookups) > 0 {
+		resolveDataLookups(ctx, cp.rule, captures, store)
+	} else if len(cp.rule.DataLookups) > 0 {
+		applyDataLookupFallbacks(cp.rule, captures)
+	}
+
+	card := buildPatternCard(cp.rule, captures)
+
+	// Optional live MCP lookup
+	if cp.rule.LiveMCP != nil {
+		enrichCardFromLiveMCP(ctx, &card, cp.rule, captures, liveExec)
+	}
+
+	// Combine rich LinkRules and legacy LinkEntityKeys into a unified list
+	linkRules := make([]models.PatternLinkRule, 0, len(cp.rule.LinkRules)+len(cp.rule.LinkEntityKeys))
+	linkRules = append(linkRules, cp.rule.LinkRules...)
+	for _, keyTmpl := range cp.rule.LinkEntityKeys {
+		linkRules = append(linkRules, models.PatternLinkRule{
+			TargetEntityKey: keyTmpl,
+			NestChildren:    true,
+			MaxDepth:        2,
+		})
+	}
+
+	var enriched []models.SearchCard
+	if store != nil && len(linkRules) > 0 {
+		enriched = applyPatternLinkRules(ctx, &card, cp.rule, linkRules, captures, store)
+	}
+
+	card.UpdatedAt = time.Now().UTC()
+	return &PatternMatchResult{
+		Card:          card,
+		EnrichedCards: enriched,
+	}
+}
+
+func applyPatternNormalizers(input string, normalizers []string) string {
+	out := input
+	for _, n := range normalizers {
+		switch strings.ToLower(strings.TrimSpace(n)) {
+		case "trim":
+			out = strings.TrimSpace(out)
+		case "uppercase", "upper":
+			out = strings.ToUpper(out)
+		case "lowercase", "lower":
+			out = strings.ToLower(out)
+		case "strip-spaces", "no-spaces":
+			out = strings.ReplaceAll(out, " ", "")
+		case "strip-dashes", "no-dashes":
+			out = strings.ReplaceAll(out, "-", "")
+		}
+	}
+	return out
+}
+
+func resolveDataLookups(ctx context.Context, rule models.PatternRule, captures map[string]string, store *indexer.Store) {
+	for _, dl := range rule.DataLookups {
+		alias := strings.TrimSpace(dl.Alias)
+		if alias == "" {
+			continue
+		}
+		targetKey := strings.TrimSpace(interpolatePattern(dl.TargetEntityKey, rule, captures))
+		var matched *models.SearchCard
+		if targetKey != "" {
+			if found, err := store.FindCardsByEntityKeys(ctx, []string{targetKey}); err == nil && len(found) > 0 {
+				matched = &found[0]
+			}
+		}
+
+		if matched != nil {
+			captures[alias+".title"] = matched.Title
+			captures[alias+".subtitle"] = matched.Subtitle
+			for outKey, srcExpr := range dl.ExtractFields {
+				val := extractCardField(*matched, srcExpr)
+				if val != "" {
+					captures[alias+"."+outKey] = val
+				}
+			}
+		}
+
+		// Fill any missing keys with fallback values
+		for outKey, fbTmpl := range dl.FallbackValues {
+			fullKey := alias + "." + outKey
+			if strings.TrimSpace(captures[fullKey]) == "" {
+				captures[fullKey] = strings.TrimSpace(interpolatePattern(fbTmpl, rule, captures))
+			}
+		}
+	}
+}
+
+func applyDataLookupFallbacks(rule models.PatternRule, captures map[string]string) {
+	for _, dl := range rule.DataLookups {
+		alias := strings.TrimSpace(dl.Alias)
+		if alias == "" {
+			continue
+		}
+		for outKey, fbTmpl := range dl.FallbackValues {
+			captures[alias+"."+outKey] = strings.TrimSpace(interpolatePattern(fbTmpl, rule, captures))
+		}
+	}
+}
+
+func extractCardField(c models.SearchCard, expr string) string {
+	expr = strings.TrimSpace(expr)
+	switch expr {
+	case "title":
+		return c.Title
+	case "subtitle":
+		return c.Subtitle
+	case "description":
+		return c.Description
+	case "entityKey":
+		return c.EntityKey
+	case "collection":
+		return c.Collection
+	}
+	if strings.HasPrefix(expr, "data.") {
+		key := strings.TrimPrefix(expr, "data.")
+		if v, ok := c.Data[key]; ok && v != nil {
+			return strings.TrimSpace(fmt.Sprintf("%v", v))
+		}
+	}
+	if v, ok := c.Data[expr]; ok && v != nil {
+		return strings.TrimSpace(fmt.Sprintf("%v", v))
+	}
+	return ""
+}
+
+func applyPatternLinkRules(
+	ctx context.Context,
+	card *models.SearchCard,
+	rule models.PatternRule,
+	linkRules []models.PatternLinkRule,
+	captures map[string]string,
+	store *indexer.Store,
+) []models.SearchCard {
+	var enriched []models.SearchCard
+	seenCardIDs := make(map[string]bool)
+	childIdxByEntity := make(map[string]int)
+
+	for _, lr := range linkRules {
+		var linked []models.SearchCard
+		if strings.TrimSpace(lr.TargetEntityKey) != "" {
+			resolvedKey := strings.TrimSpace(interpolatePattern(lr.TargetEntityKey, rule, captures))
+			if resolvedKey != "" {
+				if found, err := store.FindCardsByEntityKeys(ctx, []string{resolvedKey}); err == nil {
+					linked = found
+				}
+			}
+		} else if strings.TrimSpace(lr.TargetCollection) != "" || strings.TrimSpace(lr.TargetTag) != "" {
+			opts := indexer.SearchOptions{
+				Collection: strings.TrimSpace(interpolatePattern(lr.TargetCollection, rule, captures)),
+				Limit:      3,
+			}
+			if tag := strings.TrimSpace(interpolatePattern(lr.TargetTag, rule, captures)); tag != "" {
+				opts.Tags = []string{tag}
+			}
+			if res, err := store.SearchHybrid(ctx, opts); err == nil {
+				for _, r := range res {
+					linked = append(linked, r.Card)
+				}
+			}
+		}
+
+		for _, lc := range linked {
+			if seenCardIDs[lc.ID] && !lr.CopyChildrenOnly {
+				continue
+			}
+			seenCardIDs[lc.ID] = true
+			enriched = append(enriched, lc)
+
+			if lc.EntityKey != "" {
+				card.RelatedKeys = appendUniquePatternStr(card.RelatedKeys, lc.EntityKey)
+			}
+
+			// Record summary section for RAG/back-compat
+			secFields := make(map[string]any)
+			fieldKeys := lr.IncludeFields
+			if len(fieldKeys) == 0 {
+				fieldKeys = []string{"unlocode", "iata", "country", "currency", "timezone", "region", "prefix", "scac", "isoCode"}
+			}
+			for _, fk := range fieldKeys {
+				if v, ok := lc.Data[fk]; ok && v != nil && fmt.Sprintf("%v", v) != "" {
+					secFields[fk] = v
+				}
+			}
+			card.Sections = append(card.Sections, models.CardSection{
+				ModuleID:   "linked-" + lc.ID,
+				ModuleName: firstNonEmptyPattern(lr.RelationLabel, lc.Title),
+				Title:      lc.Title,
+				Badge:      firstNonEmptyPattern(lc.EntityKey, lc.Collection),
+				Notes:      firstNonEmptyPattern(lc.Subtitle, lc.Description),
+				Fields:     secFields,
+				Actions:    lc.Actions,
+				Provenance: lc.Provenance,
+				LocalOnly:  lc.LocalOnly,
+			})
+
+			// Attach as nested Rolodex child card(s)
+			if lr.CopyChildrenOnly {
+				for _, subChild := range lc.Children {
+					sc := subChild
+					sc.DefaultExpanded = lr.AutoExpand
+					sc.Children = nil
+					card.Children = append(card.Children, sc)
+				}
+				continue
+			}
+
+			nested := lc
+			nested.DefaultExpanded = lr.AutoExpand
+			maxDepth := lr.MaxDepth
+			if maxDepth <= 0 {
+				maxDepth = 2
+			}
+			if !lr.NestChildren || maxDepth < 2 {
+				nested.Children = nil
+			} else {
+				// Trim any grandchildren beyond allowed depth
+				for i := range nested.Children {
+					nested.Children[i].DefaultExpanded = false
+					nested.Children[i].Children = nil
+				}
+			}
+
+			// If AttachUnder matches an already-attached parent child card, nest inside it!
+			attachedUnderParent := false
+			if strings.TrimSpace(lr.AttachUnder) != "" {
+				parentKey := strings.ToLower(strings.TrimSpace(interpolatePattern(lr.AttachUnder, rule, captures)))
+				if idx, ok := childIdxByEntity[parentKey]; ok && idx >= 0 && idx < len(card.Children) {
+					nested.Children = nil
+					card.Children[idx].Children = append(card.Children[idx].Children, nested)
+					attachedUnderParent = true
+				}
+			}
+
+			if !attachedUnderParent {
+				idx := len(card.Children)
+				card.Children = append(card.Children, nested)
+				if nested.EntityKey != "" {
+					childIdxByEntity[strings.ToLower(nested.EntityKey)] = idx
+				}
+			}
+		}
+	}
+	return enriched
 }
 
 func buildPatternCard(rule models.PatternRule, captures map[string]string) models.SearchCard {
@@ -391,18 +449,66 @@ func buildPatternCard(rule models.PatternRule, captures map[string]string) model
 	}
 	tpl := rule.Template
 	if tpl == "" {
-		tpl = models.TemplateKeyValue
+		tpl = models.TemplatePatternBreakdown
 	}
 	icon := rule.Icon
 	if icon == "" {
-		icon = "hash"
+		icon = "🧩"
 	}
 
-	data := make(map[string]any, len(rule.Fields))
+	data := make(map[string]any, len(rule.Fields)+4)
+	data["patternId"] = rule.ID
+	data["matchedInput"] = captures["match"]
 	for k, tmpl := range rule.Fields {
 		v := strings.TrimSpace(interpolatePattern(tmpl, rule, captures))
 		if v != "" {
 			data[k] = v
+		}
+	}
+	if len(rule.Segments) > 0 {
+		defaultTones := []string{"blue", "amber", "green"}
+		segs := make([]map[string]string, 0, len(rule.Segments))
+		for i, seg := range rule.Segments {
+			tone := strings.TrimSpace(seg.Tone)
+			if tone == "" {
+				tone = defaultTones[i%len(defaultTones)]
+			}
+			segs = append(segs, map[string]string{
+				"value":   strings.TrimSpace(interpolatePattern(seg.Value, rule, captures)),
+				"role":    strings.TrimSpace(interpolatePattern(seg.Role, rule, captures)),
+				"meaning": strings.TrimSpace(interpolatePattern(seg.Meaning, rule, captures)),
+				"tone":    tone,
+			})
+		}
+		data["segments"] = segs
+	}
+	if strings.TrimSpace(rule.ExplanationTemplate) != "" {
+		data["explanation"] = strings.TrimSpace(interpolatePattern(rule.ExplanationTemplate, rule, captures))
+	} else if strings.TrimSpace(rule.DescriptionTemplate) != "" {
+		data["explanation"] = strings.TrimSpace(interpolatePattern(rule.DescriptionTemplate, rule, captures))
+	}
+
+	var chips []models.GlanceChip
+	for _, ch := range rule.Chips {
+		label := strings.TrimSpace(interpolatePattern(ch.Label, rule, captures))
+		if label == "" {
+			continue
+		}
+		tone := ch.Tone
+		if tone == "" {
+			tone = "neutral"
+		}
+		// Automatically switch Mod-7 / Mod-11 chip tone to red when checksum is Invalid
+		if strings.Contains(ch.Label, "checksum.") && captures["checksum.status"] == "Invalid" {
+			tone = "red"
+		}
+		chips = append(chips, models.GlanceChip{
+			Label: label,
+			Tone:  tone,
+			Dot:   ch.Dot,
+		})
+		if len(chips) == 4 {
+			break
 		}
 	}
 
@@ -414,6 +520,11 @@ func buildPatternCard(rule models.PatternRule, captures map[string]string) model
 		}
 		if len(pills) == 3 {
 			break
+		}
+	}
+	if len(pills) == 0 && len(chips) > 0 {
+		for i := 0; i < len(chips) && i < 3; i++ {
+			pills = append(pills, chips[i].Label)
 		}
 	}
 
@@ -450,19 +561,21 @@ func buildPatternCard(rule models.PatternRule, captures map[string]string) model
 	}
 
 	return models.SearchCard{
-		ID:          "builtin-pattern-" + models.Slugify(rule.ID),
-		Title:       strings.TrimSpace(interpolatePattern(rule.TitleTemplate, rule, captures)),
-		Subtitle:    strings.TrimSpace(interpolatePattern(rule.SubtitleTemplate, rule, captures)),
-		Description: strings.TrimSpace(interpolatePattern(rule.DescriptionTemplate, rule, captures)),
-		Collection:  col,
-		Template:    tpl,
-		Icon:        icon,
-		Tags:        []string{"pattern", rule.ID},
-		GlancePills: pills,
-		Data:        data,
-		Actions:     actions,
-		Provenance:  prov,
-		LocalOnly:   rule.LocalOnly,
+		ID:              "pattern-" + models.Slugify(rule.ID) + "-" + models.Slugify(captures["match"]),
+		Title:           strings.TrimSpace(interpolatePattern(rule.TitleTemplate, rule, captures)),
+		Subtitle:        strings.TrimSpace(interpolatePattern(rule.SubtitleTemplate, rule, captures)),
+		Description:     strings.TrimSpace(interpolatePattern(rule.DescriptionTemplate, rule, captures)),
+		Collection:      col,
+		Template:        tpl,
+		Icon:            icon,
+		Tags:            []string{"pattern", rule.ID},
+		Chips:           chips,
+		GlancePills:     pills,
+		Data:            data,
+		DefaultExpanded: rule.DefaultExpanded,
+		Actions:         actions,
+		Provenance:      prov,
+		LocalOnly:       rule.LocalOnly,
 	}
 }
 
@@ -497,7 +610,6 @@ func enrichCardFromLiveMCP(ctx context.Context, card *models.SearchCard, rule mo
 		return
 	}
 
-	// If the MCP tool returned structured JSON, unpack scalar fields into the template card.
 	var obj map[string]any
 	if err := json.Unmarshal([]byte(text), &obj); err == nil && len(obj) > 0 {
 		if title, ok := obj["title"].(string); ok && strings.TrimSpace(title) != "" {
@@ -566,8 +678,6 @@ func resolvePatternLookup(rule models.PatternRule, lookupName string, captures m
 	if !ok {
 		return ""
 	}
-	// Resolve raw value by exact capture name first, or by prefix before "_"
-	// (e.g. lookup "branch_entity" reads capture "branch").
 	raw, exists := captures[lookupName]
 	if !exists {
 		if idx := strings.IndexByte(lookupName, '_'); idx > 0 {
@@ -614,11 +724,46 @@ func validatePatternChecksum(kind string, captures map[string]string) (bool, str
 			return true, fmt.Sprintf("ISO 6346 check = %d", expected)
 		}
 		return false, fmt.Sprintf("expected %d, got %d", expected, check)
+
+	case "luhn":
+		digits := captures["match"]
+		if d, ok := captures["digits"]; ok && d != "" {
+			digits = d
+		}
+		if validateLuhn(digits) {
+			return true, "Luhn check passed"
+		}
+		return false, "Luhn check failed"
 	}
 	return true, ""
 }
 
-// computeISO6346CheckDigit implements the official ISO 6346 Annex A check-digit algorithm.
+func validateLuhn(s string) bool {
+	var nums []int
+	for i := 0; i < len(s); i++ {
+		if s[i] >= '0' && s[i] <= '9' {
+			nums = append(nums, int(s[i]-'0'))
+		}
+	}
+	if len(nums) < 2 {
+		return false
+	}
+	sum := 0
+	alt := false
+	for i := len(nums) - 1; i >= 0; i-- {
+		n := nums[i]
+		if alt {
+			n *= 2
+			if n > 9 {
+				n -= 9
+			}
+		}
+		sum += n
+		alt = !alt
+	}
+	return sum%10 == 0
+}
+
 func computeISO6346CheckDigit(tenCharCode string) int {
 	sum := 0
 	weight := 1
@@ -640,7 +785,6 @@ func computeISO6346CheckDigit(tenCharCode string) int {
 }
 
 func iso6346LetterValue(ch byte) int {
-	// ISO 6346 assigns A=10..Z=38, skipping multiples of 11 (11, 22, 33).
 	val := 10
 	for c := byte('A'); c <= 'Z'; c++ {
 		if val%11 == 0 {

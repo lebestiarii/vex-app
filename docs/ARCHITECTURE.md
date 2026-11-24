@@ -1,7 +1,7 @@
 # Vex — System Overview, Architecture & Design Decisions
 
 > **What is Vex?**
-> **Vex** is a calm, local-first desktop search launcher and modular knowledge hub where your websites, notes, reference modules, unit conversions, and AI/MCP tools are one keyboard shortcut away (`Ctrl+Shift+B`).
+> **Vex** is a desktop-first, platform-agnostic, local-first knowledge Rolodex, configurable pattern decoder, and MCP hub built with **Go + Wails v3** and **Angular 19**.
 
 ---
 
@@ -9,96 +9,71 @@
 
 ```mermaid
 flowchart TD
-    User["User (Hotkey Ctrl+Shift+B / Tray Icon / --tui)"] --> UI["Two-Piece Floating Glass UI\n(React + Tailwind + --vex-* Tokens\n+ Upward Flip Anchoring)"]
-    User --> TUI["Interactive Terminal UI\n(internal/tui --tui)\nBubble Tea Hero + Runner-Ups"]
-    UI -->|"/wails/runtime.js\nCall.ByName & Events.On"| RPC["Wails v3 AppService\n(app_service.go + window_anchor.go)"]
+    User["User (Hotkey Ctrl+Shift+B / System Tray)"] --> UI["Vex Full-Width Stacked Card UI\n(Angular 19 Standalone + Signals\n+ Light/Dark Mode)"]
+    UI -->|"/wails/runtime.js\nVexBridgeService"| RPC["Wails v3 AppService\n(app_service.go + window_anchor.go)"]
 
     subgraph Core["Go Backend Core (Acyclic Packages)"]
-        RPC --> Search["Search Service\n(internal/search)\nParser + Instant Unit/Dim Converter"]
-        TUI --> Search
-        TUI --> Runner
+        RPC --> Search["Search & Pattern Engine\n(internal/search)\nParser + Converter + PatternEngine"]
         Search --> Store["Hybrid SQLite Store\n(internal/indexer/store.go)\nFTS5 BM25 + Vector RRF (k=60)"]
-        Modules["Composable Module Compiler\n(internal/indexer/modules.go\n+ github_catalog.go)"] -->|"ReplaceSourceFile\nmodule://compiled"| Store
-        UserData["User JSON Files\n~/.vex/data/*.json"] -->|"fsnotify Watcher"| Store
-        RPC --> Runner["Cross-Platform Action Runner\n(internal/plugins/runner.go)\nURL Guard + Clipboard + Shell"]
+        Modules["Optional Module Compiler\n(internal/indexer/modules.go)\n~/.vex/modules/*.json + Starter Catalog"] -->|"ReplaceSourceFile\nmodule://compiled"| Store
+        UserData["User JSON Files\n~/.vex/data/*.json\n~/.vex/modules/*.json\n~/.vex/patterns/*.json"] -->|"fsnotify Watcher"| Store
+        RPC --> Runner["Safe Action Runner\n(internal/plugins/runner.go)\nURL Guard + Clipboard + HTTP"]
         RPC --> AI["Multi-Provider AI RAG\n(internal/ai/service.go)\nlocalOnly Cloud Filter"]
         RPC --> Secrets["OS Credential Store\n(internal/secrets)\nKeychain / WinCred"]
-        RPC --> Updater["No-Login Update Checker\n(internal/updater)\nHTTP or Shared Folder manifest.json"]
+        RPC --> Updater["No-Login Update Checker\n(internal/updater)\nmanifest.json + SHA-256"]
         RPC --> Log["Structured JSONL Logger + Metrics\n(internal/logging)\nvex.jsonl + Prometheus"]
     end
 
-    subgraph External["External AI & Observability Ecosystem"]
-        MCP["Tri-Modal MCP Hub\n(internal/mcp)\n--mcp-stdio & 127.0.0.1:17380/mcp\n(Loopback Host/Origin Guard)"]
-        Clients["GitHub Copilot / VS Code /\nClaude Desktop / Cursor"] <--> MCP
-        Grafana["Grafana Alloy / Promtail /\nPrometheus"] -.->|"Tail JSONL / Scrape /metrics"| Log
+    subgraph External["External AI & MCP Ecosystem"]
+        MCP["Domain MCP Hub + Skill Sharing\n(internal/mcp)\n--mcp-stdio & 127.0.0.1:17380/mcp\n19 Tools · 7 Resources · 1 Prompt"]
+        Skills["Shared Agent Skills\n~/.vex/skills/ & .agent/skills/"] --> MCP
+        Clients["Claude Desktop / Cursor /\nVS Code / GitHub Copilot"] <--> MCP
     end
 
     Store <--> MCP
     Search <--> MCP
     Runner <--> MCP
+    Modules <--> MCP
     AI <--> Store
 ```
 
 ---
 
-## 2. Plain-English Overview (For Non-Technical Users)
+## 2. Core Design Decisions
 
-1. **Press One Shortcut (`Ctrl+Shift+B`)**: A sleek, floating search pill appears over whatever you're working on — no cluttered browser tabs, SharePoint folders, or spreadsheets.
-2. **Get Instant "Aha!" Answers**:
-   - Type **`AMS`** to see Amsterdam's port/airport codes (`NLAMS` / `AMS`), live local time, current weather, currency (`EUR €`), plus customs acronyms and internal portals.
-   - Type **`1588 kg to lbs`**, **`-30c to f`**, or **`120x80x100 cm`** to convert units or calculate cargo volume (`CBM`) and IATA air volumetric weight instantly.
-   - Press **`⌘1`–`⌘5`** (or click a category) to filter by topic without memorizing any special syntax.
-3. **Only See What Fits Your Role**: Open **Settings → Modules** to toggle knowledge packs on or off (*Geographies*, *Air Freight*, *Ocean Freight*, *Customs*, *Transcon*, *Global Technology*, *GitHub Catalog*). Turning a module off immediately hides its cards and overlays.
-4. **Stay Private & Fast**: Everything runs locally on your computer. No accounts, no logins, no cloud lock-in.
+### A. Single Unified Desktop App (Platform-Agnostic)
+- Vex ships as one unified desktop application (`buildinfo.go`: `AppName`, `AppVersion`, `UpdateFeedURL`) with no community/enterprise code split and no CLI TUI.
+- All UI controls are strictly platform-agnostic — zero OS-specific window buttons or key symbols.
 
----
+### B. 100% Optional, Deletable Modules (`internal/indexer/modules.go`, `starter_modules/`)
+- `LoadAllModules(modulesDir)` reads **only** `.json` manifests present in `~/.vex/modules/`.
+- Packaged starter packs (`air-carriers`, `ocean-carriers`, `containers`, `logistics-dictionary`, `reference-patterns`, `team-templates` — zero dummy/sample data) are embedded strictly as an optional catalog (`ListStarterModules`, `InstallStarterModules`).
+- Installing a starter module writes an editable `.json` file into `~/.vex/modules/<id>.json`. Deleting it removes the file permanently and hot-reloads the SQLite index and `PatternEngine` via `Watcher.SetModulesWatcher`.
 
-## 3. Detailed Feature Architecture & Design Intent (For Engineers & AI Agents)
+### C. Full-Width Stacked Nested Card System (`frontend/src/app/`)
+- Responsive `420px–520px` (default `460px`, `max-height: 680px`) internal-scrolling desktop widget supporting Light (`[data-theme="light"]`) and Dark (`[data-theme="dark"]`) modes.
+- **No vertical accordion tree lines**: Every nested child spans **100% of its parent's inner width** stacked with `gap: 8px`, communicating depth (L0 → L1 → L2) strictly via alternating inset surfaces and `1px` borders.
+- Every template extends `BaseCardTemplate<T>` and is registered in `CardTemplateRegistry` for recursive `*ngComponentOutlet` rendering inside `RolodexCardShellComponent` (see **[docs/TEMPLATE_BLUEPRINTS.md](TEMPLATE_BLUEPRINTS.md)** for ASCII layout blueprints, field-to-slot tables, and cross-domain JSON examples of every template):
+  - **`location`** (`LocationCardComponent`): Strictly header-only (UNLOC·IATA blue chip, live IANA clock, green currency, temp; no addresses/phones); expands directly into full-width nested child cards.
+  - **`server-matrix`** (`ServerMatrixCardComponent`): Stoplight `● DEV` / `● QA` / `● PROD` rows with monospace hostname and inline `[Copy]`, `[SSH]`, and `[↗]` buttons.
+  - **`website-link`** (`WebsiteLinkCardComponent`): Multi-Chip Mode (2+ links) expands to launch/copy rows; Single-Button Mode (1 link) omits the chevron and renders the entire card as one clickable button with a top-right `↗`.
+  - **`pattern-breakdown`** (`PatternBreakdownCardComponent`): 3-column equal-width Blue/Amber/Green segment tile grid (`Value` + `ROLE` + `Meaning`) + plain-English explanation + full-width nested entity cards.
+  - **`conversion`** (`ConversionCardComponent`): Compact `Input ⇄ Output` strip with 1-click Copy and equivalent chips.
+  - **Extended templates**: `container-blueprint` (theme-adaptive SVG schematic + Metric/Imperial toggle + capacity boxes), `dictionary-guide` (N-step timeline), and `kv-grid` (click-to-copy key-value grid).
+- `VexBridgeService` isolates all Wails v3 RPC calls (`import('/wails/runtime.js')`) and returns clean empty state when opened outside Wails (zero hardcoded demo data in the bundle).
 
-### A. JSON-First Storage + Embedded SQLite FTS5/Vector Index (`internal/indexer/`)
-- **Intent**: Human-readable, Git-shareable JSON files are the source of truth (`~/.vex/data/*.json` and `~/.vex/modules/*.json`), while an embedded CGo-free SQLite database (`modernc.org/sqlite`) provides sub-millisecond FTS5 BM25 + optional Vector Cosine RRF (`k=60`) search.
-- **Why**: Zero external database setup, instant offline speed, and effortless sharing of JSON cards/modules between teammates.
+### D. Loadable, Configurable Pattern Engine (`internal/models/pattern.go`, `internal/search/patterns.go`)
+- Zero hardcoded rules in Go: active rules come solely from enabled modules (`ModuleManifest.Patterns`) and `~/.vex/patterns/*.json`.
+- Supports `enabled`, `priority`, pre-match `normalize` transforms, checksums (`iata-mod7`, `iso6346`, `luhn`), 3-column `segments[]` + `explanationTemplate`, live SQLite `dataLookups` across indexed modules, declarative recursive `linkRules` (`autoExpand`, `nestChildren`, `copyChildrenOnly`, `attachUnder`, `maxDepth`), optional `liveMcp` lookups, and `TestRule` dry runs.
 
-### B. Composable Modules, Card Overlays & Cross-Card Synergy (`internal/models/`, `internal/indexer/modules.go`)
-- **Problem Solved**: How do you let 7+ domain modules enrich the same real-world entity (like `AMS`) without overwriting each other's fields or overwhelming non-technical users?
-- **Design Decision**:
-  - Canonical **`EntityKey`** (e.g., `"loc:AMS"`, `"uld:AKE"`, `"repo:gt-customs-..."`) links modules without brittle hardcoded IDs.
-  - Each active module attaches an isolated, attributed **`CardSection`** (`{ moduleId, badge, title, notes, fields, actions, provenance }`).
-  - **Standalone Promotion**: If a user turns OFF `Geographies` and keeps only `Air Freight` or `Global Technology` ON, overlays targeting `loc:AMS` automatically promote into standalone cards so every module works both independently and combined.
-  - **Cross-Card Synergy (`FindRelatedCards`)**: Distinct cards sharing `EntityKey`, `RelatedKeys`, or domain tags (e.g., `Amsterdam Port` ↔ `AMS Ocean Portal` ↔ `AMS Acronym`) appear as clickable **"Related in Enabled Modules"** chips.
+### E. Tri-Modal MCP Hub, Agent Skill Sharing & Security (`internal/mcp/`, `internal/secrets/`, `internal/plugins/runner.go`)
+- **MCP Server (`HubServer`)**:
+  - **7 Resources & Templates**: `search://collections`, `schema://search-card`, `card://{collection}/{id}`, `search://modules`, `search://patterns`, `search://skills`, `skill://{name}`.
+  - **19 Tools**: `search_knowledge` (returns both `card` and projected `cardNode`), `get_card_schema`, `preview_raw_data_sample`, `transform_and_import_data`, `upsert_card`, `batch_upsert_cards`, `list_plugins`, `execute_card_action`, `get_related_cards`, `list_modules`, `get_module`, `upsert_module`, `delete_module`, `install_starter_module`, `list_pattern_rules`, `upsert_pattern_rule`, `delete_pattern_rule`, `list_skills`, `get_skill`.
+  - **1 Prompt**: `rag_context_prompt`.
+- **Security Controls**: Loopback-only HTTP with Host/Origin CSRF & DNS-rebinding guard (`loopbackGuardMiddleware`), strict HTTP/HTTPS URL validation, no arbitrary shell execution, `localOnly` cloud-RAG stripping, and native OS credential storage (`internal/secrets`).
 
-### C. Taming Card Density: Glance Pills + Single-Tab Perspectives (`internal/models/card.go`, `CardRenderer.tsx`)
-- **Intent**: Users should often get their answer directly on the small list row without even expanding the card, and the full card view should never become a wall of stacked tables.
-- **Design Decision**:
-  - **`ComputeGlancePills(card)`** runs in Go to attach up to 3 high-signal pills (`[NLAMS · AMS]`, `[EUR (€)]`, `[Portfolio: Customs]`) to every compact row.
-  - **Single Active Perspective Tab**: The full card view renders a tab bar (`Overview` | `Air` | `Ocean` | `Customs` | `Global Tech`), showing one perspective at a time and auto-selecting a module tab if your search query matched inside it (e.g., searching `ams-prd-edi01` auto-opens `Global Tech` on `AMS`).
-
-### D. Source Provenance for Human Trust & LLM/MCP Fact-Checking (`Provenance`)
-- **Intent**: When an AI assistant (RAG or MCP client) or human reads a compliance rule (like OFAC sanctions or HS duty rates), they need to know where it came from and how fresh it is.
-- **Design Decision**: Every `SearchCard` and `CardSection` carries optional `Provenance{SourceName, SourceURL, VerifiedAt, Authority}` (`official`, `internal-curated`, `automated-sync`), rendered subtly in the card footer and injected directly into AI RAG & MCP citations.
-
-### E. Instant Unit Converter & Declarative Pattern Recognition (`internal/search/converter.go`, `internal/search/patterns.go`)
-- **Intent**: Handle everyday logistics/office math (`1588 kg to lbs`, `-30c to f`, `120x80x100 cm`) and opaque reference numbers (`176-12345675` IATA AWB, `MSCU123456...` ISO 6346 container, `AB#48219` ADO work item, or custom `~/.vex/patterns/*.json` House/Master Bill rules) in <0.1 ms locally, enriching matches with linked `EntityKey` cards and optional live MCP tool lookups (`LocalOnly: true`).
-- **Design Decision**: Pure-Go converter + RE2 `PatternEngine` inside `search.Service` (bridged to `internal/mcp.ClientManager` via the acyclic `LivePatternExecutor` interface) so Desktop GUI, `--tui`, and MCP share one decoding pipeline. See **[ADR-001](ADR-001-enterprise-auth-and-patterns.md)** for the full security model (`gh auth` / `az login` read-only CLI probing + MCP-first delegation) and drop-in JSON pattern schema.
-
-### F. Lightweight GitHub Engineering Catalog (`internal/indexer/github_catalog.go`)
-- **Intent**: Let engineers search portfolios, teams, products, and repos without cloning gigabytes of code.
-- **Design Decision**: Parses the `<prefix>-<portfolio>-<team>-<product>-<component>` naming convention from lightweight JSON metadata (`gh repo list --json ...`) into individual repo cards + automatic **Portfolio Roll-Up Directory Cards**.
-
-### G. Tri-Modal MCP Hub & Security Posture (`internal/mcp/`, `internal/plugins/runner.go`)
-- **Intent**: Let external AI agents (VS Code GitHub Copilot, Copilot CLI, Claude Desktop, Cursor) query, import, and traverse Vex's local knowledge safely.
-- **Security Controls**:
-  - Loopback-only HTTP binding (`127.0.0.1:17380`) with **`loopbackGuardMiddleware`** rejecting non-loopback `Host` headers (DNS rebinding) and cross-origin `Origin` headers (CSRF).
-  - Strict **`validateHTTPURL`** on `open_url` / `open_pwa` blocking non-`http(s)` schemes and shell metacharacters.
-  - **No Arbitrary Shell Execution**: Cards, plugins, and MCP tools cannot invoke `sh -c` / `cmd /c`; CLI snippets use `copy` actions.
-
-### H. Local-First Observability & No-Login Updates (`internal/logging/`, `internal/updater/`)
-- **Logging**: Go stdlib `log/slog` JSONL rotating file writer (`~/.vex/logs/vex.jsonl`, 5 MB × 3 backups, `0o600`, never writes to `stdout` so `--mcp-stdio` stays clean) + zero-dependency Prometheus `/metrics` at `http://127.0.0.1:17380/metrics` ready for Grafana Alloy / Loki / Prometheus.
-- **No-Login Updates**: Checks a simple `manifest.json` from an HTTP/HTTPS URL or shared network folder (`3s` timeout, fails silently offline) with semver comparison and SHA-256 verification.
-
-### I. Enterprise Guardrails, Upward Flip Anchoring & Terminal UI (`internal/secrets/`, `window_anchor.go`, `internal/tui/`)
-- **`localOnly` Cloud RAG Filter**: Modules, cards, or overlay sections marked `localOnly: true` are automatically stripped from external cloud LLM prompts and embeddings (`openai`, `anthropic`, `gemini`) while remaining 100% available in local search and local `ollama` RAG.
-- **Native OS Secret Store (`internal/secrets/`)**: AI API keys are stored in macOS Keychain (`/usr/bin/security`) or Windows Credential Manager (`advapi32.dll` `CredReadW`/`CredWriteW`/`CredDeleteW`) and scrubbed from `config.json` (with automatic startup migration for legacy plaintext keys).
-- **Viewport-Aware Upward Flip (`window_anchor.go`)**: Pure-Go display geometry detects when Vex spawns from the bottom-right tray or bottom 25–30% of the active display's work area, anchoring the window cleanly inside the work area and flipping the UI stack (`anchor === 'up'`, `flex-col-reverse`) so results expand upward without clipping.
-- **Interactive Bubble Tea TUI (`internal/tui/`, `--tui`)**: Terminal UI directly consuming `internal/search`, `internal/indexer`, and `internal/plugins` with `1–4` (`Alt+1–5`) category filters, Primary Hero Card + `Tab`/`Shift+Tab` perspective tabs, compact runner-ups, and unit/volumetric math.
-- **Framework-Agnostic Frontend Readiness**: All search, module merging, glance pills, conversions, and taxonomy parsing run in Go; `frontend/src/lib/bridge.ts` is a pure ES module with zero React dependencies; `frontend/src/index.css` exposes `--vex-*` CSS Custom Properties.
+### F. Local Observability, Autostart & Viewport Anchoring
+- `internal/logging`: Rotating `slog` JSONL logs (`~/.vex/logs/vex.jsonl`, `0o600`, never writes to `stdout`) + Prometheus `/metrics`.
+- `internal/updater`: No-login `manifest.json` checker (HTTP/HTTPS or local/shared path) with SHA-256 verification.
+- `window_anchor.go`: Pure-Go work-area placement clamping and upward-flip detection (`AnchorDown` / `AnchorUp`).

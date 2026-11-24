@@ -1,0 +1,141 @@
+{
+  "id": "logistics-dictionary",
+  "name": "Logistics Dictionary & Shipment Guides",
+  "category": "Reference",
+  "description": "Plain-English shipment lifecycle guides (HBL, MAWB, ISO 6346, SCAC, ISF) with 4-step visual timelines that auto-nest inside decoded reference cards.",
+  "icon": "📖",
+  "version": "1.0.0",
+  "defaultEnabled": true,
+  "cards": [
+    {
+      "id": "guide-hbl",
+      "entityKey": "guide:hbl",
+      "title": "What is a House Bill (HBL)?",
+      "subtitle": "NVOCC / Freight Forwarder Ocean Contract of Carriage",
+      "description": "Issued by the freight forwarder or NVOCC to the shipper once cargo is received at origin, acting as both the cargo receipt and contract of carriage. Destination teams use the HBL to coordinate customs clearance and release freight under the carrier's Master Bill of Lading.",
+      "collection": "dictionary",
+      "template": "dictionary-guide",
+      "icon": "📖",
+      "tags": ["hbl", "house bill", "bol", "ocean", "dictionary", "guide"],
+      "modifiers": ["def", "guide"],
+      "chips": [
+        { "label": "Step 2/4 · Origin", "tone": "amber" },
+        { "label": "Dictionary", "tone": "neutral" }
+      ],
+      "data": {
+        "activeStep": 2,
+        "steps": [
+          { "index": 1, "label": "Booking", "caption": "Space reserved" },
+          { "index": 2, "label": "Origin HBL", "caption": "Receipt issued" },
+          { "index": 3, "label": "In Transit", "caption": "Vessel & ISF" },
+          { "index": 4, "label": "Release", "caption": "Customs & delivery" }
+        ],
+        "summary": "A House Bill of Lading (HBL) is issued by a freight forwarder or NVOCC to the shipper as the receipt of goods and contract of carriage. It links individual customer shipments inside a consolidated container to the ocean line's Master Bill of Lading (MBL)."
+      }
+    },
+    {
+      "id": "guide-mawb",
+      "entityKey": "guide:mawb",
+      "title": "What is a Master Air Waybill?",
+      "subtitle": "IATA 11-Digit Airline Contract of Carriage",
+      "description": "Issued directly by an airline (using its 3-digit IATA prefix plus a 7-digit serial and Mod-7 check digit) to cover an entire air cargo consolidation.",
+      "collection": "dictionary",
+      "template": "dictionary-guide",
+      "icon": "📖",
+      "tags": ["mawb", "awb", "air waybill", "air", "iata", "mod-7", "dictionary", "guide"],
+      "modifiers": ["def", "guide"],
+      "chips": [
+        { "label": "Step 2/4 · Air", "tone": "amber" },
+        { "label": "Dictionary", "tone": "neutral" }
+      ],
+      "data": {
+        "activeStep": 2,
+        "steps": [
+          { "index": 1, "label": "Air Booking", "caption": "Allotment & prefix" },
+          { "index": 2, "label": "MAWB Cut", "caption": "Mod-7 validated" },
+          { "index": 3, "label": "Flight Uplift", "caption": "RCS → DEP → ARR" },
+          { "index": 4, "label": "RCF & Delivery", "caption": "Import breakdown" }
+        ],
+        "summary": "A Master Air Waybill (MAWB) is the airline's non-negotiable transport contract covering an entire air shipment or consolidation. Its 11-digit number starts with the airline's 3-digit IATA prefix and ends with a Mod-7 check digit computed from the 7-digit serial."
+      }
+    },
+    {
+      "id": "guide-iso-container",
+      "entityKey": "guide:iso-container",
+      "title": "What is an ISO 6346 Container ID?",
+      "subtitle": "11-Character BIC Owner Code + Mod-11 Check Digit",
+      "description": "Every intermodal ocean container carries a globally unique 11-character code (3-letter BIC owner, category U/J/Z, 6 serial digits, and 1 weighted Mod-11 check digit).",
+      "collection": "dictionary",
+      "template": "dictionary-guide",
+      "icon": "📖",
+      "tags": ["iso", "6346", "bic", "container", "ocean", "dictionary", "guide"],
+      "modifiers": ["def", "guide"],
+      "chips": [
+        { "label": "Step 3/4 · Transit", "tone": "amber" },
+        { "label": "Dictionary", "tone": "neutral" }
+      ],
+      "data": {
+        "activeStep": 3,
+        "steps": [
+          { "index": 1, "label": "Empty Pickup", "caption": "Depot gate-out" },
+          { "index": 2, "label": "Stuffing", "caption": "Seal & VGM filed" },
+          { "index": 3, "label": "Vessel Load", "caption": "Tracked by BIC ID" },
+          { "index": 4, "label": "Gate-Out", "caption": "Final delivery" }
+        ],
+        "summary": "An ISO 6346 container number uniquely identifies intermodal equipment worldwide using a 4-letter BIC prefix (ending in U, J, or Z) and 6 serial digits. The 11th digit is a weighted Mod-11 check digit that catches typos during EDI and terminal gate-in."
+      }
+    },
+    {
+      "id": "guide-scac",
+      "entityKey": "guide:scac",
+      "title": "What is an Ocean SCAC?",
+      "subtitle": "4-Letter Standard Carrier Alpha Code for CBP & EDI",
+      "description": "Assigned by NMFTA to uniquely identify ocean carriers, NVOCCs, and trucking companies in US CBP ACE/AMS filings and X12 EDI transmissions.",
+      "collection": "dictionary",
+      "template": "dictionary-guide",
+      "icon": "📖",
+      "tags": ["scac", "carrier", "cbp", "ams", "edi", "ocean", "dictionary", "guide"],
+      "modifiers": ["def", "guide"],
+      "chips": [
+        { "label": "Step 1/4 · Filing", "tone": "amber" },
+        { "label": "Dictionary", "tone": "neutral" }
+      ],
+      "data": {
+        "activeStep": 1,
+        "steps": [
+          { "index": 1, "label": "Carrier SCAC", "caption": "B/L prefix assigned" },
+          { "index": 2, "label": "AMS / ISF", "caption": "24h pre-lading" },
+          { "index": 3, "label": "EDI 315", "caption": "Carrier milestones" },
+          { "index": 4, "label": "Customs Match", "caption": "Entry release" }
+        ],
+        "summary": "A Standard Carrier Alpha Code (SCAC) is a unique 2-to-4-letter identifier assigned by NMFTA to ocean lines, NVOCCs, and motor carriers. US Customs (CBP) requires the issuer's SCAC prefixed onto every Master and House Bill of Lading in ACE and ISF filings."
+      }
+    },
+    {
+      "id": "guide-isf",
+      "entityKey": "guide:isf",
+      "title": "What is ISF (10+2)?",
+      "subtitle": "U.S. CBP 24-Hour Advance Ocean Security Filing",
+      "description": "Mandatory security filing submitted to US Customs at least 24 hours before vessel loading at the foreign port of lading.",
+      "collection": "dictionary",
+      "template": "dictionary-guide",
+      "icon": "📖",
+      "tags": ["isf", "10+2", "cbp", "customs", "ocean", "dictionary", "guide"],
+      "modifiers": ["def", "guide"],
+      "chips": [
+        { "label": "Step 2/4 · Customs", "tone": "amber" },
+        { "label": "Dictionary", "tone": "neutral" }
+      ],
+      "data": {
+        "activeStep": 2,
+        "steps": [
+          { "index": 1, "label": "PO & Parties", "caption": "10 importer elements" },
+          { "index": 2, "label": "ISF Filed", "caption": "24h prior to lading" },
+          { "index": 3, "label": "Carrier +2", "caption": "Stow plan & CSM" },
+          { "index": 4, "label": "Arrival Clear", "caption": "No DNL / penalty" }
+        ],
+        "summary": "Importer Security Filing (ISF 10+2) requires 10 supply-chain data elements from the importer and 2 from the ocean carrier at least 24 hours prior to vessel lading. Late or inaccurate filings can trigger Do-Not-Load holds or liquidated damages up to $5,000 per violation."
+      }
+    }
+  ]
+}

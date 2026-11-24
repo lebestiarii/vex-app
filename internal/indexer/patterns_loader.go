@@ -172,3 +172,16 @@ func SavePatternRule(patternsDir string, rule models.PatternRule) (string, error
 	}
 	return target, nil
 }
+
+// DeletePatternRule removes a standalone user pattern rule file from patternsDir.
+func DeletePatternRule(patternsDir, ruleID string) error {
+	if strings.TrimSpace(patternsDir) == "" {
+		return errors.New("patterns directory is not configured")
+	}
+	id := models.Slugify(ruleID)
+	target := filepath.Join(patternsDir, id+".json")
+	if err := os.Remove(target); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}

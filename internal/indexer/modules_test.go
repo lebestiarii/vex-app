@@ -2,6 +2,8 @@ package indexer
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"vex/internal/models"
@@ -19,43 +21,45 @@ func TestParseRepoTaxonomy(t *testing.T) {
 	}
 }
 
-func TestCompileActiveModulesAndSynergy(t *testing.T) {
-	all := BuiltInModules()
+func TestStarterModulesAreOptionalInstallableAndDeletable(t *testing.T) {
+	modulesDir := t.TempDir()
 
-	// 1. Default enabled modules: geographies + air + ocean + customs -> port-nlams gets 3 overlay sections
-	compiled := CompileActiveModules(all, nil)
-	var amsFound bool
-	for _, c := range compiled {
-		if c.ID == "port-nlams" {
-			amsFound = true
-			if len(c.Sections) != 3 {
-				t.Fatalf("expected 3 overlay sections on port-nlams by default, got %d", len(c.Sections))
-			}
-			if c.Provenance == nil || c.Provenance.Authority != "official" {
-				t.Fatalf("expected official provenance on port-nlams, got %+v", c.Provenance)
-			}
-			if len(c.GlancePills) == 0 {
-				t.Fatalf("expected GlancePills to be populated on port-nlams")
+	// 1. Fresh user modulesDir has 0 installed modules (nothing forced from Go code!)
+	initial, _, err := LoadAllModules(modulesDir)
+	if err != nil {
+		t.Fatalf("LoadAllModules: %v", err)
+	}
+	if len(initial) != 0 {
+		t.Fatalf("expected 0 modules in clean modulesDir, got %d", len(initial))
+	}
+
+	// 2. Starter catalog contains all 6 real/generic optional modules and every card validates cleanly
+	starters := StarterModules()
+	if len(starters) != 6 {
+		t.Fatalf("expected 6 optional starter modules (zero sample packs), got %d", len(starters))
+	}
+	for _, m := range starters {
+		for i := range m.Cards {
+			c := m.Cards[i]
+			if err := models.ValidateAndNormalizeCard(&c, m.ID); err != nil {
+				t.Fatalf("starter module %q card %q invalid: %v", m.ID, c.ID, err)
 			}
 		}
 	}
-	if !amsFound {
-		t.Fatalf("expected port-nlams in compiled default modules")
+
+	// 3. Install selected starter modules -> written as real editable JSON files in modulesDir
+	installed, err := InstallStarterModules(modulesDir, []string{"air-carriers", "ocean-carriers", "containers", "logistics-dictionary", "reference-patterns", "team-templates"})
+	if err != nil {
+		t.Fatalf("InstallStarterModules: %v", err)
+	}
+	if len(installed) != 6 {
+		t.Fatalf("expected 6 installed modules, got %d", len(installed))
+	}
+	if _, err := os.Stat(filepath.Join(modulesDir, "air-carriers.json")); err != nil {
+		t.Fatalf("expected air-carriers.json on disk: %v", err)
 	}
 
-	// 2. Standalone overlay promotion: only global-tech enabled -> port-nlams still exists as standalone card
-	techOnly := CompileActiveModules(all, []string{"global-tech"})
-	var promoted bool
-	for _, c := range techOnly {
-		if c.ID == "port-nlams" && c.ModuleID == "global-tech" && len(c.Sections) == 1 {
-			promoted = true
-		}
-	}
-	if !promoted {
-		t.Fatalf("expected port-nlams overlay to promote to standalone card when geographies is disabled")
-	}
-
-	// 3. Store ReplaceSourceFile + FindRelatedCards synergy
+	// Verify carrier counts and container blueprint cards
 	store, err := OpenStore(":memory:")
 	if err != nil {
 		t.Fatalf("OpenStore: %v", err)
@@ -63,12 +67,29 @@ func TestCompileActiveModulesAndSynergy(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	if err := store.ReplaceSourceFile(ctx, CompiledModulesSource, compiled); err != nil {
-		t.Fatalf("ReplaceSourceFile: %v", err)
+	statuses, err := SyncModules(ctx, store, modulesDir, nil)
+	if err != nil {
+		t.Fatalf("SyncModules: %v", err)
 	}
-	related, err := store.FindRelatedCards(ctx, "port-nlams", 5)
-	if err != nil || len(related) < 3 {
-		t.Fatalf("expected >= 3 related synergy cards for port-nlams, got %d (err=%v)", len(related), err)
+	if len(statuses) != 6 {
+		t.Fatalf("expected 6 module statuses, got %d", len(statuses))
+	}
+
+	hc40, err := store.GetCard(ctx, "container-40hc")
+	if err != nil || hc40 == nil || len(hc40.Children) != 2 {
+		t.Fatalf("expected container-40hc with 2 nested children, got %+v (err=%v)", hc40, err)
+	}
+
+	// 4. Deleting a module removes the JSON file permanently and never resurrects it
+	if err := DeleteModule(modulesDir, "containers"); err != nil {
+		t.Fatalf("DeleteModule(containers): %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(modulesDir, "containers.json")); !os.IsNotExist(err) {
+		t.Fatalf("expected containers.json to be deleted from disk")
+	}
+	afterDel, _, err := LoadAllModules(modulesDir)
+	if err != nil || len(afterDel) != 5 {
+		t.Fatalf("expected 5 modules after deleting containers, got %d (err=%v)", len(afterDel), err)
 	}
 }
 

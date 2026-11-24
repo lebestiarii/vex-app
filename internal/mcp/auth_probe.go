@@ -129,10 +129,10 @@ func probeAZ(ctx context.Context, runner CommandRunner) CLIAuthStatus {
 	return st
 }
 
-// EnterpriseMCPPresets returns opt-in, localOnly-enforced ExternalServerConfig templates
+// RecommendedMCPPresets returns opt-in, localOnly-enforced ExternalServerConfig templates
 // for official GitHub and Azure DevOps MCP servers. Credentials stay isolated inside the
 // external MCP server process or OS CLI broker — never stored inside Vex.
-func EnterpriseMCPPresets() []ExternalServerConfig {
+func RecommendedMCPPresets() []ExternalServerConfig {
 	return []ExternalServerConfig{
 		{
 			ID:        "github",

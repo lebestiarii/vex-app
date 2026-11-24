@@ -1,0 +1,623 @@
+{
+  "id": "containers",
+  "name": "ISO Container Sizes & Blueprints",
+  "category": "Equipment",
+  "description": "Complete ISO 6346 container size index with SVG blueprints, Metric/Imperial internal and door dimensions, and Euro/US pallet capacities.",
+  "icon": "📦",
+  "version": "1.0.0",
+  "defaultEnabled": true,
+  "cards": [
+    {
+      "id": "container-40hc",
+      "entityKey": "container:40HC",
+      "title": "40' High Cube (40' HC)",
+      "subtitle": "ISO 45G1 · Extra 1 ft vertical clearance for voluminous cargo",
+      "description": "40-foot high cube dry freight container offering 2.69 m interior height and 76.4 CBM cubic capacity.",
+      "collection": "containers",
+      "template": "container-blueprint",
+      "icon": "📦",
+      "tags": ["40hc", "40hq", "45g1", "high cube", "container", "40ft", "dimensions", "cbm", "pallet"],
+      "modifiers": ["cnt", "box"],
+      "defaultExpanded": true,
+      "chips": [
+        { "label": "40'×8'×9'6\"", "tone": "mono" },
+        { "label": "76.4 CBM", "tone": "amber" },
+        { "label": "26.5t max", "tone": "neutral" }
+      ],
+      "data": {
+        "isoCode": "45G1",
+        "shortCode": "40' HC",
+        "category": "High Cube Dry",
+        "volumeCbm": "76.4 CBM",
+        "volumeCuFt": "2,698 ft³",
+        "maxPayload": "26,500 kg (58,422 lbs)",
+        "tareWeight": "3,980 kg (8,774 lbs)",
+        "maxGross": "30,480 kg (67,196 lbs)",
+        "extMetric": { "length": "12.19 m", "width": "2.44 m", "height": "2.90 m" },
+        "intMetric": { "length": "12.03 m", "width": "2.35 m", "height": "2.69 m" },
+        "doorMetric": { "width": "2.34 m", "height": "2.58 m" },
+        "extImperial": { "length": "40' 0\"", "width": "8' 0\"", "height": "9' 6\"" },
+        "intImperial": { "length": "39' 6\"", "width": "7' 8\"", "height": "8' 10\"" },
+        "doorImperial": { "width": "7' 8\"", "height": "8' 5\"" }
+      },
+      "children": [
+        {
+          "id": "container-40hc-blueprint",
+          "title": "Container Blueprint & Dimensions",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "📐",
+          "chips": [
+            { "label": "ISO 45G1", "tone": "mono" },
+            { "label": "Metric/Imperial", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "blueprint",
+            "isoCode": "45G1",
+            "shortCode": "40' HC",
+            "aspect": "40hc",
+            "intMetric": { "length": "12.03 m", "width": "2.35 m", "height": "2.69 m" },
+            "doorMetric": { "width": "2.34 m", "height": "2.58 m" },
+            "intImperial": { "length": "39' 6\"", "width": "7' 8\"", "height": "8' 10\"" },
+            "doorImperial": { "width": "7' 8\"", "height": "8' 5\"" },
+            "volumeCbm": "76.4 CBM",
+            "volumeCuFt": "2,698 ft³"
+          }
+        },
+        {
+          "id": "container-40hc-pallets",
+          "title": "Pallet & Load Capacity",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "⚖️",
+          "chips": [
+            { "label": "21 Euro", "tone": "green" },
+            { "label": "20 US", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "capacity",
+            "euroPallets": 21,
+            "euroNote": "1200 × 800 mm (single tier, standard layout; up to 25 pinwheeled)",
+            "usPallets": 20,
+            "usNote": "48\" × 40\" GMA (single tier, 2 rows of 10)",
+            "maxPayload": "26,500 kg (58,422 lbs)",
+            "tareWeight": "3,980 kg (8,774 lbs)",
+            "maxGross": "30,480 kg (67,196 lbs)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "container-20gp",
+      "entityKey": "container:20GP",
+      "title": "20' Standard Dry (20' GP)",
+      "subtitle": "ISO 22G1 · 1 TEU · Ideal for heavy or dense commodities",
+      "description": "Standard 20-foot dry shipping container engineered for dense cargo with 28.2 metric tons payload.",
+      "collection": "containers",
+      "template": "container-blueprint",
+      "icon": "📦",
+      "tags": ["20gp", "20ft", "22g1", "teu", "dry", "container", "dimensions", "cbm"],
+      "modifiers": ["cnt", "box"],
+      "chips": [
+        { "label": "20'×8'×8'6\"", "tone": "mono" },
+        { "label": "33.2 CBM", "tone": "amber" },
+        { "label": "28.2t max", "tone": "neutral" }
+      ],
+      "data": {
+        "isoCode": "22G1",
+        "shortCode": "20' GP",
+        "category": "Standard Dry",
+        "volumeCbm": "33.2 CBM",
+        "volumeCuFt": "1,172 ft³",
+        "maxPayload": "28,200 kg (62,170 lbs)",
+        "tareWeight": "2,280 kg (5,026 lbs)",
+        "maxGross": "30,480 kg (67,196 lbs)"
+      },
+      "children": [
+        {
+          "id": "container-20gp-blueprint",
+          "title": "Container Blueprint & Dimensions",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "📐",
+          "chips": [
+            { "label": "ISO 22G1", "tone": "mono" },
+            { "label": "Metric/Imperial", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "blueprint",
+            "isoCode": "22G1",
+            "shortCode": "20' GP",
+            "aspect": "20gp",
+            "intMetric": { "length": "5.90 m", "width": "2.35 m", "height": "2.39 m" },
+            "doorMetric": { "width": "2.34 m", "height": "2.28 m" },
+            "intImperial": { "length": "19' 4\"", "width": "7' 8\"", "height": "7' 10\"" },
+            "doorImperial": { "width": "7' 8\"", "height": "7' 6\"" },
+            "volumeCbm": "33.2 CBM",
+            "volumeCuFt": "1,172 ft³"
+          }
+        },
+        {
+          "id": "container-20gp-pallets",
+          "title": "Pallet & Load Capacity",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "⚖️",
+          "chips": [
+            { "label": "11 Euro", "tone": "green" },
+            { "label": "10 US", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "capacity",
+            "euroPallets": 11,
+            "euroNote": "1200 × 800 mm (single tier)",
+            "usPallets": 10,
+            "usNote": "48\" × 40\" GMA (single tier)",
+            "maxPayload": "28,200 kg (62,170 lbs)",
+            "tareWeight": "2,280 kg (5,026 lbs)",
+            "maxGross": "30,480 kg (67,196 lbs)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "container-40gp",
+      "entityKey": "container:40GP",
+      "title": "40' Standard Dry (40' GP)",
+      "subtitle": "ISO 42G1 · 2 TEU / 1 FEU · General cargo workhorse",
+      "description": "Standard 40-foot general purpose ocean container with 67.7 CBM internal volume.",
+      "collection": "containers",
+      "template": "container-blueprint",
+      "icon": "📦",
+      "tags": ["40gp", "40ft", "42g1", "feu", "dry", "container", "dimensions", "cbm"],
+      "modifiers": ["cnt", "box"],
+      "chips": [
+        { "label": "40'×8'×8'6\"", "tone": "mono" },
+        { "label": "67.7 CBM", "tone": "amber" },
+        { "label": "26.7t max", "tone": "neutral" }
+      ],
+      "data": {
+        "isoCode": "42G1",
+        "shortCode": "40' GP",
+        "category": "Standard Dry",
+        "volumeCbm": "67.7 CBM",
+        "volumeCuFt": "2,390 ft³",
+        "maxPayload": "26,700 kg (58,863 lbs)",
+        "tareWeight": "3,780 kg (8,333 lbs)",
+        "maxGross": "30,480 kg (67,196 lbs)"
+      },
+      "children": [
+        {
+          "id": "container-40gp-blueprint",
+          "title": "Container Blueprint & Dimensions",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "📐",
+          "chips": [
+            { "label": "ISO 42G1", "tone": "mono" },
+            { "label": "Metric/Imperial", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "blueprint",
+            "isoCode": "42G1",
+            "shortCode": "40' GP",
+            "aspect": "40gp",
+            "intMetric": { "length": "12.03 m", "width": "2.35 m", "height": "2.39 m" },
+            "doorMetric": { "width": "2.34 m", "height": "2.28 m" },
+            "intImperial": { "length": "39' 6\"", "width": "7' 8\"", "height": "7' 10\"" },
+            "doorImperial": { "width": "7' 8\"", "height": "7' 6\"" },
+            "volumeCbm": "67.7 CBM",
+            "volumeCuFt": "2,390 ft³"
+          }
+        },
+        {
+          "id": "container-40gp-pallets",
+          "title": "Pallet & Load Capacity",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "⚖️",
+          "chips": [
+            { "label": "21 Euro", "tone": "green" },
+            { "label": "20 US", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "capacity",
+            "euroPallets": 21,
+            "euroNote": "1200 × 800 mm (up to 25 pinwheeled)",
+            "usPallets": 20,
+            "usNote": "48\" × 40\" GMA (single tier)",
+            "maxPayload": "26,700 kg (58,863 lbs)",
+            "tareWeight": "3,780 kg (8,333 lbs)",
+            "maxGross": "30,480 kg (67,196 lbs)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "container-45hc",
+      "entityKey": "container:45HC",
+      "title": "45' High Cube (45' HC)",
+      "subtitle": "ISO L5G1 · Maximum dry ocean cube (86.0 CBM)",
+      "description": "45-foot high-cube dry container maximizing floor area for lightweight consumer freight.",
+      "collection": "containers",
+      "template": "container-blueprint",
+      "icon": "📦",
+      "tags": ["45hc", "45ft", "l5g1", "high cube", "container", "dimensions", "cbm"],
+      "modifiers": ["cnt", "box"],
+      "chips": [
+        { "label": "45'×8'×9'6\"", "tone": "mono" },
+        { "label": "86.0 CBM", "tone": "amber" },
+        { "label": "27.6t max", "tone": "neutral" }
+      ],
+      "data": {
+        "isoCode": "L5G1",
+        "shortCode": "45' HC",
+        "category": "High Cube Dry",
+        "volumeCbm": "86.0 CBM",
+        "maxPayload": "27,600 kg (60,847 lbs)",
+        "tareWeight": "4,800 kg (10,582 lbs)",
+        "maxGross": "32,500 kg (71,650 lbs)"
+      },
+      "children": [
+        {
+          "id": "container-45hc-blueprint",
+          "title": "Container Blueprint & Dimensions",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "📐",
+          "chips": [
+            { "label": "ISO L5G1", "tone": "mono" },
+            { "label": "Metric/Imperial", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "blueprint",
+            "isoCode": "L5G1",
+            "shortCode": "45' HC",
+            "aspect": "40hc",
+            "intMetric": { "length": "13.55 m", "width": "2.35 m", "height": "2.69 m" },
+            "doorMetric": { "width": "2.34 m", "height": "2.58 m" },
+            "intImperial": { "length": "44' 5\"", "width": "7' 8\"", "height": "8' 10\"" },
+            "doorImperial": { "width": "7' 8\"", "height": "8' 5\"" },
+            "volumeCbm": "86.0 CBM",
+            "volumeCuFt": "3,037 ft³"
+          }
+        },
+        {
+          "id": "container-45hc-pallets",
+          "title": "Pallet & Load Capacity",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "⚖️",
+          "chips": [
+            { "label": "27 Euro", "tone": "green" },
+            { "label": "24 US", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "capacity",
+            "euroPallets": 27,
+            "euroNote": "1200 × 800 mm (up to 33 pallet-wide)",
+            "usPallets": 24,
+            "usNote": "48\" × 40\" GMA (single tier)",
+            "maxPayload": "27,600 kg (60,847 lbs)",
+            "tareWeight": "4,800 kg (10,582 lbs)",
+            "maxGross": "32,500 kg (71,650 lbs)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "container-40hcrf",
+      "entityKey": "container:40RF",
+      "title": "40' High Cube Reefer (40' HCRF)",
+      "subtitle": "ISO 45R1 · Active temperature control -30°C to +30°C",
+      "description": "Refrigerated high-cube container for pharmaceuticals, fresh produce, and frozen cold-chain shipments.",
+      "collection": "containers",
+      "template": "container-blueprint",
+      "icon": "❄️",
+      "tags": ["40rf", "40hcrf", "45r1", "reefer", "cold chain", "pharma", "container"],
+      "modifiers": ["cnt", "reefer"],
+      "chips": [
+        { "label": "40'×8'×9'6\"", "tone": "mono" },
+        { "label": "67.5 CBM", "tone": "amber" },
+        { "label": "-30°C to +30°C", "tone": "green" }
+      ],
+      "data": {
+        "isoCode": "45R1",
+        "shortCode": "40' HCRF",
+        "category": "Reefer Cold Chain",
+        "volumeCbm": "67.5 CBM",
+        "tempRange": "-30°C to +30°C",
+        "maxPayload": "29,150 kg (64,264 lbs)",
+        "tareWeight": "4,850 kg (10,692 lbs)",
+        "maxGross": "34,000 kg (74,957 lbs)"
+      },
+      "children": [
+        {
+          "id": "container-40hcrf-blueprint",
+          "title": "Container Blueprint & Dimensions",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "📐",
+          "chips": [
+            { "label": "ISO 45R1", "tone": "mono" },
+            { "label": "Metric/Imperial", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "blueprint",
+            "isoCode": "45R1",
+            "shortCode": "40' HCRF",
+            "aspect": "40hc",
+            "intMetric": { "length": "11.58 m", "width": "2.29 m", "height": "2.54 m" },
+            "doorMetric": { "width": "2.29 m", "height": "2.53 m" },
+            "intImperial": { "length": "38' 0\"", "width": "7' 6\"", "height": "8' 4\"" },
+            "doorImperial": { "width": "7' 6\"", "height": "8' 3\"" },
+            "volumeCbm": "67.5 CBM",
+            "volumeCuFt": "2,383 ft³"
+          }
+        },
+        {
+          "id": "container-40hcrf-pallets",
+          "title": "Pallet & Load Capacity",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "⚖️",
+          "chips": [
+            { "label": "20 Euro", "tone": "green" },
+            { "label": "18 US", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "capacity",
+            "euroPallets": 20,
+            "euroNote": "Maintain 10 cm red-line airflow clearance below ceiling",
+            "usPallets": 18,
+            "usNote": "T-floor air circulation requires unblocked channels",
+            "maxPayload": "29,150 kg (64,264 lbs)",
+            "tareWeight": "4,850 kg (10,692 lbs)",
+            "maxGross": "34,000 kg (74,957 lbs)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "container-20rf",
+      "entityKey": "container:20RF",
+      "title": "20' Standard Reefer (20' RF)",
+      "subtitle": "ISO 22R1 · Compact cold-chain container -30°C to +30°C",
+      "description": "20-foot refrigerated container for smaller temperature-controlled pharma or perishables loads.",
+      "collection": "containers",
+      "template": "container-blueprint",
+      "icon": "❄️",
+      "tags": ["20rf", "22r1", "reefer", "cold chain", "container"],
+      "modifiers": ["cnt", "reefer"],
+      "chips": [
+        { "label": "20'×8'×8'6\"", "tone": "mono" },
+        { "label": "28.3 CBM", "tone": "amber" },
+        { "label": "-30°C to +30°C", "tone": "green" }
+      ],
+      "data": {
+        "isoCode": "22R1",
+        "shortCode": "20' RF",
+        "category": "Reefer Cold Chain",
+        "volumeCbm": "28.3 CBM"
+      },
+      "children": [
+        {
+          "id": "container-20rf-blueprint",
+          "title": "Container Blueprint & Dimensions",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "📐",
+          "chips": [
+            { "label": "ISO 22R1", "tone": "mono" },
+            { "label": "Metric/Imperial", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "blueprint",
+            "isoCode": "22R1",
+            "shortCode": "20' RF",
+            "aspect": "20gp",
+            "intMetric": { "length": "5.44 m", "width": "2.29 m", "height": "2.27 m" },
+            "doorMetric": { "width": "2.29 m", "height": "2.26 m" },
+            "intImperial": { "length": "17' 10\"", "width": "7' 6\"", "height": "7' 5\"" },
+            "doorImperial": { "width": "7' 6\"", "height": "7' 5\"" },
+            "volumeCbm": "28.3 CBM",
+            "volumeCuFt": "1,000 ft³"
+          }
+        },
+        {
+          "id": "container-20rf-pallets",
+          "title": "Pallet & Load Capacity",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "⚖️",
+          "chips": [
+            { "label": "10 Euro", "tone": "green" },
+            { "label": "9 US", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "capacity",
+            "euroPallets": 10,
+            "euroNote": "1200 × 800 mm with airflow clearance",
+            "usPallets": 9,
+            "usNote": "48\" × 40\" GMA",
+            "maxPayload": "27,400 kg (60,406 lbs)",
+            "tareWeight": "3,080 kg (6,790 lbs)",
+            "maxGross": "30,480 kg (67,196 lbs)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "container-20ot",
+      "entityKey": "container:20OT",
+      "title": "20' Open Top (20' OT)",
+      "subtitle": "ISO 22U1 · Removable tarpaulin roof for top crane loading",
+      "description": "20-foot open-top container for over-height machinery or top-loaded heavy equipment.",
+      "collection": "containers",
+      "template": "container-blueprint",
+      "icon": "🏗️",
+      "tags": ["20ot", "22u1", "open top", "oog", "machinery", "container"],
+      "modifiers": ["cnt"],
+      "chips": [
+        { "label": "20'×8'×8'6\"", "tone": "mono" },
+        { "label": "32.5 CBM", "tone": "amber" },
+        { "label": "28.1t max", "tone": "neutral" }
+      ],
+      "data": { "isoCode": "22U1", "shortCode": "20' OT", "category": "Open Top" },
+      "children": [
+        {
+          "id": "container-20ot-blueprint",
+          "title": "Container Blueprint & Dimensions",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "📐",
+          "chips": [
+            { "label": "ISO 22U1", "tone": "mono" },
+            { "label": "Metric/Imperial", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "blueprint",
+            "isoCode": "22U1",
+            "shortCode": "20' OT",
+            "aspect": "20gp",
+            "intMetric": { "length": "5.89 m", "width": "2.35 m", "height": "2.35 m" },
+            "doorMetric": { "width": "2.34 m", "height": "2.27 m" },
+            "intImperial": { "length": "19' 4\"", "width": "7' 8\"", "height": "7' 8\"" },
+            "doorImperial": { "width": "7' 8\"", "height": "7' 5\"" },
+            "volumeCbm": "32.5 CBM",
+            "volumeCuFt": "1,147 ft³"
+          }
+        }
+      ]
+    },
+    {
+      "id": "container-40ot",
+      "entityKey": "container:40OT",
+      "title": "40' Open Top (40' OT)",
+      "subtitle": "ISO 42U1 · Swing-out header bar for crane-loaded long cargo",
+      "description": "40-foot open-top container for long or tall industrial freight loaded by overhead crane.",
+      "collection": "containers",
+      "template": "container-blueprint",
+      "icon": "🏗️",
+      "tags": ["40ot", "42u1", "open top", "oog", "machinery", "container"],
+      "modifiers": ["cnt"],
+      "chips": [
+        { "label": "40'×8'×8'6\"", "tone": "mono" },
+        { "label": "66.7 CBM", "tone": "amber" },
+        { "label": "26.6t max", "tone": "neutral" }
+      ],
+      "data": { "isoCode": "42U1", "shortCode": "40' OT", "category": "Open Top" },
+      "children": [
+        {
+          "id": "container-40ot-blueprint",
+          "title": "Container Blueprint & Dimensions",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "📐",
+          "chips": [
+            { "label": "ISO 42U1", "tone": "mono" },
+            { "label": "Metric/Imperial", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "blueprint",
+            "isoCode": "42U1",
+            "shortCode": "40' OT",
+            "aspect": "40gp",
+            "intMetric": { "length": "12.02 m", "width": "2.35 m", "height": "2.35 m" },
+            "doorMetric": { "width": "2.34 m", "height": "2.27 m" },
+            "intImperial": { "length": "39' 5\"", "width": "7' 8\"", "height": "7' 8\"" },
+            "doorImperial": { "width": "7' 8\"", "height": "7' 5\"" },
+            "volumeCbm": "66.7 CBM",
+            "volumeCuFt": "2,355 ft³"
+          }
+        }
+      ]
+    },
+    {
+      "id": "container-40fr",
+      "entityKey": "container:40FR",
+      "title": "40' Flat Rack (40' FR)",
+      "subtitle": "ISO 42P1 · Collapsible end walls for out-of-gauge (OOG) freight",
+      "description": "Heavy-duty 40-foot flat rack with reinforced deck for oversized machinery, boats, and pipes.",
+      "collection": "containers",
+      "template": "container-blueprint",
+      "icon": "🏗️",
+      "tags": ["40fr", "42p1", "flat rack", "oog", "breakbulk", "container"],
+      "modifiers": ["cnt"],
+      "chips": [
+        { "label": "40'×8'×8'6\"", "tone": "mono" },
+        { "label": "OOG Ready", "tone": "amber" },
+        { "label": "40.0t max", "tone": "neutral" }
+      ],
+      "data": { "isoCode": "42P1", "shortCode": "40' FR", "category": "Flat Rack" },
+      "children": [
+        {
+          "id": "container-40fr-blueprint",
+          "title": "Container Blueprint & Dimensions",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "📐",
+          "chips": [
+            { "label": "ISO 42P1", "tone": "mono" },
+            { "label": "Metric/Imperial", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "blueprint",
+            "isoCode": "42P1",
+            "shortCode": "40' FR",
+            "aspect": "40gp",
+            "intMetric": { "length": "11.98 m", "width": "2.23 m", "height": "1.95 m" },
+            "doorMetric": { "width": "Open Sides", "height": "Open Top" },
+            "intImperial": { "length": "39' 4\"", "width": "7' 4\"", "height": "6' 5\"" },
+            "doorImperial": { "width": "Open Sides", "height": "Open Top" },
+            "volumeCbm": "OOG Deck",
+            "volumeCuFt": "40,000 kg max payload"
+          }
+        }
+      ]
+    },
+    {
+      "id": "container-20tk",
+      "entityKey": "container:20TK",
+      "title": "20' ISO Tank Container (20' TK)",
+      "subtitle": "ISO 22T6 · Bulk liquid & food-grade stainless steel tank",
+      "description": "20-foot ISO frame stainless steel pressure tank holding 21,000–26,000 liters of bulk liquids.",
+      "collection": "containers",
+      "template": "container-blueprint",
+      "icon": "🛢️",
+      "tags": ["20tk", "22t6", "iso tank", "bulk liquid", "container"],
+      "modifiers": ["cnt"],
+      "chips": [
+        { "label": "20'×8'×8'6\"", "tone": "mono" },
+        { "label": "26,000 L", "tone": "amber" },
+        { "label": "31.8t max", "tone": "neutral" }
+      ],
+      "data": { "isoCode": "22T6", "shortCode": "20' TK", "category": "ISO Tank" },
+      "children": [
+        {
+          "id": "container-20tk-blueprint",
+          "title": "Container Blueprint & Dimensions",
+          "collection": "containers",
+          "template": "container-blueprint",
+          "icon": "📐",
+          "chips": [
+            { "label": "ISO 22T6", "tone": "mono" },
+            { "label": "Metric/Imperial", "tone": "neutral" }
+          ],
+          "data": {
+            "mode": "blueprint",
+            "isoCode": "22T6",
+            "shortCode": "20' TK",
+            "aspect": "20gp",
+            "intMetric": { "length": "6.06 m", "width": "2.44 m", "height": "2.59 m" },
+            "doorMetric": { "width": "Top Manlid", "height": "Bottom Valve" },
+            "intImperial": { "length": "19' 10\"", "width": "8' 0\"", "height": "8' 6\"" },
+            "doorImperial": { "width": "Top Manlid", "height": "Bottom Valve" },
+            "volumeCbm": "26,000 L max",
+            "volumeCuFt": "6,868 US gal"
+          }
+        }
+      ]
+    }
+  ]
+}
