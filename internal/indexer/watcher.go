@@ -26,9 +26,11 @@ type UpdateEvent struct {
 type Watcher struct {
 	store             *Store
 	dataDir           string
+	modulesDir        string
 	patternsDir       string
 	debounce          time.Duration
 	onUpdate          func(UpdateEvent)
+	onModulesChanged  func()
 	onPatternsChanged func()
 	logger            *slog.Logger
 
@@ -54,6 +56,14 @@ func (w *Watcher) SetPatternsWatcher(patternsDir string, onChange func()) {
 	w.mu.Lock()
 	w.patternsDir = strings.TrimSpace(patternsDir)
 	w.onPatternsChanged = onChange
+	w.mu.Unlock()
+}
+
+// SetModulesWatcher registers an optional ~/.vex/modules directory for hot-reloading optional modules.
+func (w *Watcher) SetModulesWatcher(modulesDir string, onChange func()) {
+	w.mu.Lock()
+	w.modulesDir = strings.TrimSpace(modulesDir)
+	w.onModulesChanged = onChange
 	w.mu.Unlock()
 }
 
@@ -96,6 +106,11 @@ func (w *Watcher) Start(parentCtx context.Context) error {
 	if err := fsw.Add(w.dataDir); err != nil {
 		_ = fsw.Close()
 		return fmt.Errorf("watch dir %s: %w", w.dataDir, err)
+	}
+	if w.modulesDir != "" {
+		if err := os.MkdirAll(w.modulesDir, 0o755); err == nil {
+			_ = fsw.Add(w.modulesDir)
+		}
 	}
 	if w.patternsDir != "" {
 		if err := os.MkdirAll(w.patternsDir, 0o755); err == nil {
@@ -210,6 +225,24 @@ func (w *Watcher) loop(ctx context.Context, fsw *fsnotify.Watcher, done chan str
 				return
 			}
 			if !isCollectionJSON(filepath.Base(event.Name)) {
+				continue
+			}
+			if w.modulesDir != "" && filepath.Clean(filepath.Dir(event.Name)) == filepath.Clean(w.modulesDir) {
+				if w.onModulesChanged != nil {
+					timerMu.Lock()
+					if existing, ok := timers["__modules__"]; ok {
+						existing.Stop()
+					}
+					timers["__modules__"] = time.AfterFunc(w.debounce, func() {
+						select {
+						case <-ctx.Done():
+							return
+						default:
+							w.onModulesChanged()
+						}
+					})
+					timerMu.Unlock()
+				}
 				continue
 			}
 			if w.patternsDir != "" && filepath.Clean(filepath.Dir(event.Name)) == filepath.Clean(w.patternsDir) {

@@ -1,0 +1,2987 @@
+{
+  "id": "ocean-carriers",
+  "name": "Ocean Carrier SCAC Index",
+  "category": "Ocean Freight",
+  "description": "32 major ocean shipping lines indexed by 4-letter NMFTA SCAC and ISO 6346 BIC container prefixes, with alliances and tracking portals.",
+  "icon": "\ud83d\udea2",
+  "version": "1.0.0",
+  "defaultEnabled": true,
+  "cards": [
+    {
+      "id": "ocean-carrier-mscu",
+      "entityKey": "ocean-carrier:MSCU",
+      "title": "MSC Mediterranean Shipping (MSCU)",
+      "subtitle": "SCAC MSCU \u00b7 Independent \u00b7 Geneva, CH",
+      "description": "MSC Mediterranean Shipping (SCAC: MSCU, BIC container prefixes: MSCU, MEDU, MSDU). Independent member headquartered in Geneva, CH.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "mscu",
+        "msc",
+        "mscu",
+        "medu",
+        "msdu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC MSCU",
+          "tone": "amber"
+        },
+        {
+          "label": "MSCU",
+          "tone": "mono"
+        },
+        {
+          "label": "Independent",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "MSCU",
+        "carrierName": "MSC Mediterranean Shipping",
+        "shortName": "MSC",
+        "bicPrefixes": "MSCU, MEDU, MSDU",
+        "alliance": "Independent",
+        "headquarters": "Geneva, CH",
+        "trackingUrl": "https://www.msc.com/en/track-a-shipment"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-mscu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "MSC",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "MSC Mediterranean Shipping Container & B/L Tracking",
+                "subtitle": "Track by B/L (MSCU...) or BIC container (MSCU, MEDU, MSDU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.msc.com/en/track-a-shipment"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-mscu",
+          "label": "Copy SCAC MSCU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "MSCU"
+        },
+        {
+          "id": "open-ocean-mscu",
+          "label": "Track on MSC",
+          "type": "open_url",
+          "target": "https://www.msc.com/en/track-a-shipment"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-maeu",
+      "entityKey": "ocean-carrier:MAEU",
+      "title": "Maersk Line (MAEU)",
+      "subtitle": "SCAC MAEU \u00b7 Gemini Cooperation \u00b7 Copenhagen, DK",
+      "description": "Maersk Line (SCAC: MAEU, BIC container prefixes: MAEU, MSKU, MRKU, PONU). Gemini Cooperation member headquartered in Copenhagen, DK.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "maeu",
+        "maersk",
+        "maeu",
+        "msku",
+        "mrku",
+        "ponu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC MAEU",
+          "tone": "amber"
+        },
+        {
+          "label": "MAEU",
+          "tone": "mono"
+        },
+        {
+          "label": "Gemini Cooperation",
+          "tone": "green"
+        }
+      ],
+      "data": {
+        "scac": "MAEU",
+        "carrierName": "Maersk Line",
+        "shortName": "Maersk",
+        "bicPrefixes": "MAEU, MSKU, MRKU, PONU",
+        "alliance": "Gemini Cooperation",
+        "headquarters": "Copenhagen, DK",
+        "trackingUrl": "https://www.maersk.com/tracking/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-maeu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Maersk",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Maersk Line Container & B/L Tracking",
+                "subtitle": "Track by B/L (MAEU...) or BIC container (MAEU, MSKU, MRKU, PONU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.maersk.com/tracking/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-maeu",
+          "label": "Copy SCAC MAEU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "MAEU"
+        },
+        {
+          "id": "open-ocean-maeu",
+          "label": "Track on Maersk",
+          "type": "open_url",
+          "target": "https://www.maersk.com/tracking/"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-cmdu",
+      "entityKey": "ocean-carrier:CMDU",
+      "title": "CMA CGM (CMDU)",
+      "subtitle": "SCAC CMDU \u00b7 Ocean Alliance \u00b7 Marseille, FR",
+      "description": "CMA CGM (SCAC: CMDU, BIC container prefixes: CMAU, CGMU, ECMU, APZU). Ocean Alliance member headquartered in Marseille, FR.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "cmdu",
+        "cma cgm",
+        "cmau",
+        "cgmu",
+        "ecmu",
+        "apzu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC CMDU",
+          "tone": "amber"
+        },
+        {
+          "label": "CMAU",
+          "tone": "mono"
+        },
+        {
+          "label": "Ocean Alliance",
+          "tone": "green"
+        }
+      ],
+      "data": {
+        "scac": "CMDU",
+        "carrierName": "CMA CGM",
+        "shortName": "CMA CGM",
+        "bicPrefixes": "CMAU, CGMU, ECMU, APZU",
+        "alliance": "Ocean Alliance",
+        "headquarters": "Marseille, FR",
+        "trackingUrl": "https://www.cma-cgm.com/ebusiness/tracking"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-cmdu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "CMA CGM",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "CMA CGM Container & B/L Tracking",
+                "subtitle": "Track by B/L (CMDU...) or BIC container (CMAU, CGMU, ECMU, APZU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.cma-cgm.com/ebusiness/tracking"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-cmdu",
+          "label": "Copy SCAC CMDU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "CMDU"
+        },
+        {
+          "id": "open-ocean-cmdu",
+          "label": "Track on CMA CGM",
+          "type": "open_url",
+          "target": "https://www.cma-cgm.com/ebusiness/tracking"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-cosu",
+      "entityKey": "ocean-carrier:COSU",
+      "title": "COSCO Shipping Lines (COSU)",
+      "subtitle": "SCAC COSU \u00b7 Ocean Alliance \u00b7 Shanghai, CN",
+      "description": "COSCO Shipping Lines (SCAC: COSU, BIC container prefixes: COSU, CBHU, CSNU). Ocean Alliance member headquartered in Shanghai, CN.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "cosu",
+        "cosco",
+        "cosu",
+        "cbhu",
+        "csnu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC COSU",
+          "tone": "amber"
+        },
+        {
+          "label": "COSU",
+          "tone": "mono"
+        },
+        {
+          "label": "Ocean Alliance",
+          "tone": "green"
+        }
+      ],
+      "data": {
+        "scac": "COSU",
+        "carrierName": "COSCO Shipping Lines",
+        "shortName": "COSCO",
+        "bicPrefixes": "COSU, CBHU, CSNU",
+        "alliance": "Ocean Alliance",
+        "headquarters": "Shanghai, CN",
+        "trackingUrl": "https://elines.coscoshipping.com/ebusiness/cargoTracking"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-cosu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "COSCO",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "COSCO Shipping Lines Container & B/L Tracking",
+                "subtitle": "Track by B/L (COSU...) or BIC container (COSU, CBHU, CSNU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://elines.coscoshipping.com/ebusiness/cargoTracking"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-cosu",
+          "label": "Copy SCAC COSU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "COSU"
+        },
+        {
+          "id": "open-ocean-cosu",
+          "label": "Track on COSCO",
+          "type": "open_url",
+          "target": "https://elines.coscoshipping.com/ebusiness/cargoTracking"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-hlcu",
+      "entityKey": "ocean-carrier:HLCU",
+      "title": "Hapag-Lloyd (HLCU)",
+      "subtitle": "SCAC HLCU \u00b7 Gemini Cooperation \u00b7 Hamburg, DE",
+      "description": "Hapag-Lloyd (SCAC: HLCU, BIC container prefixes: HLXU, HLCU, HLBU, FANU). Gemini Cooperation member headquartered in Hamburg, DE.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "hlcu",
+        "hapag-lloyd",
+        "hlxu",
+        "hlcu",
+        "hlbu",
+        "fanu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC HLCU",
+          "tone": "amber"
+        },
+        {
+          "label": "HLXU",
+          "tone": "mono"
+        },
+        {
+          "label": "Gemini Cooperation",
+          "tone": "green"
+        }
+      ],
+      "data": {
+        "scac": "HLCU",
+        "carrierName": "Hapag-Lloyd",
+        "shortName": "Hapag-Lloyd",
+        "bicPrefixes": "HLXU, HLCU, HLBU, FANU",
+        "alliance": "Gemini Cooperation",
+        "headquarters": "Hamburg, DE",
+        "trackingUrl": "https://www.hapag-lloyd.com/en/online-business/track/track-by-booking-solution.html"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-hlcu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Hapag-Lloyd",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Hapag-Lloyd Container & B/L Tracking",
+                "subtitle": "Track by B/L (HLCU...) or BIC container (HLXU, HLCU, HLBU, FANU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.hapag-lloyd.com/en/online-business/track/track-by-booking-solution.html"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-hlcu",
+          "label": "Copy SCAC HLCU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "HLCU"
+        },
+        {
+          "id": "open-ocean-hlcu",
+          "label": "Track on Hapag-Lloyd",
+          "type": "open_url",
+          "target": "https://www.hapag-lloyd.com/en/online-business/track/track-by-booking-solution.html"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-oney",
+      "entityKey": "ocean-carrier:ONEY",
+      "title": "Ocean Network Express (ONE) (ONEY)",
+      "subtitle": "SCAC ONEY \u00b7 Premier Alliance \u00b7 Singapore, SG",
+      "description": "Ocean Network Express (ONE) (SCAC: ONEY, BIC container prefixes: ONEU, NYKU, MOLU, KKFU). Premier Alliance member headquartered in Singapore, SG.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "oney",
+        "one",
+        "oneu",
+        "nyku",
+        "molu",
+        "kkfu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC ONEY",
+          "tone": "amber"
+        },
+        {
+          "label": "ONEU",
+          "tone": "mono"
+        },
+        {
+          "label": "Premier Alliance",
+          "tone": "green"
+        }
+      ],
+      "data": {
+        "scac": "ONEY",
+        "carrierName": "Ocean Network Express (ONE)",
+        "shortName": "ONE",
+        "bicPrefixes": "ONEU, NYKU, MOLU, KKFU",
+        "alliance": "Premier Alliance",
+        "headquarters": "Singapore, SG",
+        "trackingUrl": "https://ecomm.one-line.com/one-ecom/manage-shipment/cargo-tracking"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-oney-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "ONE",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Ocean Network Express (ONE) Container & B/L Tracking",
+                "subtitle": "Track by B/L (ONEY...) or BIC container (ONEU, NYKU, MOLU, KKFU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://ecomm.one-line.com/one-ecom/manage-shipment/cargo-tracking"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-oney",
+          "label": "Copy SCAC ONEY",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "ONEY"
+        },
+        {
+          "id": "open-ocean-oney",
+          "label": "Track on ONE",
+          "type": "open_url",
+          "target": "https://ecomm.one-line.com/one-ecom/manage-shipment/cargo-tracking"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-eglv",
+      "entityKey": "ocean-carrier:EGLV",
+      "title": "Evergreen Line (EGLV)",
+      "subtitle": "SCAC EGLV \u00b7 Ocean Alliance \u00b7 Taoyuan, TW",
+      "description": "Evergreen Line (SCAC: EGLV, BIC container prefixes: EGLV, EMCU, EGHU, EISU). Ocean Alliance member headquartered in Taoyuan, TW.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "eglv",
+        "evergreen",
+        "eglv",
+        "emcu",
+        "eghu",
+        "eisu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC EGLV",
+          "tone": "amber"
+        },
+        {
+          "label": "EGLV",
+          "tone": "mono"
+        },
+        {
+          "label": "Ocean Alliance",
+          "tone": "green"
+        }
+      ],
+      "data": {
+        "scac": "EGLV",
+        "carrierName": "Evergreen Line",
+        "shortName": "Evergreen",
+        "bicPrefixes": "EGLV, EMCU, EGHU, EISU",
+        "alliance": "Ocean Alliance",
+        "headquarters": "Taoyuan, TW",
+        "trackingUrl": "https://ct.shipmentlink.com/servlet/TDB1_CargoTracking.do"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-eglv-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Evergreen",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Evergreen Line Container & B/L Tracking",
+                "subtitle": "Track by B/L (EGLV...) or BIC container (EGLV, EMCU, EGHU, EISU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://ct.shipmentlink.com/servlet/TDB1_CargoTracking.do"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-eglv",
+          "label": "Copy SCAC EGLV",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "EGLV"
+        },
+        {
+          "id": "open-ocean-eglv",
+          "label": "Track on Evergreen",
+          "type": "open_url",
+          "target": "https://ct.shipmentlink.com/servlet/TDB1_CargoTracking.do"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-hdmu",
+      "entityKey": "ocean-carrier:HDMU",
+      "title": "HMM (Hyundai Merchant Marine) (HDMU)",
+      "subtitle": "SCAC HDMU \u00b7 Premier Alliance \u00b7 Seoul, KR",
+      "description": "HMM (Hyundai Merchant Marine) (SCAC: HDMU, BIC container prefixes: HDMU, HMMU). Premier Alliance member headquartered in Seoul, KR.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "hdmu",
+        "hmm",
+        "hdmu",
+        "hmmu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC HDMU",
+          "tone": "amber"
+        },
+        {
+          "label": "HDMU",
+          "tone": "mono"
+        },
+        {
+          "label": "Premier Alliance",
+          "tone": "green"
+        }
+      ],
+      "data": {
+        "scac": "HDMU",
+        "carrierName": "HMM (Hyundai Merchant Marine)",
+        "shortName": "HMM",
+        "bicPrefixes": "HDMU, HMMU",
+        "alliance": "Premier Alliance",
+        "headquarters": "Seoul, KR",
+        "trackingUrl": "https://www.hmm21.com/e-service/general/trackNTrace/TrackNTrace.do"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-hdmu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "HMM",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "HMM (Hyundai Merchant Marine) Container & B/L Tracking",
+                "subtitle": "Track by B/L (HDMU...) or BIC container (HDMU, HMMU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.hmm21.com/e-service/general/trackNTrace/TrackNTrace.do"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-hdmu",
+          "label": "Copy SCAC HDMU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "HDMU"
+        },
+        {
+          "id": "open-ocean-hdmu",
+          "label": "Track on HMM",
+          "type": "open_url",
+          "target": "https://www.hmm21.com/e-service/general/trackNTrace/TrackNTrace.do"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-ymlu",
+      "entityKey": "ocean-carrier:YMLU",
+      "title": "Yang Ming Marine Transport (YMLU)",
+      "subtitle": "SCAC YMLU \u00b7 Premier Alliance \u00b7 Keelung, TW",
+      "description": "Yang Ming Marine Transport (SCAC: YMLU, BIC container prefixes: YMLU, YMMU). Premier Alliance member headquartered in Keelung, TW.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "ymlu",
+        "yang ming",
+        "ymlu",
+        "ymmu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC YMLU",
+          "tone": "amber"
+        },
+        {
+          "label": "YMLU",
+          "tone": "mono"
+        },
+        {
+          "label": "Premier Alliance",
+          "tone": "green"
+        }
+      ],
+      "data": {
+        "scac": "YMLU",
+        "carrierName": "Yang Ming Marine Transport",
+        "shortName": "Yang Ming",
+        "bicPrefixes": "YMLU, YMMU",
+        "alliance": "Premier Alliance",
+        "headquarters": "Keelung, TW",
+        "trackingUrl": "https://www.yangming.com/e-service/track_trace/track_trace_cargo_tracking.aspx"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-ymlu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Yang Ming",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Yang Ming Marine Transport Container & B/L Tracking",
+                "subtitle": "Track by B/L (YMLU...) or BIC container (YMLU, YMMU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.yangming.com/e-service/track_trace/track_trace_cargo_tracking.aspx"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-ymlu",
+          "label": "Copy SCAC YMLU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "YMLU"
+        },
+        {
+          "id": "open-ocean-ymlu",
+          "label": "Track on Yang Ming",
+          "type": "open_url",
+          "target": "https://www.yangming.com/e-service/track_trace/track_trace_cargo_tracking.aspx"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-zimu",
+      "entityKey": "ocean-carrier:ZIMU",
+      "title": "ZIM Integrated Shipping (ZIMU)",
+      "subtitle": "SCAC ZIMU \u00b7 Independent \u00b7 Haifa, IL",
+      "description": "ZIM Integrated Shipping (SCAC: ZIMU, BIC container prefixes: ZIMU, ZCSU). Independent member headquartered in Haifa, IL.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "zimu",
+        "zim",
+        "zimu",
+        "zcsu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC ZIMU",
+          "tone": "amber"
+        },
+        {
+          "label": "ZIMU",
+          "tone": "mono"
+        },
+        {
+          "label": "Independent",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "ZIMU",
+        "carrierName": "ZIM Integrated Shipping",
+        "shortName": "ZIM",
+        "bicPrefixes": "ZIMU, ZCSU",
+        "alliance": "Independent",
+        "headquarters": "Haifa, IL",
+        "trackingUrl": "https://www.zim.com/tools/track-a-shipment"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-zimu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "ZIM",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "ZIM Integrated Shipping Container & B/L Tracking",
+                "subtitle": "Track by B/L (ZIMU...) or BIC container (ZIMU, ZCSU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.zim.com/tools/track-a-shipment"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-zimu",
+          "label": "Copy SCAC ZIMU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "ZIMU"
+        },
+        {
+          "id": "open-ocean-zimu",
+          "label": "Track on ZIM",
+          "type": "open_url",
+          "target": "https://www.zim.com/tools/track-a-shipment"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-oolu",
+      "entityKey": "ocean-carrier:OOLU",
+      "title": "OOCL (Orient Overseas Container Line) (OOLU)",
+      "subtitle": "SCAC OOLU \u00b7 Ocean Alliance \u00b7 Hong Kong, HK",
+      "description": "OOCL (Orient Overseas Container Line) (SCAC: OOLU, BIC container prefixes: OOLU, OOCU). Ocean Alliance member headquartered in Hong Kong, HK.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "oolu",
+        "oocl",
+        "oolu",
+        "oocu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC OOLU",
+          "tone": "amber"
+        },
+        {
+          "label": "OOLU",
+          "tone": "mono"
+        },
+        {
+          "label": "Ocean Alliance",
+          "tone": "green"
+        }
+      ],
+      "data": {
+        "scac": "OOLU",
+        "carrierName": "OOCL (Orient Overseas Container Line)",
+        "shortName": "OOCL",
+        "bicPrefixes": "OOLU, OOCU",
+        "alliance": "Ocean Alliance",
+        "headquarters": "Hong Kong, HK",
+        "trackingUrl": "https://www.oocl.com/eng/ourservices/eservices/cargotracking/Pages/cargotracking.aspx"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-oolu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "OOCL",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "OOCL (Orient Overseas Container Line) Container & B/L Tracking",
+                "subtitle": "Track by B/L (OOLU...) or BIC container (OOLU, OOCU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.oocl.com/eng/ourservices/eservices/cargotracking/Pages/cargotracking.aspx"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-oolu",
+          "label": "Copy SCAC OOLU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "OOLU"
+        },
+        {
+          "id": "open-ocean-oolu",
+          "label": "Track on OOCL",
+          "type": "open_url",
+          "target": "https://www.oocl.com/eng/ourservices/eservices/cargotracking/Pages/cargotracking.aspx"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-whlc",
+      "entityKey": "ocean-carrier:WHLC",
+      "title": "Wan Hai Lines (WHLC)",
+      "subtitle": "SCAC WHLC \u00b7 Independent \u00b7 Taipei, TW",
+      "description": "Wan Hai Lines (SCAC: WHLC, BIC container prefixes: WHLU, WHLC). Independent member headquartered in Taipei, TW.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "whlc",
+        "wan hai",
+        "whlu",
+        "whlc"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC WHLC",
+          "tone": "amber"
+        },
+        {
+          "label": "WHLU",
+          "tone": "mono"
+        },
+        {
+          "label": "Independent",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "WHLC",
+        "carrierName": "Wan Hai Lines",
+        "shortName": "Wan Hai",
+        "bicPrefixes": "WHLU, WHLC",
+        "alliance": "Independent",
+        "headquarters": "Taipei, TW",
+        "trackingUrl": "https://www.wanhai.com/views/cargoTrack/CargoTrack.xhtml"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-whlc-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Wan Hai",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Wan Hai Lines Container & B/L Tracking",
+                "subtitle": "Track by B/L (WHLC...) or BIC container (WHLU, WHLC)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.wanhai.com/views/cargoTrack/CargoTrack.xhtml"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-whlc",
+          "label": "Copy SCAC WHLC",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "WHLC"
+        },
+        {
+          "id": "open-ocean-whlc",
+          "label": "Track on Wan Hai",
+          "type": "open_url",
+          "target": "https://www.wanhai.com/views/cargoTrack/CargoTrack.xhtml"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-pilu",
+      "entityKey": "ocean-carrier:PILU",
+      "title": "Pacific International Lines (PIL) (PILU)",
+      "subtitle": "SCAC PILU \u00b7 Independent \u00b7 Singapore, SG",
+      "description": "Pacific International Lines (PIL) (SCAC: PILU, BIC container prefixes: PCIU, PILU). Independent member headquartered in Singapore, SG.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "pilu",
+        "pil",
+        "pciu",
+        "pilu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC PILU",
+          "tone": "amber"
+        },
+        {
+          "label": "PCIU",
+          "tone": "mono"
+        },
+        {
+          "label": "Independent",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "PILU",
+        "carrierName": "Pacific International Lines (PIL)",
+        "shortName": "PIL",
+        "bicPrefixes": "PCIU, PILU",
+        "alliance": "Independent",
+        "headquarters": "Singapore, SG",
+        "trackingUrl": "https://www.pilship.com/en-our-track-and-trace-pil-pacific-international-lines/120.html"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-pilu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "PIL",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Pacific International Lines (PIL) Container & B/L Tracking",
+                "subtitle": "Track by B/L (PILU...) or BIC container (PCIU, PILU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.pilship.com/en-our-track-and-trace-pil-pacific-international-lines/120.html"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-pilu",
+          "label": "Copy SCAC PILU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "PILU"
+        },
+        {
+          "id": "open-ocean-pilu",
+          "label": "Track on PIL",
+          "type": "open_url",
+          "target": "https://www.pilship.com/en-our-track-and-trace-pil-pacific-international-lines/120.html"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-mats",
+      "entityKey": "ocean-carrier:MATS",
+      "title": "Matson Navigation (MATS)",
+      "subtitle": "SCAC MATS \u00b7 Trans-Pacific Express \u00b7 Honolulu, US",
+      "description": "Matson Navigation (SCAC: MATS, BIC container prefixes: MATU, MATS). Trans-Pacific Express member headquartered in Honolulu, US.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "mats",
+        "matson",
+        "matu",
+        "mats"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC MATS",
+          "tone": "amber"
+        },
+        {
+          "label": "MATU",
+          "tone": "mono"
+        },
+        {
+          "label": "Trans-Pacific Express",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "MATS",
+        "carrierName": "Matson Navigation",
+        "shortName": "Matson",
+        "bicPrefixes": "MATU, MATS",
+        "alliance": "Trans-Pacific Express",
+        "headquarters": "Honolulu, US",
+        "trackingUrl": "https://www.matson.com/shipment-tracking.html"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-mats-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Matson",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Matson Navigation Container & B/L Tracking",
+                "subtitle": "Track by B/L (MATS...) or BIC container (MATU, MATS)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.matson.com/shipment-tracking.html"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-mats",
+          "label": "Copy SCAC MATS",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "MATS"
+        },
+        {
+          "id": "open-ocean-mats",
+          "label": "Track on Matson",
+          "type": "open_url",
+          "target": "https://www.matson.com/shipment-tracking.html"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-smlm",
+      "entityKey": "ocean-carrier:SMLM",
+      "title": "SM Line (SMLM)",
+      "subtitle": "SCAC SMLM \u00b7 Independent \u00b7 Seoul, KR",
+      "description": "SM Line (SCAC: SMLM, BIC container prefixes: SMLU, SMLM). Independent member headquartered in Seoul, KR.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "smlm",
+        "sm line",
+        "smlu",
+        "smlm"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC SMLM",
+          "tone": "amber"
+        },
+        {
+          "label": "SMLU",
+          "tone": "mono"
+        },
+        {
+          "label": "Independent",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "SMLM",
+        "carrierName": "SM Line",
+        "shortName": "SM Line",
+        "bicPrefixes": "SMLU, SMLM",
+        "alliance": "Independent",
+        "headquarters": "Seoul, KR",
+        "trackingUrl": "https://esvc.smlines.com/smline/CUP_HOM_3301.do"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-smlm-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "SM Line",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "SM Line Container & B/L Tracking",
+                "subtitle": "Track by B/L (SMLM...) or BIC container (SMLU, SMLM)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://esvc.smlines.com/smline/CUP_HOM_3301.do"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-smlm",
+          "label": "Copy SCAC SMLM",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "SMLM"
+        },
+        {
+          "id": "open-ocean-smlm",
+          "label": "Track on SM Line",
+          "type": "open_url",
+          "target": "https://esvc.smlines.com/smline/CUP_HOM_3301.do"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-kmtu",
+      "entityKey": "ocean-carrier:KMTU",
+      "title": "KMTC (Korea Marine Transport) (KMTU)",
+      "subtitle": "SCAC KMTU \u00b7 Intra-Asia \u00b7 Seoul, KR",
+      "description": "KMTC (Korea Marine Transport) (SCAC: KMTU, BIC container prefixes: KMTU). Intra-Asia member headquartered in Seoul, KR.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "kmtu",
+        "kmtc",
+        "kmtu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC KMTU",
+          "tone": "amber"
+        },
+        {
+          "label": "KMTU",
+          "tone": "mono"
+        },
+        {
+          "label": "Intra-Asia",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "KMTU",
+        "carrierName": "KMTC (Korea Marine Transport)",
+        "shortName": "KMTC",
+        "bicPrefixes": "KMTU",
+        "alliance": "Intra-Asia",
+        "headquarters": "Seoul, KR",
+        "trackingUrl": "https://www.ekmtc.com/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-kmtu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "KMTC",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "KMTC (Korea Marine Transport) Container & B/L Tracking",
+                "subtitle": "Track by B/L (KMTU...) or BIC container (KMTU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.ekmtc.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-kmtu",
+          "label": "Copy SCAC KMTU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "KMTU"
+        },
+        {
+          "id": "open-ocean-kmtu",
+          "label": "Track on KMTC",
+          "type": "open_url",
+          "target": "https://www.ekmtc.com/"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-sitc",
+      "entityKey": "ocean-carrier:SITC",
+      "title": "SITC Container Lines (SITC)",
+      "subtitle": "SCAC SITC \u00b7 Intra-Asia \u00b7 Hong Kong, HK",
+      "description": "SITC Container Lines (SCAC: SITC, BIC container prefixes: SITU, SITC). Intra-Asia member headquartered in Hong Kong, HK.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "sitc",
+        "sitc",
+        "situ",
+        "sitc"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC SITC",
+          "tone": "amber"
+        },
+        {
+          "label": "SITU",
+          "tone": "mono"
+        },
+        {
+          "label": "Intra-Asia",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "SITC",
+        "carrierName": "SITC Container Lines",
+        "shortName": "SITC",
+        "bicPrefixes": "SITU, SITC",
+        "alliance": "Intra-Asia",
+        "headquarters": "Hong Kong, HK",
+        "trackingUrl": "https://www.sitcline.com/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-sitc-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "SITC",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "SITC Container Lines Container & B/L Tracking",
+                "subtitle": "Track by B/L (SITC...) or BIC container (SITU, SITC)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.sitcline.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-sitc",
+          "label": "Copy SCAC SITC",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "SITC"
+        },
+        {
+          "id": "open-ocean-sitc",
+          "label": "Track on SITC",
+          "type": "open_url",
+          "target": "https://www.sitcline.com/"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-aplu",
+      "entityKey": "ocean-carrier:APLU",
+      "title": "APL (CMA CGM Group) (APLU)",
+      "subtitle": "SCAC APLU \u00b7 Ocean Alliance \u00b7 Singapore, SG",
+      "description": "APL (CMA CGM Group) (SCAC: APLU, BIC container prefixes: APLU, APZU). Ocean Alliance member headquartered in Singapore, SG.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "aplu",
+        "apl",
+        "aplu",
+        "apzu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC APLU",
+          "tone": "amber"
+        },
+        {
+          "label": "APLU",
+          "tone": "mono"
+        },
+        {
+          "label": "Ocean Alliance",
+          "tone": "green"
+        }
+      ],
+      "data": {
+        "scac": "APLU",
+        "carrierName": "APL (CMA CGM Group)",
+        "shortName": "APL",
+        "bicPrefixes": "APLU, APZU",
+        "alliance": "Ocean Alliance",
+        "headquarters": "Singapore, SG",
+        "trackingUrl": "https://www.apl.com/ebusiness/tracking"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-aplu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "APL",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "APL (CMA CGM Group) Container & B/L Tracking",
+                "subtitle": "Track by B/L (APLU...) or BIC container (APLU, APZU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.apl.com/ebusiness/tracking"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-aplu",
+          "label": "Copy SCAC APLU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "APLU"
+        },
+        {
+          "id": "open-ocean-aplu",
+          "label": "Track on APL",
+          "type": "open_url",
+          "target": "https://www.apl.com/ebusiness/tracking"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-sudu",
+      "entityKey": "ocean-carrier:SUDU",
+      "title": "Hamburg S\u00fcd (Maersk) (SUDU)",
+      "subtitle": "SCAC SUDU \u00b7 Gemini Cooperation \u00b7 Hamburg, DE",
+      "description": "Hamburg S\u00fcd (Maersk) (SCAC: SUDU, BIC container prefixes: SUDU). Gemini Cooperation member headquartered in Hamburg, DE.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "sudu",
+        "hamburg s\u00fcd",
+        "sudu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC SUDU",
+          "tone": "amber"
+        },
+        {
+          "label": "SUDU",
+          "tone": "mono"
+        },
+        {
+          "label": "Gemini Cooperation",
+          "tone": "green"
+        }
+      ],
+      "data": {
+        "scac": "SUDU",
+        "carrierName": "Hamburg S\u00fcd (Maersk)",
+        "shortName": "Hamburg S\u00fcd",
+        "bicPrefixes": "SUDU",
+        "alliance": "Gemini Cooperation",
+        "headquarters": "Hamburg, DE",
+        "trackingUrl": "https://www.maersk.com/tracking/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-sudu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Hamburg S\u00fcd",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Hamburg S\u00fcd (Maersk) Container & B/L Tracking",
+                "subtitle": "Track by B/L (SUDU...) or BIC container (SUDU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.maersk.com/tracking/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-sudu",
+          "label": "Copy SCAC SUDU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "SUDU"
+        },
+        {
+          "id": "open-ocean-sudu",
+          "label": "Track on Hamburg S\u00fcd",
+          "type": "open_url",
+          "target": "https://www.maersk.com/tracking/"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-sejj",
+      "entityKey": "ocean-carrier:SEJJ",
+      "title": "Sealand (Maersk Regional) (SEJJ)",
+      "subtitle": "SCAC SEJJ \u00b7 Regional Feeder \u00b7 Miramar, US",
+      "description": "Sealand (Maersk Regional) (SCAC: SEJJ, BIC container prefixes: SEAU, MCPU). Regional Feeder member headquartered in Miramar, US.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "sejj",
+        "sealand",
+        "seau",
+        "mcpu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC SEJJ",
+          "tone": "amber"
+        },
+        {
+          "label": "SEAU",
+          "tone": "mono"
+        },
+        {
+          "label": "Regional Feeder",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "SEJJ",
+        "carrierName": "Sealand (Maersk Regional)",
+        "shortName": "Sealand",
+        "bicPrefixes": "SEAU, MCPU",
+        "alliance": "Regional Feeder",
+        "headquarters": "Miramar, US",
+        "trackingUrl": "https://www.maersk.com/tracking/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-sejj-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Sealand",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Sealand (Maersk Regional) Container & B/L Tracking",
+                "subtitle": "Track by B/L (SEJJ...) or BIC container (SEAU, MCPU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.maersk.com/tracking/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-sejj",
+          "label": "Copy SCAC SEJJ",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "SEJJ"
+        },
+        {
+          "id": "open-ocean-sejj",
+          "label": "Track on Sealand",
+          "type": "open_url",
+          "target": "https://www.maersk.com/tracking/"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-aclu",
+      "entityKey": "ocean-carrier:ACLU",
+      "title": "Atlantic Container Line (ACL) (ACLU)",
+      "subtitle": "SCAC ACLU \u00b7 North Atlantic RoRo \u00b7 Westfield, US",
+      "description": "Atlantic Container Line (ACL) (SCAC: ACLU, BIC container prefixes: ACLU). North Atlantic RoRo member headquartered in Westfield, US.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "aclu",
+        "acl",
+        "aclu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC ACLU",
+          "tone": "amber"
+        },
+        {
+          "label": "ACLU",
+          "tone": "mono"
+        },
+        {
+          "label": "North Atlantic RoRo",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "ACLU",
+        "carrierName": "Atlantic Container Line (ACL)",
+        "shortName": "ACL",
+        "bicPrefixes": "ACLU",
+        "alliance": "North Atlantic RoRo",
+        "headquarters": "Westfield, US",
+        "trackingUrl": "https://www.aclcargo.com/trackCargo.php"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-aclu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "ACL",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Atlantic Container Line (ACL) Container & B/L Tracking",
+                "subtitle": "Track by B/L (ACLU...) or BIC container (ACLU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.aclcargo.com/trackCargo.php"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-aclu",
+          "label": "Copy SCAC ACLU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "ACLU"
+        },
+        {
+          "id": "open-ocean-aclu",
+          "label": "Track on ACL",
+          "type": "open_url",
+          "target": "https://www.aclcargo.com/trackCargo.php"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-crow",
+      "entityKey": "ocean-carrier:CROW",
+      "title": "Crowley Maritime (CROW)",
+      "subtitle": "SCAC CROW \u00b7 Americas / Caribbean \u00b7 Jacksonville, US",
+      "description": "Crowley Maritime (SCAC: CROW, BIC container prefixes: CMCU, CROW). Americas / Caribbean member headquartered in Jacksonville, US.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "crow",
+        "crowley",
+        "cmcu",
+        "crow"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC CROW",
+          "tone": "amber"
+        },
+        {
+          "label": "CMCU",
+          "tone": "mono"
+        },
+        {
+          "label": "Americas / Caribbean",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "CROW",
+        "carrierName": "Crowley Maritime",
+        "shortName": "Crowley",
+        "bicPrefixes": "CMCU, CROW",
+        "alliance": "Americas / Caribbean",
+        "headquarters": "Jacksonville, US",
+        "trackingUrl": "https://www.crowley.com/logistics/shipment-tracking/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-crow-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Crowley",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Crowley Maritime Container & B/L Tracking",
+                "subtitle": "Track by B/L (CROW...) or BIC container (CMCU, CROW)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.crowley.com/logistics/shipment-tracking/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-crow",
+          "label": "Copy SCAC CROW",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "CROW"
+        },
+        {
+          "id": "open-ocean-crow",
+          "label": "Track on Crowley",
+          "type": "open_url",
+          "target": "https://www.crowley.com/logistics/shipment-tracking/"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-tote",
+      "entityKey": "ocean-carrier:TOTE",
+      "title": "TOTE Maritime (TOTE)",
+      "subtitle": "SCAC TOTE \u00b7 US Domestic Jones Act \u00b7 Jacksonville, US",
+      "description": "TOTE Maritime (SCAC: TOTE, BIC container prefixes: TOTU, TOTE). US Domestic Jones Act member headquartered in Jacksonville, US.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "tote",
+        "tote",
+        "totu",
+        "tote"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC TOTE",
+          "tone": "amber"
+        },
+        {
+          "label": "TOTU",
+          "tone": "mono"
+        },
+        {
+          "label": "US Domestic Jones Act",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "TOTE",
+        "carrierName": "TOTE Maritime",
+        "shortName": "TOTE",
+        "bicPrefixes": "TOTU, TOTE",
+        "alliance": "US Domestic Jones Act",
+        "headquarters": "Jacksonville, US",
+        "trackingUrl": "https://www.totemaritime.com/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-tote-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "TOTE",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "TOTE Maritime Container & B/L Tracking",
+                "subtitle": "Track by B/L (TOTE...) or BIC container (TOTU, TOTE)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.totemaritime.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-tote",
+          "label": "Copy SCAC TOTE",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "TOTE"
+        },
+        {
+          "id": "open-ocean-tote",
+          "label": "Track on TOTE",
+          "type": "open_url",
+          "target": "https://www.totemaritime.com/"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-wwll",
+      "entityKey": "ocean-carrier:WWLL",
+      "title": "Wallenius Wilhelmsen (WWLL)",
+      "subtitle": "SCAC WWLL \u00b7 RoRo / Automotive \u00b7 Lysaker, NO",
+      "description": "Wallenius Wilhelmsen (SCAC: WWLL, BIC container prefixes: WWLU). RoRo / Automotive member headquartered in Lysaker, NO.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "wwll",
+        "ww ocean",
+        "wwlu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC WWLL",
+          "tone": "amber"
+        },
+        {
+          "label": "WWLU",
+          "tone": "mono"
+        },
+        {
+          "label": "RoRo / Automotive",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "WWLL",
+        "carrierName": "Wallenius Wilhelmsen",
+        "shortName": "WW Ocean",
+        "bicPrefixes": "WWLU",
+        "alliance": "RoRo / Automotive",
+        "headquarters": "Lysaker, NO",
+        "trackingUrl": "https://www.walleniuswilhelmsen.com/track-trace"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-wwll-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "WW Ocean",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Wallenius Wilhelmsen Container & B/L Tracking",
+                "subtitle": "Track by B/L (WWLL...) or BIC container (WWLU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.walleniuswilhelmsen.com/track-trace"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-wwll",
+          "label": "Copy SCAC WWLL",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "WWLL"
+        },
+        {
+          "id": "open-ocean-wwll",
+          "label": "Track on WW Ocean",
+          "type": "open_url",
+          "target": "https://www.walleniuswilhelmsen.com/track-trace"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-euko",
+      "entityKey": "ocean-carrier:EUKO",
+      "title": "EUKOR Car Carriers (EUKO)",
+      "subtitle": "SCAC EUKO \u00b7 RoRo / Automotive \u00b7 Seoul, KR",
+      "description": "EUKOR Car Carriers (SCAC: EUKO, BIC container prefixes: EUKO). RoRo / Automotive member headquartered in Seoul, KR.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "euko",
+        "eukor",
+        "euko"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC EUKO",
+          "tone": "amber"
+        },
+        {
+          "label": "EUKO",
+          "tone": "mono"
+        },
+        {
+          "label": "RoRo / Automotive",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "EUKO",
+        "carrierName": "EUKOR Car Carriers",
+        "shortName": "EUKOR",
+        "bicPrefixes": "EUKO",
+        "alliance": "RoRo / Automotive",
+        "headquarters": "Seoul, KR",
+        "trackingUrl": "https://www.eukor.com/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-euko-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "EUKOR",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "EUKOR Car Carriers Container & B/L Tracking",
+                "subtitle": "Track by B/L (EUKO...) or BIC container (EUKO)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.eukor.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-euko",
+          "label": "Copy SCAC EUKO",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "EUKO"
+        },
+        {
+          "id": "open-ocean-euko",
+          "label": "Track on EUKOR",
+          "type": "open_url",
+          "target": "https://www.eukor.com/"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-hoeg",
+      "entityKey": "ocean-carrier:HOEG",
+      "title": "H\u00f6egh Autoliners (HOEG)",
+      "subtitle": "SCAC HOEG \u00b7 RoRo / Automotive \u00b7 Oslo, NO",
+      "description": "H\u00f6egh Autoliners (SCAC: HOEG, BIC container prefixes: HOEG). RoRo / Automotive member headquartered in Oslo, NO.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "hoeg",
+        "h\u00f6egh",
+        "hoeg"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC HOEG",
+          "tone": "amber"
+        },
+        {
+          "label": "HOEG",
+          "tone": "mono"
+        },
+        {
+          "label": "RoRo / Automotive",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "HOEG",
+        "carrierName": "H\u00f6egh Autoliners",
+        "shortName": "H\u00f6egh",
+        "bicPrefixes": "HOEG",
+        "alliance": "RoRo / Automotive",
+        "headquarters": "Oslo, NO",
+        "trackingUrl": "https://www.hoeghautoliners.com/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-hoeg-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "H\u00f6egh",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "H\u00f6egh Autoliners Container & B/L Tracking",
+                "subtitle": "Track by B/L (HOEG...) or BIC container (HOEG)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.hoeghautoliners.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-hoeg",
+          "label": "Copy SCAC HOEG",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "HOEG"
+        },
+        {
+          "id": "open-ocean-hoeg",
+          "label": "Track on H\u00f6egh",
+          "type": "open_url",
+          "target": "https://www.hoeghautoliners.com/"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-arku",
+      "entityKey": "ocean-carrier:ARKU",
+      "title": "Arkas Line (ARKU)",
+      "subtitle": "SCAC ARKU \u00b7 Mediterranean / Black Sea \u00b7 Izmir, TR",
+      "description": "Arkas Line (SCAC: ARKU, BIC container prefixes: ARKU). Mediterranean / Black Sea member headquartered in Izmir, TR.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "arku",
+        "arkas",
+        "arku"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC ARKU",
+          "tone": "amber"
+        },
+        {
+          "label": "ARKU",
+          "tone": "mono"
+        },
+        {
+          "label": "Mediterranean / Black Sea",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "ARKU",
+        "carrierName": "Arkas Line",
+        "shortName": "Arkas",
+        "bicPrefixes": "ARKU",
+        "alliance": "Mediterranean / Black Sea",
+        "headquarters": "Izmir, TR",
+        "trackingUrl": "https://www.arkasline.com.tr/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-arku-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Arkas",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Arkas Line Container & B/L Tracking",
+                "subtitle": "Track by B/L (ARKU...) or BIC container (ARKU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.arkasline.com.tr/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-arku",
+          "label": "Copy SCAC ARKU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "ARKU"
+        },
+        {
+          "id": "open-ocean-arku",
+          "label": "Track on Arkas",
+          "type": "open_url",
+          "target": "https://www.arkasline.com.tr/"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-griu",
+      "entityKey": "ocean-carrier:GRIU",
+      "title": "Grimaldi Lines (GRIU)",
+      "subtitle": "SCAC GRIU \u00b7 RoRo / Short Sea \u00b7 Naples, IT",
+      "description": "Grimaldi Lines (SCAC: GRIU, BIC container prefixes: GRIU). RoRo / Short Sea member headquartered in Naples, IT.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "griu",
+        "grimaldi",
+        "griu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC GRIU",
+          "tone": "amber"
+        },
+        {
+          "label": "GRIU",
+          "tone": "mono"
+        },
+        {
+          "label": "RoRo / Short Sea",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "GRIU",
+        "carrierName": "Grimaldi Lines",
+        "shortName": "Grimaldi",
+        "bicPrefixes": "GRIU",
+        "alliance": "RoRo / Short Sea",
+        "headquarters": "Naples, IT",
+        "trackingUrl": "https://www.grimaldi.napoli.it/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-griu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Grimaldi",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Grimaldi Lines Container & B/L Tracking",
+                "subtitle": "Track by B/L (GRIU...) or BIC container (GRIU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.grimaldi.napoli.it/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-griu",
+          "label": "Copy SCAC GRIU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "GRIU"
+        },
+        {
+          "id": "open-ocean-griu",
+          "label": "Track on Grimaldi",
+          "type": "open_url",
+          "target": "https://www.grimaldi.napoli.it/"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-tslu",
+      "entityKey": "ocean-carrier:TSLU",
+      "title": "T.S. Lines (TSLU)",
+      "subtitle": "SCAC TSLU \u00b7 Intra-Asia / Oceania \u00b7 Taipei, TW",
+      "description": "T.S. Lines (SCAC: TSLU, BIC container prefixes: TSLU). Intra-Asia / Oceania member headquartered in Taipei, TW.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "tslu",
+        "t.s. lines",
+        "tslu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC TSLU",
+          "tone": "amber"
+        },
+        {
+          "label": "TSLU",
+          "tone": "mono"
+        },
+        {
+          "label": "Intra-Asia / Oceania",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "TSLU",
+        "carrierName": "T.S. Lines",
+        "shortName": "T.S. Lines",
+        "bicPrefixes": "TSLU",
+        "alliance": "Intra-Asia / Oceania",
+        "headquarters": "Taipei, TW",
+        "trackingUrl": "https://www.tslines.com/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-tslu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "T.S. Lines",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "T.S. Lines Container & B/L Tracking",
+                "subtitle": "Track by B/L (TSLU...) or BIC container (TSLU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.tslines.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-tslu",
+          "label": "Copy SCAC TSLU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "TSLU"
+        },
+        {
+          "id": "open-ocean-tslu",
+          "label": "Track on T.S. Lines",
+          "type": "open_url",
+          "target": "https://www.tslines.com/"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-xclu",
+      "entityKey": "ocean-carrier:XCLU",
+      "title": "X-Press Feeders (XCLU)",
+      "subtitle": "SCAC XCLU \u00b7 Global Common Feeder \u00b7 Singapore, SG",
+      "description": "X-Press Feeders (SCAC: XCLU, BIC container prefixes: XCLU). Global Common Feeder member headquartered in Singapore, SG.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "xclu",
+        "x-press",
+        "xclu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC XCLU",
+          "tone": "amber"
+        },
+        {
+          "label": "XCLU",
+          "tone": "mono"
+        },
+        {
+          "label": "Global Common Feeder",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "XCLU",
+        "carrierName": "X-Press Feeders",
+        "shortName": "X-Press",
+        "bicPrefixes": "XCLU",
+        "alliance": "Global Common Feeder",
+        "headquarters": "Singapore, SG",
+        "trackingUrl": "https://www.x-pressfeeders.com/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-xclu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "X-Press",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "X-Press Feeders Container & B/L Tracking",
+                "subtitle": "Track by B/L (XCLU...) or BIC container (XCLU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.x-pressfeeders.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-xclu",
+          "label": "Copy SCAC XCLU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "XCLU"
+        },
+        {
+          "id": "open-ocean-xclu",
+          "label": "Track on X-Press",
+          "type": "open_url",
+          "target": "https://www.x-pressfeeders.com/"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-unfe",
+      "entityKey": "ocean-carrier:UNFE",
+      "title": "Unifeeder (UNFE)",
+      "subtitle": "SCAC UNFE \u00b7 Europe / Med Feeder \u00b7 Aarhus, DK",
+      "description": "Unifeeder (SCAC: UNFE, BIC container prefixes: UNFU). Europe / Med Feeder member headquartered in Aarhus, DK.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "unfe",
+        "unifeeder",
+        "unfu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC UNFE",
+          "tone": "amber"
+        },
+        {
+          "label": "UNFU",
+          "tone": "mono"
+        },
+        {
+          "label": "Europe / Med Feeder",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "UNFE",
+        "carrierName": "Unifeeder",
+        "shortName": "Unifeeder",
+        "bicPrefixes": "UNFU",
+        "alliance": "Europe / Med Feeder",
+        "headquarters": "Aarhus, DK",
+        "trackingUrl": "https://www.unifeeder.com/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-unfe-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Unifeeder",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Unifeeder Container & B/L Tracking",
+                "subtitle": "Track by B/L (UNFE...) or BIC container (UNFU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.unifeeder.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-unfe",
+          "label": "Copy SCAC UNFE",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "UNFE"
+        },
+        {
+          "id": "open-ocean-unfe",
+          "label": "Track on Unifeeder",
+          "type": "open_url",
+          "target": "https://www.unifeeder.com/"
+        }
+      ]
+    },
+    {
+      "id": "ocean-carrier-baxu",
+      "entityKey": "ocean-carrier:BAXU",
+      "title": "Bahri Logistics (BAXU)",
+      "subtitle": "SCAC BAXU \u00b7 Middle East / Breakbulk \u00b7 Riyadh, SA",
+      "description": "Bahri Logistics (SCAC: BAXU, BIC container prefixes: BAXU). Middle East / Breakbulk member headquartered in Riyadh, SA.",
+      "collection": "ocean-carriers",
+      "template": "kv-grid",
+      "icon": "\ud83d\udea2",
+      "tags": [
+        "ocean",
+        "carrier",
+        "scac",
+        "steamship",
+        "line",
+        "baxu",
+        "bahri",
+        "baxu"
+      ],
+      "modifiers": [
+        "scac",
+        "ocean"
+      ],
+      "chips": [
+        {
+          "label": "SCAC BAXU",
+          "tone": "amber"
+        },
+        {
+          "label": "BAXU",
+          "tone": "mono"
+        },
+        {
+          "label": "Middle East / Breakbulk",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "scac": "BAXU",
+        "carrierName": "Bahri Logistics",
+        "shortName": "Bahri",
+        "bicPrefixes": "BAXU",
+        "alliance": "Middle East / Breakbulk",
+        "headquarters": "Riyadh, SA",
+        "trackingUrl": "https://www.bahri.sa/"
+      },
+      "children": [
+        {
+          "id": "ocean-carrier-baxu-tracking",
+          "title": "Carrier Tracking Links",
+          "collection": "ocean-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Bahri",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Bahri Logistics Container & B/L Tracking",
+                "subtitle": "Track by B/L (BAXU...) or BIC container (BAXU)",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.bahri.sa/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-scac-baxu",
+          "label": "Copy SCAC BAXU",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "BAXU"
+        },
+        {
+          "id": "open-ocean-baxu",
+          "label": "Track on Bahri",
+          "type": "open_url",
+          "target": "https://www.bahri.sa/"
+        }
+      ]
+    }
+  ]
+}

@@ -9,8 +9,6 @@ import (
 	"strings"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
-
-	"vex/internal/tui"
 )
 
 //go:embed all:frontend/dist
@@ -18,7 +16,6 @@ var embeddedFrontend embed.FS
 
 func main() {
 	mcpStdio := flag.Bool("mcp-stdio", false, "Run headless MCP JSON-RPC server over stdio (for Claude Desktop, Cursor, Copilot CLI, VS Code)")
-	tuiMode := flag.Bool("tui", false, "Run interactive Bubble Tea terminal UI")
 	dataDir := flag.String("data-dir", "", "Override base data directory (default ~/.vex)")
 	mcpAddrFlag := flag.String("mcp-addr", "", "Override HTTP MCP server address (default 127.0.0.1:17380; pass 'off' to disable)")
 	hotkeyFlag := flag.String("hotkey", "", "Override global shortcut accelerator (default Ctrl+Shift+B)")
@@ -36,29 +33,6 @@ func main() {
 
 		if err := backend.MCPHub.ServeStdio(); err != nil {
 			log.Fatalf("mcp stdio server: %v", err)
-		}
-		return
-	}
-
-	// 2. Interactive Terminal UI (--tui) mode via Bubble Tea.
-	if *tuiMode {
-		backend, err := InitBackend(*dataDir, false)
-		if err != nil {
-			log.Fatalf("init backend: %v", err)
-		}
-		defer backend.Close()
-
-		cfg := backend.Config()
-		if err := tui.Run(tui.Config{
-			AppName:          info.Name,
-			Edition:          info.Edition,
-			Version:          info.Version,
-			PinnedCategories: cfg.Prefs.PinnedCategories,
-			Search:           backend.Search,
-			Store:            backend.Store,
-			Runner:           backend.Runner,
-		}, nil, nil); err != nil {
-			log.Fatalf("tui error: %v", err)
 		}
 		return
 	}
@@ -109,10 +83,10 @@ func main() {
 
 	launcherWin := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            info.Name,
-		Width:            780,
-		Height:           540,
-		MinWidth:         640,
-		MinHeight:        420,
+		Width:            480,
+		Height:           680,
+		MinWidth:         420,
+		MinHeight:        480,
 		Frameless:        true,
 		AlwaysOnTop:      true,
 		Hidden:           cfg.Prefs.OnboardingCompleted,

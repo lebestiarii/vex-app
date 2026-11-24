@@ -26,9 +26,34 @@ func setupHubForTest(t *testing.T) (*HubServer, *indexer.Store, *search.Service,
 	ctx := context.Background()
 	dataDir := t.TempDir()
 
-	if err := indexer.SeedDefaultCollections(dataDir); err != nil {
-		t.Fatalf("SeedDefaultCollections: %v", err)
+	if err := indexer.EnsureDataDir(dataDir); err != nil {
+		t.Fatalf("EnsureDataDir: %v", err)
 	}
+	// Seed minimal fixture cards solely inside this test's temp directory
+	_, _ = indexer.SaveCollectionFile(dataDir, "shortcuts", []models.SearchCard{
+		{
+			ID:         "shortcuts-github",
+			Title:      "GitHub Dashboard",
+			Subtitle:   "Open GitHub repositories and pull requests",
+			Collection: "shortcuts",
+			Template:   models.TemplateAppShortcut,
+			Tags:       []string{"dev", "git"},
+			Modifiers:  []string{"gh"},
+			Actions:    []models.CardAction{{ID: "open", Label: "Open", Type: "open_url", Target: "https://github.com/{{arg1}}"}},
+		},
+	})
+	_, _ = indexer.SaveCollectionFile(dataDir, "devops", []models.SearchCard{
+		{
+			ID:         "devops-env-cheatsheet",
+			Title:      "Staging Cluster Endpoints",
+			Subtitle:   "Key-Value Reference Card",
+			Collection: "devops",
+			Template:   models.TemplateKeyValue,
+			Tags:       []string{"staging", "k8s", "ops"},
+			Data:       map[string]any{"cluster": "staging-us-west-2", "api_url": "https://api.staging.internal"},
+			Actions:    []models.CardAction{{ID: "copy-api", Label: "Copy API URL", Type: "copy", Target: "https://api.staging.internal"}},
+		},
+	})
 	store, err := indexer.OpenStore(":memory:")
 	if err != nil {
 		t.Fatalf("OpenStore: %v", err)
@@ -177,8 +202,8 @@ func TestHubServer_AllResourcesToolsAndPrompts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTools: %v", err)
 	}
-	if len(toolsRes.Tools) != 10 {
-		t.Fatalf("expected 10 MCP tools, got %d", len(toolsRes.Tools))
+	if len(toolsRes.Tools) != 19 {
+		t.Fatalf("expected 19 MCP tools, got %d", len(toolsRes.Tools))
 	}
 
 	// 4. get_card_schema
@@ -466,5 +491,114 @@ func TestClientManager_ExternalMCPBridgeIndexesVirtualCards(t *testing.T) {
 	after, err := searchSvc.Search(ctx, "@mcp:github", 10)
 	if err != nil || len(after.Results) != 0 {
 		t.Fatalf("expected 0 cards after Disconnect, got %d (err=%v)", len(after.Results), err)
+	}
+}
+
+func TestHubServer_AgentSkillSharing(t *testing.T) {
+	ctx := context.Background()
+	store, err := indexer.OpenStore(":memory:")
+	if err != nil {
+		t.Fatalf("OpenStore: %v", err)
+	}
+	defer store.Close()
+
+	skillsRoot := t.TempDir()
+	skillDir := filepath.Join(skillsRoot, "vex-sample-skill")
+	if err := os.MkdirAll(skillDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	skillContent := "---\nname: vex-sample-skill\ndescription: Authoring guide for sample templates\n---\n\n# Sample Skill\nUse location, server-matrix, website-link, pattern-breakdown, and conversion templates.\n"
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(skillContent), 0o644); err != nil {
+		t.Fatalf("WriteFile SKILL.md: %v", err)
+	}
+
+	hub, err := NewHubServer(ServerDeps{
+		Store:      store,
+		Search:     search.NewService(store),
+		Plugins:    plugins.NewManager(),
+		Runner:     plugins.NewRunner(),
+		DataDir:    t.TempDir(),
+		SkillsDirs: []string{skillsRoot},
+		Version:    "0.1.0-test",
+	})
+	if err != nil {
+		t.Fatalf("NewHubServer: %v", err)
+	}
+
+	cli, err := client.NewInProcessClient(hub.MCPServer())
+	if err != nil {
+		t.Fatalf("NewInProcessClient: %v", err)
+	}
+	if err := cli.Start(ctx); err != nil {
+		t.Fatalf("client Start: %v", err)
+	}
+	defer cli.Close()
+
+	initReq := mcplib.InitializeRequest{}
+	initReq.Params.ProtocolVersion = mcplib.LATEST_PROTOCOL_VERSION
+	initReq.Params.ClientInfo = mcplib.Implementation{Name: "skill-agent", Version: "1.0"}
+	if _, err := cli.Initialize(ctx, initReq); err != nil {
+		t.Fatalf("Initialize: %v", err)
+	}
+
+	// 1. Resource: search://skills
+	skillsRes, err := cli.ReadResource(ctx, mcplib.ReadResourceRequest{
+		Params: mcplib.ReadResourceParams{URI: "search://skills"},
+	})
+	if err != nil {
+		t.Fatalf("ReadResource search://skills: %v", err)
+	}
+	skillsText, ok := mcplib.AsTextResourceContents(skillsRes.Contents[0])
+	if !ok || !strings.Contains(skillsText.Text, "vex-sample-skill") || !strings.Contains(skillsText.Text, "skill://vex-sample-skill") {
+		t.Fatalf("unexpected search://skills payload: %+v", skillsRes.Contents)
+	}
+
+	// 2. Resource template: skill://{name}
+	oneSkillRes, err := cli.ReadResource(ctx, mcplib.ReadResourceRequest{
+		Params: mcplib.ReadResourceParams{URI: "skill://vex-sample-skill"},
+	})
+	if err != nil {
+		t.Fatalf("ReadResource skill://vex-sample-skill: %v", err)
+	}
+	oneSkillText, ok := mcplib.AsTextResourceContents(oneSkillRes.Contents[0])
+	if !ok || !strings.Contains(oneSkillText.Text, "pattern-breakdown") {
+		t.Fatalf("unexpected skill://vex-sample-skill payload: %+v", oneSkillRes.Contents)
+	}
+
+	// 3. Tool: list_skills
+	listReq := mcplib.CallToolRequest{}
+	listReq.Params.Name = "list_skills"
+	listRes, err := cli.CallTool(ctx, listReq)
+	if err != nil {
+		t.Fatalf("CallTool list_skills: %v", err)
+	}
+	listText := extractToolText(t, listRes)
+	if !strings.Contains(listText, `"name": "vex-sample-skill"`) || !strings.Contains(listText, "skill://vex-sample-skill") {
+		t.Fatalf("unexpected list_skills output: %s", listText)
+	}
+
+	// 4. Tool: get_skill
+	getReq := mcplib.CallToolRequest{}
+	getReq.Params.Name = "get_skill"
+	getReq.Params.Arguments = map[string]any{"name": "vex-sample-skill"}
+	getRes, err := cli.CallTool(ctx, getReq)
+	if err != nil {
+		t.Fatalf("CallTool get_skill: %v", err)
+	}
+	getText := extractToolText(t, getRes)
+	if !strings.Contains(getText, "Authoring guide for sample templates") || !strings.Contains(getText, "server-matrix") {
+		t.Fatalf("unexpected get_skill output: %s", getText)
+	}
+
+	// 5. Missing skill returns tool error
+	missReq := mcplib.CallToolRequest{}
+	missReq.Params.Name = "get_skill"
+	missReq.Params.Arguments = map[string]any{"name": "does-not-exist"}
+	missRes, err := cli.CallTool(ctx, missReq)
+	if err != nil {
+		t.Fatalf("CallTool missing get_skill: %v", err)
+	}
+	if !missRes.IsError {
+		t.Fatalf("expected IsError=true for missing skill, got %+v", missRes)
 	}
 }

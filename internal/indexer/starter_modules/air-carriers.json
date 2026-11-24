@@ -1,0 +1,4523 @@
+{
+  "id": "air-carriers",
+  "name": "Air Carrier IATA Prefix Index",
+  "category": "Air Freight",
+  "description": "48 global air cargo carriers indexed by 3-digit IATA AWB prefix and 2-letter airline code, with hubs and official tracking links.",
+  "icon": "\u2708\ufe0f",
+  "version": "1.0.0",
+  "defaultEnabled": true,
+  "cards": [
+    {
+      "id": "air-carrier-176",
+      "entityKey": "air-carrier:176",
+      "title": "Emirates SkyCargo (EK)",
+      "subtitle": "IATA Prefix 176 \u00b7 Hub: DXB \u00b7 Dubai",
+      "description": "Emirates SkyCargo (2-letter IATA EK, 3-digit AWB prefix 176) operating out of DXB \u00b7 Dubai.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "176",
+        "ek",
+        "emirates"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 176",
+          "tone": "amber"
+        },
+        {
+          "label": "EK",
+          "tone": "mono"
+        },
+        {
+          "label": "DXB",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "176",
+        "iataCode": "EK",
+        "carrierName": "Emirates SkyCargo",
+        "shortName": "Emirates",
+        "portalTag": "SkyCargo",
+        "hub": "DXB \u00b7 Dubai",
+        "trackingUrl": "https://www.skycargo.com/track-shipments/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-176-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "SkyCargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Emirates SkyCargo Track & Trace",
+                "subtitle": "Official MAWB (176-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.skycargo.com/track-shipments/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-176",
+          "label": "Copy Prefix 176",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "176"
+        },
+        {
+          "id": "open-track-176",
+          "label": "Open SkyCargo",
+          "type": "open_url",
+          "target": "https://www.skycargo.com/track-shipments/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-020",
+      "entityKey": "air-carrier:020",
+      "title": "Lufthansa Cargo (LH)",
+      "subtitle": "IATA Prefix 020 \u00b7 Hub: FRA \u00b7 Frankfurt",
+      "description": "Lufthansa Cargo (2-letter IATA LH, 3-digit AWB prefix 020) operating out of FRA \u00b7 Frankfurt.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "020",
+        "lh",
+        "lufthansa"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 020",
+          "tone": "amber"
+        },
+        {
+          "label": "LH",
+          "tone": "mono"
+        },
+        {
+          "label": "FRA",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "020",
+        "iataCode": "LH",
+        "carrierName": "Lufthansa Cargo",
+        "shortName": "Lufthansa",
+        "portalTag": "eCargo",
+        "hub": "FRA \u00b7 Frankfurt",
+        "trackingUrl": "https://lufthansa-cargo.com/eservices/etracking"
+      },
+      "children": [
+        {
+          "id": "air-carrier-020-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "eCargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Lufthansa Cargo Track & Trace",
+                "subtitle": "Official MAWB (020-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://lufthansa-cargo.com/eservices/etracking"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-020",
+          "label": "Copy Prefix 020",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "020"
+        },
+        {
+          "id": "open-track-020",
+          "label": "Open eCargo",
+          "type": "open_url",
+          "target": "https://lufthansa-cargo.com/eservices/etracking"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-160",
+      "entityKey": "air-carrier:160",
+      "title": "Cathay Cargo (CX)",
+      "subtitle": "IATA Prefix 160 \u00b7 Hub: HKG \u00b7 Hong Kong",
+      "description": "Cathay Cargo (2-letter IATA CX, 3-digit AWB prefix 160) operating out of HKG \u00b7 Hong Kong.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "160",
+        "cx",
+        "cathay"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 160",
+          "tone": "amber"
+        },
+        {
+          "label": "CX",
+          "tone": "mono"
+        },
+        {
+          "label": "HKG",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "160",
+        "iataCode": "CX",
+        "carrierName": "Cathay Cargo",
+        "shortName": "Cathay",
+        "portalTag": "Cathay Cargo",
+        "hub": "HKG \u00b7 Hong Kong",
+        "trackingUrl": "https://www.cathaycargo.com/en-us/track-and-trace.html"
+      },
+      "children": [
+        {
+          "id": "air-carrier-160-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Cathay Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Cathay Cargo Track & Trace",
+                "subtitle": "Official MAWB (160-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.cathaycargo.com/en-us/track-and-trace.html"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-160",
+          "label": "Copy Prefix 160",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "160"
+        },
+        {
+          "id": "open-track-160",
+          "label": "Open Cathay Cargo",
+          "type": "open_url",
+          "target": "https://www.cathaycargo.com/en-us/track-and-trace.html"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-157",
+      "entityKey": "air-carrier:157",
+      "title": "Qatar Airways Cargo (QR)",
+      "subtitle": "IATA Prefix 157 \u00b7 Hub: DOH \u00b7 Doha",
+      "description": "Qatar Airways Cargo (2-letter IATA QR, 3-digit AWB prefix 157) operating out of DOH \u00b7 Doha.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "157",
+        "qr",
+        "qatar cargo"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 157",
+          "tone": "amber"
+        },
+        {
+          "label": "QR",
+          "tone": "mono"
+        },
+        {
+          "label": "DOH",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "157",
+        "iataCode": "QR",
+        "carrierName": "Qatar Airways Cargo",
+        "shortName": "Qatar Cargo",
+        "portalTag": "QR Cargo",
+        "hub": "DOH \u00b7 Doha",
+        "trackingUrl": "https://www.qrcargo.com/s/track-your-shipment"
+      },
+      "children": [
+        {
+          "id": "air-carrier-157-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "QR Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Qatar Airways Cargo Track & Trace",
+                "subtitle": "Official MAWB (157-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.qrcargo.com/s/track-your-shipment"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-157",
+          "label": "Copy Prefix 157",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "157"
+        },
+        {
+          "id": "open-track-157",
+          "label": "Open QR Cargo",
+          "type": "open_url",
+          "target": "https://www.qrcargo.com/s/track-your-shipment"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-618",
+      "entityKey": "air-carrier:618",
+      "title": "Singapore Airlines Cargo (SQ)",
+      "subtitle": "IATA Prefix 618 \u00b7 Hub: SIN \u00b7 Singapore",
+      "description": "Singapore Airlines Cargo (2-letter IATA SQ, 3-digit AWB prefix 618) operating out of SIN \u00b7 Singapore.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "618",
+        "sq",
+        "sia cargo"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 618",
+          "tone": "amber"
+        },
+        {
+          "label": "SQ",
+          "tone": "mono"
+        },
+        {
+          "label": "SIN",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "618",
+        "iataCode": "SQ",
+        "carrierName": "Singapore Airlines Cargo",
+        "shortName": "SIA Cargo",
+        "portalTag": "SIA Cargo",
+        "hub": "SIN \u00b7 Singapore",
+        "trackingUrl": "https://www.siacargo.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-618-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "SIA Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Singapore Airlines Cargo Track & Trace",
+                "subtitle": "Official MAWB (618-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.siacargo.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-618",
+          "label": "Copy Prefix 618",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "618"
+        },
+        {
+          "id": "open-track-618",
+          "label": "Open SIA Cargo",
+          "type": "open_url",
+          "target": "https://www.siacargo.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-180",
+      "entityKey": "air-carrier:180",
+      "title": "Korean Air Cargo (KE)",
+      "subtitle": "IATA Prefix 180 \u00b7 Hub: ICN \u00b7 Seoul",
+      "description": "Korean Air Cargo (2-letter IATA KE, 3-digit AWB prefix 180) operating out of ICN \u00b7 Seoul.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "180",
+        "ke",
+        "korean air"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 180",
+          "tone": "amber"
+        },
+        {
+          "label": "KE",
+          "tone": "mono"
+        },
+        {
+          "label": "ICN",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "180",
+        "iataCode": "KE",
+        "carrierName": "Korean Air Cargo",
+        "shortName": "Korean Air",
+        "portalTag": "KE Cargo",
+        "hub": "ICN \u00b7 Seoul",
+        "trackingUrl": "https://cargo.koreanair.com/en/tracking"
+      },
+      "children": [
+        {
+          "id": "air-carrier-180-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "KE Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Korean Air Cargo Track & Trace",
+                "subtitle": "Official MAWB (180-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://cargo.koreanair.com/en/tracking"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-180",
+          "label": "Copy Prefix 180",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "180"
+        },
+        {
+          "id": "open-track-180",
+          "label": "Open KE Cargo",
+          "type": "open_url",
+          "target": "https://cargo.koreanair.com/en/tracking"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-074",
+      "entityKey": "air-carrier:074",
+      "title": "KLM Cargo (KL)",
+      "subtitle": "IATA Prefix 074 \u00b7 Hub: AMS \u00b7 Amsterdam",
+      "description": "KLM Cargo (2-letter IATA KL, 3-digit AWB prefix 074) operating out of AMS \u00b7 Amsterdam.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "074",
+        "kl",
+        "klm"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 074",
+          "tone": "amber"
+        },
+        {
+          "label": "KL",
+          "tone": "mono"
+        },
+        {
+          "label": "AMS",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "074",
+        "iataCode": "KL",
+        "carrierName": "KLM Cargo",
+        "shortName": "KLM",
+        "portalTag": "AFKLMP",
+        "hub": "AMS \u00b7 Amsterdam",
+        "trackingUrl": "https://www.afklcargo.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-074-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "AFKLMP",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "KLM Cargo Track & Trace",
+                "subtitle": "Official MAWB (074-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.afklcargo.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-074",
+          "label": "Copy Prefix 074",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "074"
+        },
+        {
+          "id": "open-track-074",
+          "label": "Open AFKLMP",
+          "type": "open_url",
+          "target": "https://www.afklcargo.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-057",
+      "entityKey": "air-carrier:057",
+      "title": "Air France Cargo (AF)",
+      "subtitle": "IATA Prefix 057 \u00b7 Hub: CDG \u00b7 Paris",
+      "description": "Air France Cargo (2-letter IATA AF, 3-digit AWB prefix 057) operating out of CDG \u00b7 Paris.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "057",
+        "af",
+        "air france"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 057",
+          "tone": "amber"
+        },
+        {
+          "label": "AF",
+          "tone": "mono"
+        },
+        {
+          "label": "CDG",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "057",
+        "iataCode": "AF",
+        "carrierName": "Air France Cargo",
+        "shortName": "Air France",
+        "portalTag": "AFKLMP",
+        "hub": "CDG \u00b7 Paris",
+        "trackingUrl": "https://www.afklcargo.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-057-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "AFKLMP",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Air France Cargo Track & Trace",
+                "subtitle": "Official MAWB (057-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.afklcargo.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-057",
+          "label": "Copy Prefix 057",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "057"
+        },
+        {
+          "id": "open-track-057",
+          "label": "Open AFKLMP",
+          "type": "open_url",
+          "target": "https://www.afklcargo.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-125",
+      "entityKey": "air-carrier:125",
+      "title": "British Airways / IAG Cargo (BA)",
+      "subtitle": "IATA Prefix 125 \u00b7 Hub: LHR \u00b7 London",
+      "description": "British Airways / IAG Cargo (2-letter IATA BA, 3-digit AWB prefix 125) operating out of LHR \u00b7 London.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "125",
+        "ba",
+        "iag cargo"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 125",
+          "tone": "amber"
+        },
+        {
+          "label": "BA",
+          "tone": "mono"
+        },
+        {
+          "label": "LHR",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "125",
+        "iataCode": "BA",
+        "carrierName": "British Airways / IAG Cargo",
+        "shortName": "IAG Cargo",
+        "portalTag": "IAG Cargo",
+        "hub": "LHR \u00b7 London",
+        "trackingUrl": "https://www.iagcargo.com/en/track/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-125-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "IAG Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "British Airways / IAG Cargo Track & Trace",
+                "subtitle": "Official MAWB (125-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.iagcargo.com/en/track/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-125",
+          "label": "Copy Prefix 125",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "125"
+        },
+        {
+          "id": "open-track-125",
+          "label": "Open IAG Cargo",
+          "type": "open_url",
+          "target": "https://www.iagcargo.com/en/track/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-001",
+      "entityKey": "air-carrier:001",
+      "title": "American Airlines Cargo (AA)",
+      "subtitle": "IATA Prefix 001 \u00b7 Hub: DFW \u00b7 Dallas",
+      "description": "American Airlines Cargo (2-letter IATA AA, 3-digit AWB prefix 001) operating out of DFW \u00b7 Dallas.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "001",
+        "aa",
+        "aa cargo"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 001",
+          "tone": "amber"
+        },
+        {
+          "label": "AA",
+          "tone": "mono"
+        },
+        {
+          "label": "DFW",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "001",
+        "iataCode": "AA",
+        "carrierName": "American Airlines Cargo",
+        "shortName": "AA Cargo",
+        "portalTag": "AA Cargo",
+        "hub": "DFW \u00b7 Dallas",
+        "trackingUrl": "https://www.aacargo.com/AACargo/tracking"
+      },
+      "children": [
+        {
+          "id": "air-carrier-001-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "AA Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "American Airlines Cargo Track & Trace",
+                "subtitle": "Official MAWB (001-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.aacargo.com/AACargo/tracking"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-001",
+          "label": "Copy Prefix 001",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "001"
+        },
+        {
+          "id": "open-track-001",
+          "label": "Open AA Cargo",
+          "type": "open_url",
+          "target": "https://www.aacargo.com/AACargo/tracking"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-006",
+      "entityKey": "air-carrier:006",
+      "title": "Delta Cargo (DL)",
+      "subtitle": "IATA Prefix 006 \u00b7 Hub: ATL \u00b7 Atlanta",
+      "description": "Delta Cargo (2-letter IATA DL, 3-digit AWB prefix 006) operating out of ATL \u00b7 Atlanta.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "006",
+        "dl",
+        "delta"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 006",
+          "tone": "amber"
+        },
+        {
+          "label": "DL",
+          "tone": "mono"
+        },
+        {
+          "label": "ATL",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "006",
+        "iataCode": "DL",
+        "carrierName": "Delta Cargo",
+        "shortName": "Delta",
+        "portalTag": "Delta Cargo",
+        "hub": "ATL \u00b7 Atlanta",
+        "trackingUrl": "https://www.deltacargo.com/Cargo/trackShipment"
+      },
+      "children": [
+        {
+          "id": "air-carrier-006-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Delta Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Delta Cargo Track & Trace",
+                "subtitle": "Official MAWB (006-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.deltacargo.com/Cargo/trackShipment"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-006",
+          "label": "Copy Prefix 006",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "006"
+        },
+        {
+          "id": "open-track-006",
+          "label": "Open Delta Cargo",
+          "type": "open_url",
+          "target": "https://www.deltacargo.com/Cargo/trackShipment"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-016",
+      "entityKey": "air-carrier:016",
+      "title": "United Cargo (UA)",
+      "subtitle": "IATA Prefix 016 \u00b7 Hub: ORD \u00b7 Chicago",
+      "description": "United Cargo (2-letter IATA UA, 3-digit AWB prefix 016) operating out of ORD \u00b7 Chicago.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "016",
+        "ua",
+        "united"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 016",
+          "tone": "amber"
+        },
+        {
+          "label": "UA",
+          "tone": "mono"
+        },
+        {
+          "label": "ORD",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "016",
+        "iataCode": "UA",
+        "carrierName": "United Cargo",
+        "shortName": "United",
+        "portalTag": "United Cargo",
+        "hub": "ORD \u00b7 Chicago",
+        "trackingUrl": "https://www.unitedcargo.com/en/us/track.html"
+      },
+      "children": [
+        {
+          "id": "air-carrier-016-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "United Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "United Cargo Track & Trace",
+                "subtitle": "Official MAWB (016-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.unitedcargo.com/en/us/track.html"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-016",
+          "label": "Copy Prefix 016",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "016"
+        },
+        {
+          "id": "open-track-016",
+          "label": "Open United Cargo",
+          "type": "open_url",
+          "target": "https://www.unitedcargo.com/en/us/track.html"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-023",
+      "entityKey": "air-carrier:023",
+      "title": "FedEx Express (FX)",
+      "subtitle": "IATA Prefix 023 \u00b7 Hub: MEM \u00b7 Memphis",
+      "description": "FedEx Express (2-letter IATA FX, 3-digit AWB prefix 023) operating out of MEM \u00b7 Memphis.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "023",
+        "fx",
+        "fedex"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 023",
+          "tone": "amber"
+        },
+        {
+          "label": "FX",
+          "tone": "mono"
+        },
+        {
+          "label": "MEM",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "023",
+        "iataCode": "FX",
+        "carrierName": "FedEx Express",
+        "shortName": "FedEx",
+        "portalTag": "FedEx",
+        "hub": "MEM \u00b7 Memphis",
+        "trackingUrl": "https://www.fedex.com/en-us/tracking.html"
+      },
+      "children": [
+        {
+          "id": "air-carrier-023-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "FedEx",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "FedEx Express Track & Trace",
+                "subtitle": "Official MAWB (023-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.fedex.com/en-us/tracking.html"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-023",
+          "label": "Copy Prefix 023",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "023"
+        },
+        {
+          "id": "open-track-023",
+          "label": "Open FedEx",
+          "type": "open_url",
+          "target": "https://www.fedex.com/en-us/tracking.html"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-406",
+      "entityKey": "air-carrier:406",
+      "title": "UPS Air Cargo (5X)",
+      "subtitle": "IATA Prefix 406 \u00b7 Hub: SDF \u00b7 Louisville",
+      "description": "UPS Air Cargo (2-letter IATA 5X, 3-digit AWB prefix 406) operating out of SDF \u00b7 Louisville.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "406",
+        "5x",
+        "ups cargo"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 406",
+          "tone": "amber"
+        },
+        {
+          "label": "5X",
+          "tone": "mono"
+        },
+        {
+          "label": "SDF",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "406",
+        "iataCode": "5X",
+        "carrierName": "UPS Air Cargo",
+        "shortName": "UPS Cargo",
+        "portalTag": "UPS",
+        "hub": "SDF \u00b7 Louisville",
+        "trackingUrl": "https://www.ups.com/aircargo/using/services/track/track.html"
+      },
+      "children": [
+        {
+          "id": "air-carrier-406-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "UPS",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "UPS Air Cargo Track & Trace",
+                "subtitle": "Official MAWB (406-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.ups.com/aircargo/using/services/track/track.html"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-406",
+          "label": "Copy Prefix 406",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "406"
+        },
+        {
+          "id": "open-track-406",
+          "label": "Open UPS",
+          "type": "open_url",
+          "target": "https://www.ups.com/aircargo/using/services/track/track.html"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-172",
+      "entityKey": "air-carrier:172",
+      "title": "Cargolux Airlines (CV)",
+      "subtitle": "IATA Prefix 172 \u00b7 Hub: LUX \u00b7 Luxembourg",
+      "description": "Cargolux Airlines (2-letter IATA CV, 3-digit AWB prefix 172) operating out of LUX \u00b7 Luxembourg.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "172",
+        "cv",
+        "cargolux"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 172",
+          "tone": "amber"
+        },
+        {
+          "label": "CV",
+          "tone": "mono"
+        },
+        {
+          "label": "LUX",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "172",
+        "iataCode": "CV",
+        "carrierName": "Cargolux Airlines",
+        "shortName": "Cargolux",
+        "portalTag": "Cargolux",
+        "hub": "LUX \u00b7 Luxembourg",
+        "trackingUrl": "https://www.cargolux.com/track-and-trace"
+      },
+      "children": [
+        {
+          "id": "air-carrier-172-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Cargolux",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Cargolux Airlines Track & Trace",
+                "subtitle": "Official MAWB (172-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.cargolux.com/track-and-trace"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-172",
+          "label": "Copy Prefix 172",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "172"
+        },
+        {
+          "id": "open-track-172",
+          "label": "Open Cargolux",
+          "type": "open_url",
+          "target": "https://www.cargolux.com/track-and-trace"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-205",
+      "entityKey": "air-carrier:205",
+      "title": "ANA Cargo (NH)",
+      "subtitle": "IATA Prefix 205 \u00b7 Hub: NRT \u00b7 Tokyo",
+      "description": "ANA Cargo (2-letter IATA NH, 3-digit AWB prefix 205) operating out of NRT \u00b7 Tokyo.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "205",
+        "nh",
+        "ana"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 205",
+          "tone": "amber"
+        },
+        {
+          "label": "NH",
+          "tone": "mono"
+        },
+        {
+          "label": "NRT",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "205",
+        "iataCode": "NH",
+        "carrierName": "ANA Cargo",
+        "shortName": "ANA",
+        "portalTag": "ANA Cargo",
+        "hub": "NRT \u00b7 Tokyo",
+        "trackingUrl": "https://www.anacargo.jp/en/int/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-205-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "ANA Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "ANA Cargo Track & Trace",
+                "subtitle": "Official MAWB (205-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.anacargo.jp/en/int/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-205",
+          "label": "Copy Prefix 205",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "205"
+        },
+        {
+          "id": "open-track-205",
+          "label": "Open ANA Cargo",
+          "type": "open_url",
+          "target": "https://www.anacargo.jp/en/int/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-131",
+      "entityKey": "air-carrier:131",
+      "title": "Japan Airlines Cargo (JL)",
+      "subtitle": "IATA Prefix 131 \u00b7 Hub: NRT \u00b7 Tokyo",
+      "description": "Japan Airlines Cargo (2-letter IATA JL, 3-digit AWB prefix 131) operating out of NRT \u00b7 Tokyo.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "131",
+        "jl",
+        "jal"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 131",
+          "tone": "amber"
+        },
+        {
+          "label": "JL",
+          "tone": "mono"
+        },
+        {
+          "label": "NRT",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "131",
+        "iataCode": "JL",
+        "carrierName": "Japan Airlines Cargo",
+        "shortName": "JAL",
+        "portalTag": "JAL Cargo",
+        "hub": "NRT \u00b7 Tokyo",
+        "trackingUrl": "https://www.jal.co.jp/en/jalcargo/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-131-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "JAL Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Japan Airlines Cargo Track & Trace",
+                "subtitle": "Official MAWB (131-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.jal.co.jp/en/jalcargo/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-131",
+          "label": "Copy Prefix 131",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "131"
+        },
+        {
+          "id": "open-track-131",
+          "label": "Open JAL Cargo",
+          "type": "open_url",
+          "target": "https://www.jal.co.jp/en/jalcargo/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-235",
+      "entityKey": "air-carrier:235",
+      "title": "Turkish Cargo (TK)",
+      "subtitle": "IATA Prefix 235 \u00b7 Hub: IST \u00b7 Istanbul",
+      "description": "Turkish Cargo (2-letter IATA TK, 3-digit AWB prefix 235) operating out of IST \u00b7 Istanbul.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "235",
+        "tk",
+        "turkish"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 235",
+          "tone": "amber"
+        },
+        {
+          "label": "TK",
+          "tone": "mono"
+        },
+        {
+          "label": "IST",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "235",
+        "iataCode": "TK",
+        "carrierName": "Turkish Cargo",
+        "shortName": "Turkish",
+        "portalTag": "TK Cargo",
+        "hub": "IST \u00b7 Istanbul",
+        "trackingUrl": "https://www.turkishcargo.com/en/online-services/shipment-tracking"
+      },
+      "children": [
+        {
+          "id": "air-carrier-235-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "TK Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Turkish Cargo Track & Trace",
+                "subtitle": "Official MAWB (235-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.turkishcargo.com/en/online-services/shipment-tracking"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-235",
+          "label": "Copy Prefix 235",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "235"
+        },
+        {
+          "id": "open-track-235",
+          "label": "Open TK Cargo",
+          "type": "open_url",
+          "target": "https://www.turkishcargo.com/en/online-services/shipment-tracking"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-297",
+      "entityKey": "air-carrier:297",
+      "title": "China Airlines Cargo (CI)",
+      "subtitle": "IATA Prefix 297 \u00b7 Hub: TPE \u00b7 Taipei",
+      "description": "China Airlines Cargo (2-letter IATA CI, 3-digit AWB prefix 297) operating out of TPE \u00b7 Taipei.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "297",
+        "ci",
+        "china airlines"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 297",
+          "tone": "amber"
+        },
+        {
+          "label": "CI",
+          "tone": "mono"
+        },
+        {
+          "label": "TPE",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "297",
+        "iataCode": "CI",
+        "carrierName": "China Airlines Cargo",
+        "shortName": "China Airlines",
+        "portalTag": "CI Cargo",
+        "hub": "TPE \u00b7 Taipei",
+        "trackingUrl": "https://cargo.china-airlines.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-297-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "CI Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "China Airlines Cargo Track & Trace",
+                "subtitle": "Official MAWB (297-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://cargo.china-airlines.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-297",
+          "label": "Copy Prefix 297",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "297"
+        },
+        {
+          "id": "open-track-297",
+          "label": "Open CI Cargo",
+          "type": "open_url",
+          "target": "https://cargo.china-airlines.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-695",
+      "entityKey": "air-carrier:695",
+      "title": "EVA Air Cargo (BR)",
+      "subtitle": "IATA Prefix 695 \u00b7 Hub: TPE \u00b7 Taipei",
+      "description": "EVA Air Cargo (2-letter IATA BR, 3-digit AWB prefix 695) operating out of TPE \u00b7 Taipei.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "695",
+        "br",
+        "eva air"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 695",
+          "tone": "amber"
+        },
+        {
+          "label": "BR",
+          "tone": "mono"
+        },
+        {
+          "label": "TPE",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "695",
+        "iataCode": "BR",
+        "carrierName": "EVA Air Cargo",
+        "shortName": "EVA Air",
+        "portalTag": "EVA Cargo",
+        "hub": "TPE \u00b7 Taipei",
+        "trackingUrl": "https://www.brcargo.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-695-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "EVA Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "EVA Air Cargo Track & Trace",
+                "subtitle": "Official MAWB (695-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.brcargo.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-695",
+          "label": "Copy Prefix 695",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "695"
+        },
+        {
+          "id": "open-track-695",
+          "label": "Open EVA Cargo",
+          "type": "open_url",
+          "target": "https://www.brcargo.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-999",
+      "entityKey": "air-carrier:999",
+      "title": "Air China Cargo (CA)",
+      "subtitle": "IATA Prefix 999 \u00b7 Hub: PEK \u00b7 Beijing",
+      "description": "Air China Cargo (2-letter IATA CA, 3-digit AWB prefix 999) operating out of PEK \u00b7 Beijing.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "999",
+        "ca",
+        "air china"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 999",
+          "tone": "amber"
+        },
+        {
+          "label": "CA",
+          "tone": "mono"
+        },
+        {
+          "label": "PEK",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "999",
+        "iataCode": "CA",
+        "carrierName": "Air China Cargo",
+        "shortName": "Air China",
+        "portalTag": "CA Cargo",
+        "hub": "PEK \u00b7 Beijing",
+        "trackingUrl": "https://www.airchinacargo.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-999-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "CA Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Air China Cargo Track & Trace",
+                "subtitle": "Official MAWB (999-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.airchinacargo.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-999",
+          "label": "Copy Prefix 999",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "999"
+        },
+        {
+          "id": "open-track-999",
+          "label": "Open CA Cargo",
+          "type": "open_url",
+          "target": "https://www.airchinacargo.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-784",
+      "entityKey": "air-carrier:784",
+      "title": "China Southern Cargo (CZ)",
+      "subtitle": "IATA Prefix 784 \u00b7 Hub: CAN \u00b7 Guangzhou",
+      "description": "China Southern Cargo (2-letter IATA CZ, 3-digit AWB prefix 784) operating out of CAN \u00b7 Guangzhou.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "784",
+        "cz",
+        "china southern"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 784",
+          "tone": "amber"
+        },
+        {
+          "label": "CZ",
+          "tone": "mono"
+        },
+        {
+          "label": "CAN",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "784",
+        "iataCode": "CZ",
+        "carrierName": "China Southern Cargo",
+        "shortName": "China Southern",
+        "portalTag": "CZ Cargo",
+        "hub": "CAN \u00b7 Guangzhou",
+        "trackingUrl": "https://tang.csair.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-784-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "CZ Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "China Southern Cargo Track & Trace",
+                "subtitle": "Official MAWB (784-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://tang.csair.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-784",
+          "label": "Copy Prefix 784",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "784"
+        },
+        {
+          "id": "open-track-784",
+          "label": "Open CZ Cargo",
+          "type": "open_url",
+          "target": "https://tang.csair.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-112",
+      "entityKey": "air-carrier:112",
+      "title": "China Eastern Cargo (MU)",
+      "subtitle": "IATA Prefix 112 \u00b7 Hub: PVG \u00b7 Shanghai",
+      "description": "China Eastern Cargo (2-letter IATA MU, 3-digit AWB prefix 112) operating out of PVG \u00b7 Shanghai.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "112",
+        "mu",
+        "china eastern"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 112",
+          "tone": "amber"
+        },
+        {
+          "label": "MU",
+          "tone": "mono"
+        },
+        {
+          "label": "PVG",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "112",
+        "iataCode": "MU",
+        "carrierName": "China Eastern Cargo",
+        "shortName": "China Eastern",
+        "portalTag": "MU Cargo",
+        "hub": "PVG \u00b7 Shanghai",
+        "trackingUrl": "https://cargo.ceair.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-112-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "MU Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "China Eastern Cargo Track & Trace",
+                "subtitle": "Official MAWB (112-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://cargo.ceair.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-112",
+          "label": "Copy Prefix 112",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "112"
+        },
+        {
+          "id": "open-track-112",
+          "label": "Open MU Cargo",
+          "type": "open_url",
+          "target": "https://cargo.ceair.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-369",
+      "entityKey": "air-carrier:369",
+      "title": "Atlas Air (5Y)",
+      "subtitle": "IATA Prefix 369 \u00b7 Hub: CVG \u00b7 Cincinnati",
+      "description": "Atlas Air (2-letter IATA 5Y, 3-digit AWB prefix 369) operating out of CVG \u00b7 Cincinnati.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "369",
+        "5y",
+        "atlas air"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 369",
+          "tone": "amber"
+        },
+        {
+          "label": "5Y",
+          "tone": "mono"
+        },
+        {
+          "label": "CVG",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "369",
+        "iataCode": "5Y",
+        "carrierName": "Atlas Air",
+        "shortName": "Atlas Air",
+        "portalTag": "Atlas Air",
+        "hub": "CVG \u00b7 Cincinnati",
+        "trackingUrl": "https://www.atlasairworldwide.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-369-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Atlas Air",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Atlas Air Track & Trace",
+                "subtitle": "Official MAWB (369-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.atlasairworldwide.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-369",
+          "label": "Copy Prefix 369",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "369"
+        },
+        {
+          "id": "open-track-369",
+          "label": "Open Atlas Air",
+          "type": "open_url",
+          "target": "https://www.atlasairworldwide.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-014",
+      "entityKey": "air-carrier:014",
+      "title": "Air Canada Cargo (AC)",
+      "subtitle": "IATA Prefix 014 \u00b7 Hub: YYZ \u00b7 Toronto",
+      "description": "Air Canada Cargo (2-letter IATA AC, 3-digit AWB prefix 014) operating out of YYZ \u00b7 Toronto.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "014",
+        "ac",
+        "air canada"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 014",
+          "tone": "amber"
+        },
+        {
+          "label": "AC",
+          "tone": "mono"
+        },
+        {
+          "label": "YYZ",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "014",
+        "iataCode": "AC",
+        "carrierName": "Air Canada Cargo",
+        "shortName": "Air Canada",
+        "portalTag": "AC Cargo",
+        "hub": "YYZ \u00b7 Toronto",
+        "trackingUrl": "https://www.aircanada.com/cargo/en/tracking/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-014-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "AC Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Air Canada Cargo Track & Trace",
+                "subtitle": "Official MAWB (014-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.aircanada.com/cargo/en/tracking/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-014",
+          "label": "Copy Prefix 014",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "014"
+        },
+        {
+          "id": "open-track-014",
+          "label": "Open AC Cargo",
+          "type": "open_url",
+          "target": "https://www.aircanada.com/cargo/en/tracking/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-045",
+      "entityKey": "air-carrier:045",
+      "title": "LATAM Cargo (LA)",
+      "subtitle": "IATA Prefix 045 \u00b7 Hub: MIA \u00b7 Miami / SCL",
+      "description": "LATAM Cargo (2-letter IATA LA, 3-digit AWB prefix 045) operating out of MIA \u00b7 Miami / SCL.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "045",
+        "la",
+        "latam"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 045",
+          "tone": "amber"
+        },
+        {
+          "label": "LA",
+          "tone": "mono"
+        },
+        {
+          "label": "MIA",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "045",
+        "iataCode": "LA",
+        "carrierName": "LATAM Cargo",
+        "shortName": "LATAM",
+        "portalTag": "LATAM Cargo",
+        "hub": "MIA \u00b7 Miami / SCL",
+        "trackingUrl": "https://www.latamcargo.com/en/trackshipment"
+      },
+      "children": [
+        {
+          "id": "air-carrier-045-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "LATAM Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "LATAM Cargo Track & Trace",
+                "subtitle": "Official MAWB (045-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.latamcargo.com/en/trackshipment"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-045",
+          "label": "Copy Prefix 045",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "045"
+        },
+        {
+          "id": "open-track-045",
+          "label": "Open LATAM Cargo",
+          "type": "open_url",
+          "target": "https://www.latamcargo.com/en/trackshipment"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-071",
+      "entityKey": "air-carrier:071",
+      "title": "Ethiopian Cargo (ET)",
+      "subtitle": "IATA Prefix 071 \u00b7 Hub: ADD \u00b7 Addis Ababa",
+      "description": "Ethiopian Cargo (2-letter IATA ET, 3-digit AWB prefix 071) operating out of ADD \u00b7 Addis Ababa.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "071",
+        "et",
+        "ethiopian"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 071",
+          "tone": "amber"
+        },
+        {
+          "label": "ET",
+          "tone": "mono"
+        },
+        {
+          "label": "ADD",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "071",
+        "iataCode": "ET",
+        "carrierName": "Ethiopian Cargo",
+        "shortName": "Ethiopian",
+        "portalTag": "ET Cargo",
+        "hub": "ADD \u00b7 Addis Ababa",
+        "trackingUrl": "https://cargo.ethiopianairlines.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-071-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "ET Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Ethiopian Cargo Track & Trace",
+                "subtitle": "Official MAWB (071-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://cargo.ethiopianairlines.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-071",
+          "label": "Copy Prefix 071",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "071"
+        },
+        {
+          "id": "open-track-071",
+          "label": "Open ET Cargo",
+          "type": "open_url",
+          "target": "https://cargo.ethiopianairlines.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-081",
+      "entityKey": "air-carrier:081",
+      "title": "Qantas Freight (QF)",
+      "subtitle": "IATA Prefix 081 \u00b7 Hub: SYD \u00b7 Sydney",
+      "description": "Qantas Freight (2-letter IATA QF, 3-digit AWB prefix 081) operating out of SYD \u00b7 Sydney.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "081",
+        "qf",
+        "qantas"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 081",
+          "tone": "amber"
+        },
+        {
+          "label": "QF",
+          "tone": "mono"
+        },
+        {
+          "label": "SYD",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "081",
+        "iataCode": "QF",
+        "carrierName": "Qantas Freight",
+        "shortName": "Qantas",
+        "portalTag": "QF Freight",
+        "hub": "SYD \u00b7 Sydney",
+        "trackingUrl": "https://freight.qantas.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-081-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "QF Freight",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Qantas Freight Track & Trace",
+                "subtitle": "Official MAWB (081-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://freight.qantas.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-081",
+          "label": "Copy Prefix 081",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "081"
+        },
+        {
+          "id": "open-track-081",
+          "label": "Open QF Freight",
+          "type": "open_url",
+          "target": "https://freight.qantas.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-098",
+      "entityKey": "air-carrier:098",
+      "title": "Air India Cargo (AI)",
+      "subtitle": "IATA Prefix 098 \u00b7 Hub: DEL \u00b7 New Delhi",
+      "description": "Air India Cargo (2-letter IATA AI, 3-digit AWB prefix 098) operating out of DEL \u00b7 New Delhi.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "098",
+        "ai",
+        "air india"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 098",
+          "tone": "amber"
+        },
+        {
+          "label": "AI",
+          "tone": "mono"
+        },
+        {
+          "label": "DEL",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "098",
+        "iataCode": "AI",
+        "carrierName": "Air India Cargo",
+        "shortName": "Air India",
+        "portalTag": "AI Cargo",
+        "hub": "DEL \u00b7 New Delhi",
+        "trackingUrl": "https://www.airindia.com/in/en/cargo.html"
+      },
+      "children": [
+        {
+          "id": "air-carrier-098-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "AI Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Air India Cargo Track & Trace",
+                "subtitle": "Official MAWB (098-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.airindia.com/in/en/cargo.html"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-098",
+          "label": "Copy Prefix 098",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "098"
+        },
+        {
+          "id": "open-track-098",
+          "label": "Open AI Cargo",
+          "type": "open_url",
+          "target": "https://www.airindia.com/in/en/cargo.html"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-105",
+      "entityKey": "air-carrier:105",
+      "title": "Finnair Cargo (AY)",
+      "subtitle": "IATA Prefix 105 \u00b7 Hub: HEL \u00b7 Helsinki",
+      "description": "Finnair Cargo (2-letter IATA AY, 3-digit AWB prefix 105) operating out of HEL \u00b7 Helsinki.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "105",
+        "ay",
+        "finnair"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 105",
+          "tone": "amber"
+        },
+        {
+          "label": "AY",
+          "tone": "mono"
+        },
+        {
+          "label": "HEL",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "105",
+        "iataCode": "AY",
+        "carrierName": "Finnair Cargo",
+        "shortName": "Finnair",
+        "portalTag": "AY Cargo",
+        "hub": "HEL \u00b7 Helsinki",
+        "trackingUrl": "https://cargo.finnair.com/en/track-and-trace"
+      },
+      "children": [
+        {
+          "id": "air-carrier-105-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "AY Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Finnair Cargo Track & Trace",
+                "subtitle": "Official MAWB (105-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://cargo.finnair.com/en/track-and-trace"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-105",
+          "label": "Copy Prefix 105",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "105"
+        },
+        {
+          "id": "open-track-105",
+          "label": "Open AY Cargo",
+          "type": "open_url",
+          "target": "https://cargo.finnair.com/en/track-and-trace"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-117",
+      "entityKey": "air-carrier:117",
+      "title": "SAS Cargo (SK)",
+      "subtitle": "IATA Prefix 117 \u00b7 Hub: CPH \u00b7 Copenhagen",
+      "description": "SAS Cargo (2-letter IATA SK, 3-digit AWB prefix 117) operating out of CPH \u00b7 Copenhagen.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "117",
+        "sk",
+        "sas"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 117",
+          "tone": "amber"
+        },
+        {
+          "label": "SK",
+          "tone": "mono"
+        },
+        {
+          "label": "CPH",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "117",
+        "iataCode": "SK",
+        "carrierName": "SAS Cargo",
+        "shortName": "SAS",
+        "portalTag": "SAS Cargo",
+        "hub": "CPH \u00b7 Copenhagen",
+        "trackingUrl": "https://www.sascargo.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-117-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "SAS Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "SAS Cargo Track & Trace",
+                "subtitle": "Official MAWB (117-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.sascargo.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-117",
+          "label": "Copy Prefix 117",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "117"
+        },
+        {
+          "id": "open-track-117",
+          "label": "Open SAS Cargo",
+          "type": "open_url",
+          "target": "https://www.sascargo.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-139",
+      "entityKey": "air-carrier:139",
+      "title": "Aeromexico Cargo (AM)",
+      "subtitle": "IATA Prefix 139 \u00b7 Hub: MEX \u00b7 Mexico City",
+      "description": "Aeromexico Cargo (2-letter IATA AM, 3-digit AWB prefix 139) operating out of MEX \u00b7 Mexico City.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "139",
+        "am",
+        "aeromexico"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 139",
+          "tone": "amber"
+        },
+        {
+          "label": "AM",
+          "tone": "mono"
+        },
+        {
+          "label": "MEX",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "139",
+        "iataCode": "AM",
+        "carrierName": "Aeromexico Cargo",
+        "shortName": "Aeromexico",
+        "portalTag": "AM Cargo",
+        "hub": "MEX \u00b7 Mexico City",
+        "trackingUrl": "https://www.aeromexicocargo.com.mx/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-139-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "AM Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Aeromexico Cargo Track & Trace",
+                "subtitle": "Official MAWB (139-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.aeromexicocargo.com.mx/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-139",
+          "label": "Copy Prefix 139",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "139"
+        },
+        {
+          "id": "open-track-139",
+          "label": "Open AM Cargo",
+          "type": "open_url",
+          "target": "https://www.aeromexicocargo.com.mx/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-217",
+      "entityKey": "air-carrier:217",
+      "title": "Thai Airways Cargo (TG)",
+      "subtitle": "IATA Prefix 217 \u00b7 Hub: BKK \u00b7 Bangkok",
+      "description": "Thai Airways Cargo (2-letter IATA TG, 3-digit AWB prefix 217) operating out of BKK \u00b7 Bangkok.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "217",
+        "tg",
+        "thai cargo"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 217",
+          "tone": "amber"
+        },
+        {
+          "label": "TG",
+          "tone": "mono"
+        },
+        {
+          "label": "BKK",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "217",
+        "iataCode": "TG",
+        "carrierName": "Thai Airways Cargo",
+        "shortName": "Thai Cargo",
+        "portalTag": "TG Cargo",
+        "hub": "BKK \u00b7 Bangkok",
+        "trackingUrl": "https://www.thaicargo.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-217-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "TG Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Thai Airways Cargo Track & Trace",
+                "subtitle": "Official MAWB (217-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.thaicargo.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-217",
+          "label": "Copy Prefix 217",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "217"
+        },
+        {
+          "id": "open-track-217",
+          "label": "Open TG Cargo",
+          "type": "open_url",
+          "target": "https://www.thaicargo.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-232",
+      "entityKey": "air-carrier:232",
+      "title": "MASkargo (Malaysia Airlines) (MH)",
+      "subtitle": "IATA Prefix 232 \u00b7 Hub: KUL \u00b7 Kuala Lumpur",
+      "description": "MASkargo (Malaysia Airlines) (2-letter IATA MH, 3-digit AWB prefix 232) operating out of KUL \u00b7 Kuala Lumpur.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "232",
+        "mh",
+        "maskargo"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 232",
+          "tone": "amber"
+        },
+        {
+          "label": "MH",
+          "tone": "mono"
+        },
+        {
+          "label": "KUL",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "232",
+        "iataCode": "MH",
+        "carrierName": "MASkargo (Malaysia Airlines)",
+        "shortName": "MASkargo",
+        "portalTag": "MASkargo",
+        "hub": "KUL \u00b7 Kuala Lumpur",
+        "trackingUrl": "https://www.maskargo.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-232-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "MASkargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "MASkargo (Malaysia Airlines) Track & Trace",
+                "subtitle": "Official MAWB (232-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.maskargo.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-232",
+          "label": "Copy Prefix 232",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "232"
+        },
+        {
+          "id": "open-track-232",
+          "label": "Open MASkargo",
+          "type": "open_url",
+          "target": "https://www.maskargo.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-257",
+      "entityKey": "air-carrier:257",
+      "title": "Austrian Airlines Cargo (OS)",
+      "subtitle": "IATA Prefix 257 \u00b7 Hub: VIE \u00b7 Vienna",
+      "description": "Austrian Airlines Cargo (2-letter IATA OS, 3-digit AWB prefix 257) operating out of VIE \u00b7 Vienna.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "257",
+        "os",
+        "austrian"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 257",
+          "tone": "amber"
+        },
+        {
+          "label": "OS",
+          "tone": "mono"
+        },
+        {
+          "label": "VIE",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "257",
+        "iataCode": "OS",
+        "carrierName": "Austrian Airlines Cargo",
+        "shortName": "Austrian",
+        "portalTag": "LH Group",
+        "hub": "VIE \u00b7 Vienna",
+        "trackingUrl": "https://lufthansa-cargo.com/eservices/etracking"
+      },
+      "children": [
+        {
+          "id": "air-carrier-257-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "LH Group",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Austrian Airlines Cargo Track & Trace",
+                "subtitle": "Official MAWB (257-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://lufthansa-cargo.com/eservices/etracking"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-257",
+          "label": "Copy Prefix 257",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "257"
+        },
+        {
+          "id": "open-track-257",
+          "label": "Open LH Group",
+          "type": "open_url",
+          "target": "https://lufthansa-cargo.com/eservices/etracking"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-403",
+      "entityKey": "air-carrier:403",
+      "title": "Polar Air Cargo (PO)",
+      "subtitle": "IATA Prefix 403 \u00b7 Hub: CVG \u00b7 Cincinnati",
+      "description": "Polar Air Cargo (2-letter IATA PO, 3-digit AWB prefix 403) operating out of CVG \u00b7 Cincinnati.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "403",
+        "po",
+        "polar air"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 403",
+          "tone": "amber"
+        },
+        {
+          "label": "PO",
+          "tone": "mono"
+        },
+        {
+          "label": "CVG",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "403",
+        "iataCode": "PO",
+        "carrierName": "Polar Air Cargo",
+        "shortName": "Polar Air",
+        "portalTag": "Polar",
+        "hub": "CVG \u00b7 Cincinnati",
+        "trackingUrl": "https://www.polaraircargo.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-403-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Polar",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Polar Air Cargo Track & Trace",
+                "subtitle": "Official MAWB (403-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.polaraircargo.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-403",
+          "label": "Copy Prefix 403",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "403"
+        },
+        {
+          "id": "open-track-403",
+          "label": "Open Polar",
+          "type": "open_url",
+          "target": "https://www.polaraircargo.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-501",
+      "entityKey": "air-carrier:501",
+      "title": "Silk Way West Airlines (7L)",
+      "subtitle": "IATA Prefix 501 \u00b7 Hub: GYD \u00b7 Baku",
+      "description": "Silk Way West Airlines (2-letter IATA 7L, 3-digit AWB prefix 501) operating out of GYD \u00b7 Baku.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "501",
+        "7l",
+        "silk way west"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 501",
+          "tone": "amber"
+        },
+        {
+          "label": "7L",
+          "tone": "mono"
+        },
+        {
+          "label": "GYD",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "501",
+        "iataCode": "7L",
+        "carrierName": "Silk Way West Airlines",
+        "shortName": "Silk Way West",
+        "portalTag": "SWW",
+        "hub": "GYD \u00b7 Baku",
+        "trackingUrl": "https://www.silkwaywest.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-501-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "SWW",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Silk Way West Airlines Track & Trace",
+                "subtitle": "Official MAWB (501-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.silkwaywest.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-501",
+          "label": "Copy Prefix 501",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "501"
+        },
+        {
+          "id": "open-track-501",
+          "label": "Open SWW",
+          "type": "open_url",
+          "target": "https://www.silkwaywest.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-603",
+      "entityKey": "air-carrier:603",
+      "title": "SriLankan Cargo (UL)",
+      "subtitle": "IATA Prefix 603 \u00b7 Hub: CMB \u00b7 Colombo",
+      "description": "SriLankan Cargo (2-letter IATA UL, 3-digit AWB prefix 603) operating out of CMB \u00b7 Colombo.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "603",
+        "ul",
+        "srilankan"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 603",
+          "tone": "amber"
+        },
+        {
+          "label": "UL",
+          "tone": "mono"
+        },
+        {
+          "label": "CMB",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "603",
+        "iataCode": "UL",
+        "carrierName": "SriLankan Cargo",
+        "shortName": "SriLankan",
+        "portalTag": "UL Cargo",
+        "hub": "CMB \u00b7 Colombo",
+        "trackingUrl": "https://www.srilankancargo.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-603-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "UL Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "SriLankan Cargo Track & Trace",
+                "subtitle": "Official MAWB (603-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.srilankancargo.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-603",
+          "label": "Copy Prefix 603",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "603"
+        },
+        {
+          "id": "open-track-603",
+          "label": "Open UL Cargo",
+          "type": "open_url",
+          "target": "https://www.srilankancargo.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-607",
+      "entityKey": "air-carrier:607",
+      "title": "Etihad Cargo (EY)",
+      "subtitle": "IATA Prefix 607 \u00b7 Hub: AUH \u00b7 Abu Dhabi",
+      "description": "Etihad Cargo (2-letter IATA EY, 3-digit AWB prefix 607) operating out of AUH \u00b7 Abu Dhabi.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "607",
+        "ey",
+        "etihad"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 607",
+          "tone": "amber"
+        },
+        {
+          "label": "EY",
+          "tone": "mono"
+        },
+        {
+          "label": "AUH",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "607",
+        "iataCode": "EY",
+        "carrierName": "Etihad Cargo",
+        "shortName": "Etihad",
+        "portalTag": "Etihad Cargo",
+        "hub": "AUH \u00b7 Abu Dhabi",
+        "trackingUrl": "https://www.etihadcargo.com/en/track-a-shipment"
+      },
+      "children": [
+        {
+          "id": "air-carrier-607-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Etihad Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Etihad Cargo Track & Trace",
+                "subtitle": "Official MAWB (607-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.etihadcargo.com/en/track-a-shipment"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-607",
+          "label": "Copy Prefix 607",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "607"
+        },
+        {
+          "id": "open-track-607",
+          "label": "Open Etihad Cargo",
+          "type": "open_url",
+          "target": "https://www.etihadcargo.com/en/track-a-shipment"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-706",
+      "entityKey": "air-carrier:706",
+      "title": "Kenya Airways Cargo (KQ)",
+      "subtitle": "IATA Prefix 706 \u00b7 Hub: NBO \u00b7 Nairobi",
+      "description": "Kenya Airways Cargo (2-letter IATA KQ, 3-digit AWB prefix 706) operating out of NBO \u00b7 Nairobi.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "706",
+        "kq",
+        "kenya airways"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 706",
+          "tone": "amber"
+        },
+        {
+          "label": "KQ",
+          "tone": "mono"
+        },
+        {
+          "label": "NBO",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "706",
+        "iataCode": "KQ",
+        "carrierName": "Kenya Airways Cargo",
+        "shortName": "Kenya Airways",
+        "portalTag": "KQ Cargo",
+        "hub": "NBO \u00b7 Nairobi",
+        "trackingUrl": "https://cargo.kenya-airways.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-706-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "KQ Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Kenya Airways Cargo Track & Trace",
+                "subtitle": "Official MAWB (706-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://cargo.kenya-airways.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-706",
+          "label": "Copy Prefix 706",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "706"
+        },
+        {
+          "id": "open-track-706",
+          "label": "Open KQ Cargo",
+          "type": "open_url",
+          "target": "https://cargo.kenya-airways.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-724",
+      "entityKey": "air-carrier:724",
+      "title": "Swiss WorldCargo (LX)",
+      "subtitle": "IATA Prefix 724 \u00b7 Hub: ZRH \u00b7 Zurich",
+      "description": "Swiss WorldCargo (2-letter IATA LX, 3-digit AWB prefix 724) operating out of ZRH \u00b7 Zurich.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "724",
+        "lx",
+        "swiss"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 724",
+          "tone": "amber"
+        },
+        {
+          "label": "LX",
+          "tone": "mono"
+        },
+        {
+          "label": "ZRH",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "724",
+        "iataCode": "LX",
+        "carrierName": "Swiss WorldCargo",
+        "shortName": "Swiss",
+        "portalTag": "Swiss Cargo",
+        "hub": "ZRH \u00b7 Zurich",
+        "trackingUrl": "https://www.swissworldcargo.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-724-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Swiss Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Swiss WorldCargo Track & Trace",
+                "subtitle": "Official MAWB (724-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.swissworldcargo.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-724",
+          "label": "Copy Prefix 724",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "724"
+        },
+        {
+          "id": "open-track-724",
+          "label": "Open Swiss Cargo",
+          "type": "open_url",
+          "target": "https://www.swissworldcargo.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-810",
+      "entityKey": "air-carrier:810",
+      "title": "Amerijet International (M6)",
+      "subtitle": "IATA Prefix 810 \u00b7 Hub: MIA \u00b7 Miami",
+      "description": "Amerijet International (2-letter IATA M6, 3-digit AWB prefix 810) operating out of MIA \u00b7 Miami.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "810",
+        "m6",
+        "amerijet"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 810",
+          "tone": "amber"
+        },
+        {
+          "label": "M6",
+          "tone": "mono"
+        },
+        {
+          "label": "MIA",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "810",
+        "iataCode": "M6",
+        "carrierName": "Amerijet International",
+        "shortName": "Amerijet",
+        "portalTag": "Amerijet",
+        "hub": "MIA \u00b7 Miami",
+        "trackingUrl": "https://www.amerijet.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-810-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Amerijet",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Amerijet International Track & Trace",
+                "subtitle": "Official MAWB (810-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.amerijet.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-810",
+          "label": "Copy Prefix 810",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "810"
+        },
+        {
+          "id": "open-track-810",
+          "label": "Open Amerijet",
+          "type": "open_url",
+          "target": "https://www.amerijet.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-932",
+      "entityKey": "air-carrier:932",
+      "title": "Virgin Atlantic Cargo (VS)",
+      "subtitle": "IATA Prefix 932 \u00b7 Hub: LHR \u00b7 London",
+      "description": "Virgin Atlantic Cargo (2-letter IATA VS, 3-digit AWB prefix 932) operating out of LHR \u00b7 London.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "932",
+        "vs",
+        "virgin atlantic"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 932",
+          "tone": "amber"
+        },
+        {
+          "label": "VS",
+          "tone": "mono"
+        },
+        {
+          "label": "LHR",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "932",
+        "iataCode": "VS",
+        "carrierName": "Virgin Atlantic Cargo",
+        "shortName": "Virgin Atlantic",
+        "portalTag": "VS Cargo",
+        "hub": "LHR \u00b7 London",
+        "trackingUrl": "https://www.virginatlanticcargo.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-932-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "VS Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Virgin Atlantic Cargo Track & Trace",
+                "subtitle": "Official MAWB (932-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.virginatlanticcargo.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-932",
+          "label": "Copy Prefix 932",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "932"
+        },
+        {
+          "id": "open-track-932",
+          "label": "Open VS Cargo",
+          "type": "open_url",
+          "target": "https://www.virginatlanticcargo.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-988",
+      "entityKey": "air-carrier:988",
+      "title": "Asiana Airlines Cargo (OZ)",
+      "subtitle": "IATA Prefix 988 \u00b7 Hub: ICN \u00b7 Seoul",
+      "description": "Asiana Airlines Cargo (2-letter IATA OZ, 3-digit AWB prefix 988) operating out of ICN \u00b7 Seoul.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "988",
+        "oz",
+        "asiana"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 988",
+          "tone": "amber"
+        },
+        {
+          "label": "OZ",
+          "tone": "mono"
+        },
+        {
+          "label": "ICN",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "988",
+        "iataCode": "OZ",
+        "carrierName": "Asiana Airlines Cargo",
+        "shortName": "Asiana",
+        "portalTag": "OZ Cargo",
+        "hub": "ICN \u00b7 Seoul",
+        "trackingUrl": "https://www.asianacargo.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-988-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "OZ Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Asiana Airlines Cargo Track & Trace",
+                "subtitle": "Official MAWB (988-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.asianacargo.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-988",
+          "label": "Copy Prefix 988",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "988"
+        },
+        {
+          "id": "open-track-988",
+          "label": "Open OZ Cargo",
+          "type": "open_url",
+          "target": "https://www.asianacargo.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-075",
+      "entityKey": "air-carrier:075",
+      "title": "Iberia / IAG Cargo (IB)",
+      "subtitle": "IATA Prefix 075 \u00b7 Hub: MAD \u00b7 Madrid",
+      "description": "Iberia / IAG Cargo (2-letter IATA IB, 3-digit AWB prefix 075) operating out of MAD \u00b7 Madrid.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "075",
+        "ib",
+        "iberia"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 075",
+          "tone": "amber"
+        },
+        {
+          "label": "IB",
+          "tone": "mono"
+        },
+        {
+          "label": "MAD",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "075",
+        "iataCode": "IB",
+        "carrierName": "Iberia / IAG Cargo",
+        "shortName": "Iberia",
+        "portalTag": "IAG Cargo",
+        "hub": "MAD \u00b7 Madrid",
+        "trackingUrl": "https://www.iagcargo.com/en/track/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-075-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "IAG Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Iberia / IAG Cargo Track & Trace",
+                "subtitle": "Official MAWB (075-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.iagcargo.com/en/track/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-075",
+          "label": "Copy Prefix 075",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "075"
+        },
+        {
+          "id": "open-track-075",
+          "label": "Open IAG Cargo",
+          "type": "open_url",
+          "target": "https://www.iagcargo.com/en/track/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-129",
+      "entityKey": "air-carrier:129",
+      "title": "Martinair Cargo (MP)",
+      "subtitle": "IATA Prefix 129 \u00b7 Hub: AMS \u00b7 Amsterdam",
+      "description": "Martinair Cargo (2-letter IATA MP, 3-digit AWB prefix 129) operating out of AMS \u00b7 Amsterdam.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "129",
+        "mp",
+        "martinair"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 129",
+          "tone": "amber"
+        },
+        {
+          "label": "MP",
+          "tone": "mono"
+        },
+        {
+          "label": "AMS",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "129",
+        "iataCode": "MP",
+        "carrierName": "Martinair Cargo",
+        "shortName": "Martinair",
+        "portalTag": "AFKLMP",
+        "hub": "AMS \u00b7 Amsterdam",
+        "trackingUrl": "https://www.afklcargo.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-129-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "AFKLMP",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Martinair Cargo Track & Trace",
+                "subtitle": "Official MAWB (129-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.afklcargo.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-129",
+          "label": "Copy Prefix 129",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "129"
+        },
+        {
+          "id": "open-track-129",
+          "label": "Open AFKLMP",
+          "type": "open_url",
+          "target": "https://www.afklcargo.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-615",
+      "entityKey": "air-carrier:615",
+      "title": "DHL Air / European Air Transport (D0)",
+      "subtitle": "IATA Prefix 615 \u00b7 Hub: LEJ \u00b7 Leipzig",
+      "description": "DHL Air / European Air Transport (2-letter IATA D0, 3-digit AWB prefix 615) operating out of LEJ \u00b7 Leipzig.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "615",
+        "d0",
+        "dhl air"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 615",
+          "tone": "amber"
+        },
+        {
+          "label": "D0",
+          "tone": "mono"
+        },
+        {
+          "label": "LEJ",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "615",
+        "iataCode": "D0",
+        "carrierName": "DHL Air / European Air Transport",
+        "shortName": "DHL Air",
+        "portalTag": "DHL",
+        "hub": "LEJ \u00b7 Leipzig",
+        "trackingUrl": "https://www.dhl.com/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-615-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "DHL",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "DHL Air / European Air Transport Track & Trace",
+                "subtitle": "Official MAWB (615-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.dhl.com/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-615",
+          "label": "Copy Prefix 615",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "615"
+        },
+        {
+          "id": "open-track-615",
+          "label": "Open DHL",
+          "type": "open_url",
+          "target": "https://www.dhl.com/"
+        }
+      ]
+    },
+    {
+      "id": "air-carrier-871",
+      "entityKey": "air-carrier:871",
+      "title": "Suparna Airlines Cargo (Y8)",
+      "subtitle": "IATA Prefix 871 \u00b7 Hub: PVG \u00b7 Shanghai",
+      "description": "Suparna Airlines Cargo (2-letter IATA Y8, 3-digit AWB prefix 871) operating out of PVG \u00b7 Shanghai.",
+      "collection": "air-carriers",
+      "template": "kv-grid",
+      "icon": "\u2708\ufe0f",
+      "tags": [
+        "air",
+        "carrier",
+        "airline",
+        "awb",
+        "mawb",
+        "prefix",
+        "871",
+        "y8",
+        "suparna"
+      ],
+      "modifiers": [
+        "air",
+        "awb",
+        "prefix"
+      ],
+      "chips": [
+        {
+          "label": "Prefix 871",
+          "tone": "amber"
+        },
+        {
+          "label": "Y8",
+          "tone": "mono"
+        },
+        {
+          "label": "PVG",
+          "tone": "neutral"
+        }
+      ],
+      "data": {
+        "prefix": "871",
+        "iataCode": "Y8",
+        "carrierName": "Suparna Airlines Cargo",
+        "shortName": "Suparna",
+        "portalTag": "Y8 Cargo",
+        "hub": "PVG \u00b7 Shanghai",
+        "trackingUrl": "https://www.yzr.com.cn/"
+      },
+      "children": [
+        {
+          "id": "air-carrier-871-tracking",
+          "title": "Airline Tracking Links",
+          "collection": "air-carriers",
+          "template": "env-bookmarks",
+          "icon": "\ud83d\udd17",
+          "chips": [
+            {
+              "label": "PROD",
+              "tone": "red",
+              "dot": "red"
+            },
+            {
+              "label": "Y8 Cargo",
+              "tone": "neutral"
+            }
+          ],
+          "data": {
+            "bookmarks": [
+              {
+                "name": "Suparna Airlines Cargo Track & Trace",
+                "subtitle": "Official MAWB (871-xxxxxxxx) tracking portal",
+                "prodLabel": "PROD",
+                "prodUrl": "https://www.yzr.com.cn/"
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "copy-prefix-871",
+          "label": "Copy Prefix 871",
+          "shortcut": "Enter",
+          "type": "copy",
+          "target": "871"
+        },
+        {
+          "id": "open-track-871",
+          "label": "Open Y8 Cargo",
+          "type": "open_url",
+          "target": "https://www.yzr.com.cn/"
+        }
+      ]
+    }
+  ]
+}

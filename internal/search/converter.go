@@ -162,30 +162,56 @@ func tryParseUnitConversion(text string) *models.SearchCard {
 	}
 	pills := []string{formattedOut, formattedIn}
 
+	equivalents := []map[string]string{}
 	// Add bonus freight-relevant equivalents
 	if fromDef.category == catWeight {
 		baseKg := val * fromDef.toBase
-		data["kilograms"] = formatNum(baseKg) + " kg"
-		data["pounds"] = formatNum(baseKg/0.45359237) + " lbs"
-		data["metric_tons"] = formatNum(baseKg/1000.0) + " t"
+		kgStr := formatNum(baseKg) + " kg"
+		lbStr := formatNum(baseKg/0.45359237) + " lbs"
+		mtStr := formatNum(baseKg/1000.0) + " t"
+		data["kilograms"] = kgStr
+		data["pounds"] = lbStr
+		data["metric_tons"] = mtStr
+		equivalents = append(equivalents,
+			map[string]string{"label": "Kilograms", "value": kgStr},
+			map[string]string{"label": "Pounds", "value": lbStr},
+			map[string]string{"label": "Metric Tons", "value": mtStr},
+		)
 	} else if fromDef.category == catVolume {
 		baseCBM := val * fromDef.toBase
 		airVolKg := baseCBM * 166.6667 // IATA 1:167 kg/CBM (6000 cm3/kg)
-		data["cbm"] = formatNum(baseCBM) + " CBM"
-		data["cubic_feet"] = formatNum(baseCBM/0.0283168466) + " ft³"
-		data["air_volumetric_weight"] = fmt.Sprintf("%s kg (%s lbs) @ 167 kg/CBM", formatNum(airVolKg), formatNum(airVolKg*2.20462262))
-		pills = append(pills, "Air Vol: "+formatNum(airVolKg)+" kg")
+		cbmStr := formatNum(baseCBM) + " CBM"
+		ft3Str := formatNum(baseCBM/0.0283168466) + " ft³"
+		airKgStr := formatNum(airVolKg) + " kg"
+		data["cbm"] = cbmStr
+		data["cubic_feet"] = ft3Str
+		data["air_volumetric_weight"] = fmt.Sprintf("%s (%s lbs) @ 167 kg/CBM", airKgStr, formatNum(airVolKg*2.20462262))
+		pills = append(pills, "Air Vol: "+airKgStr)
+		equivalents = append(equivalents,
+			map[string]string{"label": "CBM", "value": cbmStr},
+			map[string]string{"label": "Cubic Feet", "value": ft3Str},
+			map[string]string{"label": "Air Vol (1:167)", "value": airKgStr},
+		)
 	}
+	data["output"] = formattedOut
+	data["category"] = string(fromDef.category)
+	data["equivalents"] = equivalents
 
 	return &models.SearchCard{
-		ID:          "builtin-unit-convert",
-		Title:       fmt.Sprintf("%s = %s", formattedIn, formattedOut),
-		Subtitle:    "Instant Unit & Freight Conversion • Press Enter to copy",
-		Description: fmt.Sprintf("Converted %s (%s) to %s.", formattedIn, fromDef.label, formattedOut),
-		Collection:  "system",
-		Template:    models.TemplateKeyValue,
-		Icon:        "activity",
-		Tags:        []string{"converter", "calculator"},
+		ID:              "builtin-unit-convert",
+		Title:           fmt.Sprintf("%s = %s", formattedIn, formattedOut),
+		Subtitle:        "Instant Unit & Freight Conversion",
+		Description:     fmt.Sprintf("Converted %s (%s) to %s.", formattedIn, fromDef.label, formattedOut),
+		Collection:      "system",
+		Template:        models.TemplateConversion,
+		Icon:            "⇄",
+		Tags:            []string{"converter", "calculator"},
+		DefaultExpanded: true,
+		Chips: []models.GlanceChip{
+			{Label: strings.ToUpper(string(fromDef.category)), Tone: "blue"},
+			{Label: formattedOut, Tone: "green"},
+			{Label: formattedIn, Tone: "neutral"},
+		},
 		GlancePills: pills,
 		Data:        data,
 		Actions: []models.CardAction{
@@ -257,21 +283,35 @@ func tryParseDimensionalBox(text string) *models.SearchCard {
 	copySummary := fmt.Sprintf("%s | Volume: %s (%s ft³) | Air Volumetric Wt: %s", dimSummary, cbmStr, formatNum(totalCuFt), airStr)
 
 	return &models.SearchCard{
-		ID:          "builtin-unit-convert",
-		Title:       fmt.Sprintf("%s → %s · Air Vol: %s", dimSummary, cbmStr, airStr),
-		Subtitle:    "Instant Cargo Volume (CBM) & IATA Air Dimensional Weight Calculator (1:167)",
-		Description: "Calculated total cubic volume (CBM / ft³), IATA air freight volumetric weight (6,000 cm³/kg · 166.67 kg/CBM), and Ocean LCL Revenue Tons (W/M).",
-		Collection:  "system",
-		Template:    models.TemplateKeyValue,
-		Icon:        "activity",
-		Tags:        []string{"cbm", "volumetric", "dimensions", "calculator"},
+		ID:              "builtin-unit-convert",
+		Title:           fmt.Sprintf("%s → %s · Air Vol: %s", dimSummary, cbmStr, airStr),
+		Subtitle:        "Instant Cargo Volume (CBM) & IATA Air Dimensional Weight Calculator (1:167)",
+		Description:     "Calculated total cubic volume (CBM / ft³), IATA air freight volumetric weight (6,000 cm³/kg · 166.67 kg/CBM), and Ocean LCL Revenue Tons (W/M).",
+		Collection:      "system",
+		Template:        models.TemplateConversion,
+		Icon:            "📦",
+		Tags:            []string{"cbm", "volumetric", "dimensions", "calculator"},
+		DefaultExpanded: true,
+		Chips: []models.GlanceChip{
+			{Label: "VOLUME", Tone: "blue"},
+			{Label: cbmStr, Tone: "green"},
+			{Label: "Air: " + formatNum(airVolKg) + " kg", Tone: "amber"},
+		},
 		GlancePills: []string{cbmStr, "Air: " + formatNum(airVolKg) + " kg", formatNum(totalCuFt) + " ft³"},
 		Data: map[string]any{
+			"input":                 dimSummary,
+			"output":                cbmStr,
+			"category":              "volume",
 			"dimensions":            dimSummary,
 			"total_volume_cbm":      fmt.Sprintf("%s CBM (m³)", formatNum(totalCBM)),
 			"total_volume_cuft":     fmt.Sprintf("%s ft³", formatNum(totalCuFt)),
 			"air_volumetric_weight": fmt.Sprintf("%s kg / %s lbs (IATA 1:167)", formatNum(airVolKg), formatNum(airVolLbs)),
 			"ocean_lcl_wm":          fmt.Sprintf("%s W/M (Revenue Tons @ 1 CBM = 1,000 kg)", formatNum(oceanWM)),
+			"equivalents": []map[string]string{
+				{"label": "Cubic Feet", "value": formatNum(totalCuFt) + " ft³"},
+				{"label": "IATA Air Vol", "value": formatNum(airVolKg) + " kg"},
+				{"label": "Ocean W/M", "value": formatNum(oceanWM) + " W/M"},
+			},
 		},
 		Actions: []models.CardAction{
 			{ID: "copy-summary", Label: "Copy Volume & Air Weight", Shortcut: "Enter", Type: "copy", Target: copySummary},

@@ -56,14 +56,14 @@ func TestProbeCLIAuthReadOnlyAndSafe(t *testing.T) {
 		t.Fatalf("expected az installed but unauthenticated, got %+v", statuses2[1])
 	}
 
-	// 3. Enterprise MCP presets default to opt-in (Enabled=false) and LocalOnly=true
-	presets := EnterpriseMCPPresets()
+	// 3. Recommended MCP presets default to opt-in (Enabled=false) and LocalOnly=true
+	presets := RecommendedMCPPresets()
 	if len(presets) != 2 {
-		t.Fatalf("expected 2 enterprise MCP presets, got %d", len(presets))
+		t.Fatalf("expected 2 recommended MCP presets, got %d", len(presets))
 	}
 	for _, p := range presets {
 		if p.Enabled || !p.LocalOnly {
-			t.Fatalf("enterprise preset %q must default to Enabled=false and LocalOnly=true: %+v", p.ID, p)
+			t.Fatalf("preset %q must default to Enabled=false and LocalOnly=true: %+v", p.ID, p)
 		}
 	}
 }
@@ -181,5 +181,72 @@ func TestUpsertPatternRuleMCPToolAndLiveReload(t *testing.T) {
 	badRes, err := c.CallTool(ctx, badReq)
 	if err != nil || !badRes.IsError {
 		t.Fatalf("expected MCP tool error for invalid regex, got res=%+v err=%v", badRes, err)
+	}
+}
+
+func TestModuleManagementMCPTools(t *testing.T) {
+	store, err := indexer.OpenStore(":memory:")
+	if err != nil {
+		t.Fatalf("OpenStore: %v", err)
+	}
+	defer store.Close()
+
+	modulesDir := t.TempDir()
+	syncCount := 0
+	hub, err := NewHubServer(ServerDeps{
+		Store:      store,
+		ModulesDir: modulesDir,
+		OnModulesChanged: func() {
+			syncCount++
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewHubServer: %v", err)
+	}
+
+	c, err := client.NewInProcessClient(hub.MCPServer())
+	if err != nil {
+		t.Fatalf("NewInProcessClient: %v", err)
+	}
+	ctx := context.Background()
+	if err := c.Start(ctx); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer c.Close()
+
+	initReq := mcplib.InitializeRequest{}
+	initReq.Params.ProtocolVersion = mcplib.LATEST_PROTOCOL_VERSION
+	initReq.Params.ClientInfo = mcplib.Implementation{Name: "test", Version: "1.0"}
+	if _, err := c.Initialize(ctx, initReq); err != nil {
+		t.Fatalf("Initialize: %v", err)
+	}
+
+	call := func(name string, args map[string]any) *mcplib.CallToolResult {
+		req := mcplib.CallToolRequest{}
+		req.Params.Name = name
+		req.Params.Arguments = args
+		res, err := c.CallTool(ctx, req)
+		if err != nil || res.IsError {
+			t.Fatalf("CallTool %s failed: res=%+v err=%v", name, res, err)
+		}
+		return res
+	}
+
+	// 1. Install starter module via MCP
+	call("install_starter_module", map[string]any{"module_id": "team-templates"})
+	// 2. Get full module JSON via MCP
+	getRes := call("get_module", map[string]any{"module_id": "team-templates"})
+	if len(getRes.Content) == 0 {
+		t.Fatalf("expected module JSON content from get_module")
+	}
+	// 3. Upsert custom module via MCP
+	call("upsert_module", map[string]any{
+		"module_json": `{"id":"my-team-edi","name":"My Team EDI","category":"Templates","version":"1.0.0","cards":[{"id":"my-edi-1","title":"My Team EDI Servers","collection":"templates","template":"server-matrix","icon":"🖥️","chips":[{"label":"PROD","tone":"red","dot":"red"}],"data":{"servers":[{"env":"PROD","tone":"red","host":"team-prd-edi01.internal"}]}}]}`,
+	})
+	// 4. Delete installed module via MCP
+	call("delete_module", map[string]any{"module_id": "team-templates"})
+
+	if syncCount != 3 {
+		t.Fatalf("expected 3 OnModulesChanged callbacks (install, upsert, delete), got %d", syncCount)
 	}
 }

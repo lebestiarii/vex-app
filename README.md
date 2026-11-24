@@ -1,90 +1,93 @@
 # Vex
 
-**Vex** is a fast, local-first, cross-platform (macOS & Windows) desktop search launcher, composable knowledge hub, and tri-modal MCP + AI RAG server built with **Go + Wails v3** and **React + TypeScript + Tailwind CSS**.
+**Vex** is a desktop-first, platform-agnostic, local-first knowledge Rolodex, configurable pattern decoder, and MCP hub built with **Go + Wails v3** and **Angular 19 (Standalone Components + Signals)**.
 
-> **Deep-Dive Documentation**: See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full system architecture diagram and design decisions, **[docs/ADR-001-enterprise-auth-and-patterns.md](docs/ADR-001-enterprise-auth-and-patterns.md)** for the Enterprise Auth (`gh`/`az` MCP) & Pattern Recognition design record, and **[TODO.md](TODO.md)** for the phased roadmap.
+> **Documentation**: See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for system architecture, **[docs/TEMPLATE_BLUEPRINTS.md](docs/TEMPLATE_BLUEPRINTS.md)** for layout blueprints & data examples of every card template, and **[TODO.md](TODO.md)** for the phased roadmap and open questions.
 
-Press your global hotkey (`Ctrl+Shift+B` by default, configurable in Settings) to open a calm, two-piece floating glass search bar — get instant answers, unit/dimensional weight conversions, live port/airport clocks & weather, and role-tailored knowledge modules.
+Press your global shortcut (`Ctrl+Shift+B` by default) or click the tray icon to open the **Vex Full-Width Stacked Card Rolodex** (Light & Dark mode) — search gateways, air carrier prefixes, ocean SCACs, ISO containers, unit conversions, server matrices, bookmark portals, and live-decoded reference numbers with full-width nested cards up to 2 levels deep.
 
 ---
 
 ## Key Capabilities
 
-- **Two-Piece Floating UI & Viewport-Aware Upward Flip**:
-  - Oval glass search bar + user-configurable `⌘1`–`⌘5` pinned category pills (`PinnedCategories`), **1 Primary Hero Card** with single-tab module perspectives, and **2–3 compact horizontal runner-up rows** with `GlancePills` and keyboard promotion (`↑`/`↓` + `Enter`, staged `Esc`).
-  - Automatically flips the layout upward (`flex-col-reverse`, search bar anchored at the bottom) when spawned from the bottom-right system tray or bottom 25–30% of the active display's work area.
-  - Minimal 3-step **Onboarding** + contextual `? Help` popover.
-- **Interactive Terminal UI (`--tui`)**:
-  - Run `./bin/vex --tui` for full terminal parity via Bubble Tea: live search input, `1`–`4` (`Alt+1`–`Alt+5`) category filters, Primary Hero Card with `Tab`/`Shift+Tab` perspective tabs, compact runner-ups with `Enter` promotion/action execution, and instant unit/cargo volumetric math.
-- **Composable, Toggleable Modules & Card Overlays**:
-  - Enable only the modules relevant to your role in **Settings → Modules** (or share/import portable `.json` module packs).
-  - Modules contribute standalone cards **and** enrich shared entities (`entityKey`, e.g. `loc:AMS`) with isolated Perspective Tabs (`Overview`, `Air`, `Ocean`, `Customs`, `Transcon`, `Global Tech`, `GitHub Catalog`) — and promote overlays to standalone cards if the base module is turned off.
-  - Includes a lightweight **GitHub Engineering Catalog** (`gt-<portfolio>-<team>-<product>-<component>`) that parses repo metadata into repo cards + Portfolio/Team directory roll-ups.
-- **Instant Unit, Cargo Dimensional Weight & Reference Pattern Decoder**:
-  - Type `1588 kg to lbs`, `-30c to f`, `4.3 cbm to ft3`, or `120x80x100 cm` for zero-latency conversions and IATA `1:167` air volumetric weight + Ocean LCL `W/M` calculations.
-  - Paste an IATA Air Waybill (`176-12345675`, Mod-7 verified), ISO 6346 container (`MSCU123456...`), Azure DevOps Work Item (`AB#48219`), GitHub issue (`owner/repo#42`), or drop custom JSON rules (e.g., 10-digit House/Master Bills) into `~/.vex/patterns/` to decode references and cross-enrich linked branch/carrier cards automatically.
-- **Source Provenance & Tri-Modal MCP + AI RAG**:
-  - Every card/section carries `Provenance` (`sourceName`, `sourceUrl`, `verifiedAt`, `authority`) surfaced in the UI footer and injected into AI RAG & MCP context.
-  - Runs as a **Domain MCP Server** (`--mcp-stdio` for Claude Desktop, Cursor, and GitHub Copilot CLI; Streamable HTTP at `http://127.0.0.1:17380/mcp` for VS Code Copilot) and **External MCP Client**.
-- **Zero-Fork Build-Time Editions (`community` / `enterprise`)**:
-  - Override `main.AppName`, `main.Edition`, `main.AppVersion`, `main.UpdateFeedURL`, and `assets/tray_icon.png` at build time via `-ldflags`.
+- **Full-Width Stacked Nested Card System (Angular 19, Light/Dark Mode, Platform-Agnostic)**:
+  - Responsive `420px–520px` (default `460px`) desktop widget frame with clean internal scrolling (`max-height: 680px`), Light & Dark themes (`[data-theme="light"]` / `[data-theme="dark"]` synced with OS preference + manual toggle), and zero OS-specific window buttons or key symbols.
+  - **Zero accordion tree lines**: Nested child cards span **100% of their parent's inner width** stacked vertically (`gap: 8px`) with depth communicated via subtle alternating inset surfaces (L0 → L1 → L2).
+  - **Unified Header-Strip Pattern**: `[Icon/Flag]` + `15px` semibold title + L0-only Pin (`3` max with blue-tinted pill, shake & toast feedback) + expand chevron + semantic/stoplight glance chips (`● DEV` green, `● QA` amber, `● PROD` red, blue codes, monospace clocks/temps).
+  - **5 Canonical Generic Nestable Templates** (plus `container-blueprint`, `dictionary-guide`, `kv-grid`):
+    1. `location` — Strictly header-only container (UNLOC·IATA, live IANA clock, currency, temp; no addresses/phones) expanding directly into full-width nested child cards.
+    2. `server-matrix` — Stoplight `● DEV` / `● QA` / `● PROD` rows with monospace hostnames and inline `[Copy]`, `[SSH]`, and `[↗]` buttons.
+    3. `website-link` — Multi-Chip Mode (2+ links) expanding to launch/copy rows, and Single-Button Mode (1 link) omitting the chevron so the whole card clicks to open with a top-right `↗`.
+    4. `pattern-breakdown` — 3-column equal-width Blue/Amber/Green segment tile grid (`Value` + `ROLE` + `Meaning`) + plain-English explanation + full-width nested entity cards.
+    5. `conversion` — Compact `Input ⇄ Output` strip with 1-click Copy and equivalent chips.
+- **100% Optional, Deletable Modules (`~/.vex/modules/`)**:
+  - Nothing is forced from code and no sample/demo data is baked into the frontend or backend. All 6 packaged optional starter modules (**Air Carrier IATA Prefix Index**, **Ocean Carrier SCAC Index**, **ISO Container Sizes & Blueprints**, **Logistics Dictionary**, **Reference Number Decoders**, and **Generic Team Templates**) are optional packs installable at onboarding or via the **Modules** dialog.
+  - Every installed module lives as a real JSON file in `~/.vex/modules/<id>.json` that can be toggled, edited, updated via MCP, or deleted permanently (with live `fsnotify` hot-reload).
+- **Loadable, Configurable Pattern Matching (`~/.vex/patterns/` & Module Patterns)**:
+  - Zero hardcoded rules in Go. Supports input normalizers (`trim`, `uppercase`, `strip-spaces`, `strip-dashes`), checksum validators (`iata-mod7`, `iso6346`, `luhn`), 3-column `segments[]` + `explanationTemplate`, live SQLite `dataLookups` across modules, recursive cross-card `linkRules`, and live dry-run testing in the **Patterns** dialog.
+- **Built-In MCP Hub & Agent Skill Sharing**:
+  - Runs as a **Domain MCP Server** (`--mcp-stdio` for Claude Desktop, Cursor, Copilot CLI; Streamable HTTP at `http://127.0.0.1:17380/mcp` for VS Code Copilot) exposing **19 tools**, **7 resources/templates**, and **1 prompt** so AI agents can query Vex data, transform raw CSV/JSON files into cards, enrich/create modules & pattern rules, and read shared agent skills (`list_skills`, `get_skill`, `search://skills`, `skill://{name}`).
+  - Also supports connecting to external MCP servers (`ClientManager`) and read-only `gh` / `az` CLI session checks.
 
 ---
 
 ## Build & Run
 
-### Prerequisites & Dependencies
-- **Go `1.27+`** (`go.mod` / `go.sum` installs all Go dependencies automatically; SQLite uses pure-Go `modernc.org/sqlite`, so no C SQLite compiler is required).
+### Prerequisites
+- **Go `1.27+`** (pure-Go SQLite via `modernc.org/sqlite`; no C SQLite compiler required).
   - **macOS**: Xcode Command Line Tools (`xcode-select --install`) for Cocoa/WKWebView.
-  - **Windows**: Built-in WebView2 (pre-installed on Windows 10/11).
-- **Frontend (only needed if editing UI code)**: **Deno `2.x`** *or* **Node.js `20+` / npm**.
-  - *Tip*: Pre-built `frontend/dist` assets are committed and embedded via `//go:embed`, so you can run `go build` immediately after `git clone`.
+  - **Windows**: Built-in WebView2 (Windows 10/11).
+- **Frontend (only needed if editing UI code)**: **Deno `2.x`** *or* **Node.js `20+` / Angular CLI**.
+  - Pre-built `frontend/dist` assets are embedded via `//go:embed all:frontend/dist`.
 
-### Build Frontend & Native Binary
+### Build Frontend & Native Desktop Binaries
+
+#### macOS (`bin/macos/vex`)
 ```bash
-# 1. (Optional — only if modifying frontend/src) Install deps, typecheck & build UI:
+# 1. Typecheck & build Angular 19 AOT + Ivy-linked frontend -> frontend/dist/
 #    With Deno:
-cd frontend && deno install && deno task typecheck && deno task build && cd ..
-#    Or with Node/npm:
-#    cd frontend && npm install && npm run typecheck && npm run build && cd ..
+cd frontend && deno install --node-modules-dir=auto && deno task typecheck && deno task build && cd ..
+#    Or with Node.js / Angular CLI:
+#    cd frontend && npm install && npm run ng:build && cd ..
 
-# 2. Run full Go test suite with race detector (100% offline, no external DB)
+# 2. Run full Go test suite with race detector (100% offline)
 go test -race -count=1 ./...
 
-# 3. Build macOS binary (with WKWebView transparency tag)
-go build -tags private_mac_apis -o bin/vex .
-
-# Optional build-time Edition override (e.g. enterprise)
-# go build -tags private_mac_apis -ldflags "-X main.Edition=enterprise" -o bin/vex .
-
-# (Windows build)
-# go build -o bin/vex.exe .
+# 3. Build macOS desktop binary (with WKWebView transparency tag)
+go build -tags private_mac_apis -o bin/macos/vex .
 ```
 
-### Run
+#### Windows (`bin/windows/vex.exe`)
+<!-- TODO: Complete Windows build template (toolchain paths, WebView2 setup, build command for bin/windows/vex.exe, and test verification). -->
+*(Section intentionally left blank — complete this template on Windows.)*
+
+### Run & Preview
 ```bash
-# Default data directory (~/.vex)
-./bin/vex
+# Launch macOS desktop app (default data directory ~/.vex)
+./bin/macos/vex
 
-# Fresh isolated demo directory (triggers first-run onboarding)
-./bin/vex --data-dir /tmp/vex-demo
+# Launch with a clean isolated data directory (opens starter module onboarding)
+./bin/macos/vex --data-dir /tmp/vex-fresh
 
-# Interactive Bubble Tea Terminal UI (Hero Card + Runner-Ups in the terminal)
-./bin/vex --tui
+# Run headless MCP stdio server (for Claude Desktop, Cursor, Copilot CLI)
+./bin/macos/vex --mcp-stdio
 
-# Headless MCP stdio server (for Claude Desktop, Cursor, Copilot CLI)
-./bin/vex --mcp-stdio
+# Override HTTP MCP bind address (or pass 'off' to disable)
+./bin/macos/vex --mcp-addr 127.0.0.1:17380
+
+# Override global shortcut accelerator
+./bin/macos/vex --hotkey Ctrl+Shift+B
 ```
 
 ---
 
 ## Security Posture
-- **100% Local-First & `localOnly` Cloud RAG Guardrail**: All cards, SQLite FTS5 indexes, and embeddings stay on disk in `~/.vex`; modules, cards, or overlay sections marked `localOnly: true` are automatically stripped from external cloud LLM payloads (`openai`, `anthropic`, `gemini`) while remaining 100% searchable locally and via local Ollama.
-- **Native OS Credential Store (`internal/secrets`)**: AI API keys are persisted in macOS Keychain or Windows Credential Manager (never stored in plaintext `config.json`, with automatic startup migration and scrubbing of legacy keys).
-- **Loopback-Only MCP HTTP + CSRF/DNS-Rebinding Guard**: The HTTP MCP endpoint binds to `127.0.0.1:17380` and rejects non-loopback `Host` or cross-origin `Origin` headers.
-- **Safe Action Execution**: `open_url` / `open_pwa` strictly validate `http://` / `https://` URLs and reject shell metacharacters; arbitrary shell command execution is disabled across cards, plugins, and MCP.
+- **100% Local-First & `localOnly` Cloud RAG Guardrail**: All cards, modules, patterns, and SQLite FTS5 indexes live locally in `~/.vex`. Items marked `localOnly: true` are automatically stripped from cloud LLM calls (`openai`, `anthropic`, `gemini`) while remaining searchable locally and via Ollama.
+- **Native OS Credential Store (`internal/secrets`)**: AI API keys are stored in macOS Keychain or Windows Credential Manager — never persisted in plaintext `config.json`.
+- **Loopback-Only MCP HTTP + CSRF/DNS-Rebinding Guard**: `127.0.0.1:17380` rejects non-loopback `Host` and cross-origin `Origin` headers.
+- **Safe Action Execution**: `open_url` / `open_pwa` strictly validate `http://` / `https://` URLs and reject shell metacharacters; arbitrary shell execution is disabled.
 
 ---
 
 ## Roadmap
-See [TODO.md](TODO.md) for the phased Vex implementation roadmap and deferred backlog.
+See [TODO.md](TODO.md) for the phased Vex implementation history, open clarifications, and upcoming backlog.

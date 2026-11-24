@@ -1,34 +1,36 @@
 ---
 name: doc-drift-sweep
-description: Pre-release and pre-merge documentation drift checklist for Vex. Verifies that README.md, docs/ARCHITECTURE.md, TODO.md, SKILL.md, workflow rules, and live MCP/JSON schemas accurately reflect the codebase without unnecessary prose churn.
+description: Post-phase, pre-release, and pre-merge documentation drift checklist for Vex. Verifies that README.md, docs/ARCHITECTURE.md, TODO.md, workspace skills, workflow rules, and live MCP/JSON schemas accurately reflect the codebase without unnecessary prose churn.
 ---
 
 # Vex — Documentation Drift Sweep
 
-Run this targeted 6-point audit before merging major phases to `main` or cutting a release. **Rule**: Only fix genuine mismatches between code and documentation — never invent problems or rewrite prose just to create diff churn.
+Run this targeted 6-point audit **at the end of every implementation phase** and before merging to `main` or cutting a release. **Rule**: Fix every genuine mismatch between code and documentation — never leave stale stack, flag, count, or schema claims behind.
 
-## 1. Package & Architecture Diagram Sync
-- List directories under `internal/` and verify every package appears accurately in:
+## 1. Package, Frontend Stack & Architecture Sync
+- List directories under `internal/` and verify every package matches:
   - `.agent/skills/vex-architecture/SKILL.md` (Acyclic Package Dependency Graph)
-  - `docs/ARCHITECTURE.md` (Mermaid architecture diagram & feature sections)
+  - `.agent/rules/vex-workflow.md` (Architecture Guardrails)
+  - `docs/ARCHITECTURE.md` (Mermaid diagram & feature sections)
+- Verify frontend framework, template registry (`CardTemplateRegistry`), and build pipeline (`ngc` + `esbuild` / `angular.json`) match `.agent/skills/vex-rolodex-ui/SKILL.md` and `.agent/skills/vex-template-authoring/SKILL.md`.
 
 ## 2. Live MCP Contracts & JSON Schema Sync
-- Compare `models.SearchCard`, `models.CardSection`, `models.Provenance`, and `models.ModuleManifest` in `internal/models/card.go` against `models.CardJSONSchema()` (`schema://search-card`).
-- Count registered MCP tools (`AddTool(...)`) and resources in `internal/mcp/server.go` and confirm the count & names match `SKILL.md` and `docs/ARCHITECTURE.md`.
+- Compare `models.SearchCard`, `models.CardNode`, `models.GlanceChip`, `models.ModuleManifest`, and `models.PatternRule` (`internal/models/`) against `models.CardJSONSchema()` (`schema://search-card`).
+- Count registered MCP tools (`AddTool(...)`) and resources (`AddResource` / `AddResourceTemplate`) in `internal/mcp/server.go` and confirm the counts and names match `SKILL.md`, `README.md`, and `docs/ARCHITECTURE.md`.
 
 ## 3. CLI Flags, Environment & Config Sync
 - Compare `flag.*` definitions in `main.go` and fields in `RuntimeConfig` / `UserPrefs` (`app_service.go`) against:
-  - `README.md` (Run commands & options)
-  - `.env.example` (build/testing environment profile variables)
-  - `SKILL.md` (User Preferences section)
+  - `README.md` (Run commands & flags)
+  - `.env.example` (build/testing environment variables)
+  - `.agent/skills/vex-architecture/SKILL.md`
 
 ## 4. Build Commands & Dependency Prerequisites
-- Confirm Go & frontend build commands (`-tags private_mac_apis` on macOS, Deno & Node/npm commands, `go test -race -count=1 ./...`, `-o bin/vex .`) match across `README.md`, `SKILL.md`, and `.agent/rules/vex-workflow.md`.
-- Confirm `AppVersion` in `buildinfo.go` is accurate for the current release state.
+- Confirm Go & frontend build commands (`-tags private_mac_apis -o bin/macos/vex .` on macOS, `bin/windows/vex.exe` placeholder on Windows, Deno `deno task typecheck && deno task build`, `go test -race -count=1 ./...`) match across `README.md`, `SKILL.md`, and `.agent/rules/vex-workflow.md`.
+- Confirm `AppVersion` in `buildinfo.go` matches docs.
 
 ## 5. TODO.md & Repo Hygiene
-- Check `TODO.md` and remove or check off any items that have already been implemented.
-- Verify `.gitignore` excludes local secrets (`.env`, `.env.*` except `.env.example`), build artifacts (`bin/`, `*.exe`, `*.app/`), and local logs/DBs (`*.db`, `*.jsonl`, `*.log`).
+- Check `TODO.md`: mark completed phase items `[x]`, document the latest phase cleanly, and prune obsolete backlog items.
+- Verify `.gitignore` excludes local secrets (`.env`, `.env.*` except `.env.example`), build artifacts (`bin/`, `*.exe`, `*.app/`), frontend build caches (`frontend/node_modules/`, `frontend/.angular/`, `frontend/out-tsc/`), and local DBs/logs (`*.db`, `*.jsonl`, `*.log`).
 
 ## 6. Report Findings Concisely
-- Summarize only real drift found and fixed (or confirm **"Zero drift detected"**), with clickable `file://` links to any updated files.
+- Summarize real drift found and fixed (or confirm **"Zero drift detected"**), with clickable `file://` links to all updated files.

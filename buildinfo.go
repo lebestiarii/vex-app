@@ -8,13 +8,11 @@ import (
 // Build-time injectable variables via -ldflags:
 //
 //	-X main.AppName=Vex
-//	-X main.Edition=enterprise
-//	-X main.AppVersion=0.1.0
-//	-X main.UpdateFeedURL=https://intranet.example.com/vex/manifest.json
+//	-X main.AppVersion=0.2.0
+//	-X main.UpdateFeedURL=https://updates.example.com/vex/manifest.json
 var (
 	AppName       = "Vex"
-	Edition       = "community"
-	AppVersion    = "0.1.0"
+	AppVersion    = "0.2.0"
 	UpdateFeedURL = ""
 )
 
@@ -26,7 +24,6 @@ var embeddedAssets embed.FS
 // AppInfo summarizes build-time identity for the frontend UI and diagnostics.
 type AppInfo struct {
 	Name    string `json:"name"`
-	Edition string `json:"edition"`
 	Version string `json:"version"`
 }
 
@@ -35,17 +32,12 @@ func currentAppInfo() AppInfo {
 	if name == "" {
 		name = "Vex"
 	}
-	ed := strings.TrimSpace(Edition)
-	if ed == "" {
-		ed = "community"
-	}
 	ver := strings.TrimSpace(AppVersion)
 	if ver == "" {
-		ver = "0.1.0"
+		ver = "0.2.0"
 	}
 	return AppInfo{
 		Name:    name,
-		Edition: ed,
 		Version: ver,
 	}
 }
