@@ -25,6 +25,8 @@ Press your global shortcut (`Ctrl+Shift+B` by default) or click the tray icon to
   - Every installed module lives as a real JSON file in `~/.vex/modules/<id>.json` that can be toggled, edited, updated via MCP, or deleted permanently (with live `fsnotify` hot-reload).
 - **Loadable, Configurable Pattern Matching (`~/.vex/patterns/` & Module Patterns)**:
   - Zero hardcoded rules in Go. Supports input normalizers (`trim`, `uppercase`, `strip-spaces`, `strip-dashes`), checksum validators (`iata-mod7`, `iso6346`, `luhn`), 3-column `segments[]` + `explanationTemplate`, live SQLite `dataLookups` across modules, recursive cross-card `linkRules`, and live dry-run testing in the **Patterns** dialog.
+- **High-Precision 4-Tier Search & Indexed SQLite v2 (`internal/indexer/store.go`)**:
+  - Ranks exact entity/code/tag/chip matches (`AMS` → `loc:AMS`) decisively first, followed by 1-hop contextual neighbors and whole-token FTS5 BM25, then prefix FTS5 and guarded metadata-only fallback — with value-only `SearchableBody()` indexing, a dynamic relevance cliff, and a focused `10`-card active query limit (`24` when browsing empty) to eliminate scrolling sprawl.
 - **Built-In MCP Hub & Agent Skill Sharing**:
   - Runs as a **Domain MCP Server** (`--mcp-stdio` for Claude Desktop, Cursor, Copilot CLI; Streamable HTTP at `http://127.0.0.1:17380/mcp` for VS Code Copilot) exposing **19 tools**, **7 resources/templates**, and **1 prompt** so AI agents can query Vex data, transform raw CSV/JSON files into cards, enrich/create modules & pattern rules, and read shared agent skills (`list_skills`, `get_skill`, `search://skills`, `skill://{name}`).
   - Also supports connecting to external MCP servers (`ClientManager`) and read-only `gh` / `az` CLI session checks.

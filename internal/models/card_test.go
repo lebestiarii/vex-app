@@ -105,8 +105,11 @@ func TestContentHashDeterministic(t *testing.T) {
 	}
 
 	body := c1.SearchableBody()
-	if !strings.Contains(body, "host: 10.0.0.5") || !strings.Contains(body, "Primary cache cluster") {
+	if !strings.Contains(body, "10.0.0.5") || !strings.Contains(body, "6379") || !strings.Contains(body, "Primary cache cluster") {
 		t.Errorf("unexpected searchable body: %q", body)
+	}
+	if strings.Contains(body, "host:") {
+		t.Errorf("expected value-only searchable body without JSON key prefix, got %q", body)
 	}
 }
 
@@ -114,5 +117,64 @@ func TestCardJSONSchemaIsValidJSON(t *testing.T) {
 	schema := CardJSONSchema()
 	if !json.Valid([]byte(schema)) {
 		t.Fatal("CardJSONSchema() returned invalid JSON")
+	}
+}
+
+func TestSearchableBodyValueOnlyAndChipsText(t *testing.T) {
+	card := SearchCard{
+		ID:          "loc-ams",
+		EntityKey:   "loc:AMS",
+		Title:       "Amsterdam Gateway (AMS)",
+		Subtitle:    "Netherlands Hub",
+		Description: "Primary European air and ocean gateway.",
+		Collection:  "locations",
+		Template:    TemplateLocation,
+		Chips: []GlanceChip{
+			{Label: "NLAMS · AMS", Tone: "mono"},
+			{Label: "EUR €", Tone: "neutral"},
+			{Label: "  ", Tone: "neutral"},
+		},
+		Data: map[string]any{
+			"contract":     "location",
+			"url":          "https://internal.example/ams-portal",
+			"trackingUrl":  "https://track.example/ams",
+			"sshCommand":   "ssh ops@ams-edi01.internal.example",
+			"ianaTimezone": "Europe/Amsterdam",
+			"mode":         "gateway",
+			"aspect":       "40hc",
+			"tone":         "amber",
+			"dot":          "green",
+			"icon":         "globe",
+			"active":       true,
+			"unlocode":     "NLAMS",
+			"portCode":     3120,
+			"nested": map[string]any{
+				"qaUrl": "https://qa.example/ams",
+				"city":  "Schiphol",
+			},
+		},
+		Actions: []CardAction{
+			{ID: "open", Label: "Open Gateway Portal", Type: "open_url", Target: "https://portal.example/ams-hidden"},
+			{ID: "copy", Label: "Copy UNLOCODE", Type: "copy", Target: "NLAMS"},
+		},
+	}
+
+	if got := card.ChipsText(); got != "NLAMS · AMS EUR €" {
+		t.Fatalf("ChipsText() = %q, want %q", got, "NLAMS · AMS EUR €")
+	}
+
+	body := card.SearchableBody()
+	for _, want := range []string{"Primary European air and ocean gateway.", "NLAMS", "3120", "Schiphol", "Open Gateway Portal", "Copy UNLOCODE"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("SearchableBody() missing %q in %q", want, body)
+		}
+	}
+	for _, unwanted := range []string{
+		"contract", "trackingUrl", "sshCommand", "ianaTimezone", "qaUrl",
+		"ams-portal", "ams-hidden", "map[", "true",
+	} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("SearchableBody() should exclude %q, got %q", unwanted, body)
+		}
 	}
 }

@@ -15,6 +15,7 @@
 - [.agent/skills/vex-architecture/SKILL.md](.agent/skills/vex-architecture/SKILL.md): Backend/frontend architecture, MCP tool/resource inventory (19 tools, 7 resources/templates), and schemas.
 - [.agent/skills/vex-rolodex-ui/SKILL.md](.agent/skills/vex-rolodex-ui/SKILL.md): Full-width stacked nested card design system, Light/Dark CSS tokens, and Angular 22 (Zoneless + Signals) component rules.
 - [.agent/skills/vex-frontend-testing/SKILL.md](.agent/skills/vex-frontend-testing/SKILL.md): Offline Vitest 5 + `happy-dom` + Angular 22 Ivy Linker testing guide (`deno task test` / `ng test`).
+- [.agent/skills/vex-search-ranking/SKILL.md](.agent/skills/vex-search-ranking/SKILL.md): SQLite v2 schema, value-only `SearchableBody()`, 4-tier exact/contextual/prefix/guarded-fuzzy ranking, and dynamic relevance cliff.
 - [.agent/skills/vex-template-authoring/SKILL.md](.agent/skills/vex-template-authoring/SKILL.md): Guide for authoring generic card templates, optional JSON modules (`~/.vex/modules/`), and `PatternRule` decoders.
 - [.agent/skills/doc-drift-sweep/SKILL.md](.agent/skills/doc-drift-sweep/SKILL.md): 6-point post-phase documentation drift checklist.
 
@@ -29,6 +30,7 @@
 ## Go Backend & MCP Hub
 - [internal/models/card.go](internal/models/card.go): `SearchCard`, `CardNode`, `ModuleManifest`, `ETLMappingRule`, `ValidateAndNormalizeCard`, and `CardJSONSchema()`.
 - [internal/models/pattern.go](internal/models/pattern.go): `PatternRule`, `PatternSegmentSpec`, `PatternDataLookup`, and `PatternLinkRule`.
+- [internal/indexer/store.go](internal/indexer/store.go): Embedded SQLite v2 store (`PRAGMA user_version = 2`), 9-column `cards_fts`, 4-tier exact/contextual/prefix/fuzzy ranking, dynamic relevance cliff, and hybrid vector scoring.
 - [internal/indexer/modules.go](internal/indexer/modules.go): Optional, deletable JSON module loader/compiler (`~/.vex/modules/`) and embedded starter catalog (`internal/indexer/starter_modules/*.json`).
 - [internal/search/patterns.go](internal/search/patterns.go): Configurable regex/checksum pattern engine with SQLite `dataLookups` and recursive `linkRules`.
 - [internal/search/converter.go](internal/search/converter.go): Zero-latency unit converter and 3D cargo volume / IATA dimensional weight calculator (`conversion` template).

@@ -124,15 +124,18 @@ func (s *Service) Search(ctx context.Context, rawQuery string, limit int) (*Sear
 	if pq.Mode == ModeSearch {
 		if convCard := TryConvertQuery(pq.Text); convCard != nil {
 			results = append([]indexer.SearchResult{
-				{Card: *convCard, Score: 15.0, MatchSource: "calculator"},
+				{Card: *convCard, Score: 150.0, MatchSource: "calculator"},
 			}, results...)
+			if len(results) > limit {
+				results = results[:limit]
+			}
 		} else if s.patterns != nil {
 			if patMatch := s.patterns.Match(ctx, pq.Text, s.store, livePatterns); patMatch != nil {
 				seen := make(map[string]struct{}, len(results)+1+len(patMatch.EnrichedCards))
 				prepended := make([]indexer.SearchResult, 0, 1+len(patMatch.EnrichedCards))
 				prepended = append(prepended, indexer.SearchResult{
 					Card:        patMatch.Card,
-					Score:       14.5,
+					Score:       145.0,
 					MatchSource: "pattern",
 				})
 				seen[patMatch.Card.ID] = struct{}{}
@@ -143,7 +146,7 @@ func (s *Service) Search(ctx context.Context, rawQuery string, limit int) (*Sear
 					seen[ec.ID] = struct{}{}
 					prepended = append(prepended, indexer.SearchResult{
 						Card:        ec,
-						Score:       14.0 - float64(i)*0.05,
+						Score:       140.0 - float64(i)*0.5,
 						MatchSource: "pattern-enrichment",
 					})
 				}
@@ -176,9 +179,9 @@ func (s *Service) Search(ctx context.Context, rawQuery string, limit int) (*Sear
 					continue
 				}
 				seen[dc.ID] = struct{}{}
-				score := 2.0 - float64(i)*0.01
+				score := 120.0 - float64(i)*0.5
 				if pq.Modifier == "" {
-					score = 0.45 - float64(i)*0.01
+					score = 40.0 - float64(i)*0.5
 				}
 				pluginResults = append(pluginResults, indexer.SearchResult{
 					Card:        dc,

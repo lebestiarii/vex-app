@@ -4,7 +4,7 @@ Follow the project-wide engineering, testing, and documentation contract in [AGE
 
 ## Quick Orientation
 - **Codebase Index**: Read [llms.txt](../llms.txt) for key file paths, Go backend packages, Angular UI shell files, and MCP server contracts.
-- **Architecture & Templates**: Consult [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md), [docs/TEMPLATE_BLUEPRINTS.md](../docs/TEMPLATE_BLUEPRINTS.md), and the skills under `.agent/skills/` (`vex-architecture`, `vex-rolodex-ui`, `vex-frontend-testing`, `vex-template-authoring`, `doc-drift-sweep`).
+- **Architecture & Templates**: Consult [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md), [docs/TEMPLATE_BLUEPRINTS.md](../docs/TEMPLATE_BLUEPRINTS.md), and the skills under `.agent/skills/` (`vex-architecture`, `vex-search-ranking`, `vex-rolodex-ui`, `vex-frontend-testing`, `vex-template-authoring`, `doc-drift-sweep`).
 - **Non-Negotiable Invariants**:
   - Keep Go packages strictly acyclic (`models → indexer → search → plugins → ai/mcp → main`).
   - Keep Angular UI platform-agnostic, full-width stacked (no accordion tree lines), and free of hardcoded sample data.
