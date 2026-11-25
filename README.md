@@ -2,9 +2,9 @@
 
 **Vex** is a desktop-first, platform-agnostic, local-first knowledge Rolodex, configurable pattern decoder, and MCP hub built with **Go + Wails v3** and **Angular 22 (Standalone Components + Signals + Zoneless)**.
 
-> **Documentation**: See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for system architecture, **[docs/TEMPLATE_BLUEPRINTS.md](docs/TEMPLATE_BLUEPRINTS.md)** for layout blueprints & data examples of every card template, and **[TODO.md](TODO.md)** for the phased roadmap and open questions.
+> **Documentation**: See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for system architecture, **[docs/TEMPLATE_BLUEPRINTS.md](docs/TEMPLATE_BLUEPRINTS.md)** for layout blueprints & JSON examples of all 9 pure layouts, and **[TODO.md](TODO.md)** for the phased roadmap.
 
-Press your global shortcut (`Ctrl+Shift+B` by default) or click the tray icon to open the **Vex Full-Width Stacked Card Rolodex** (Light & Dark mode) — search gateways, air carrier prefixes, ocean SCACs, ISO containers, unit conversions, server matrices, bookmark portals, and live-decoded reference numbers with full-width nested cards up to 2 levels deep.
+Press your global shortcut (`Ctrl+Shift+B` by default) or click the tray icon to open the **Vex Full-Width Stacked Card Rolodex** (Light & Dark mode) — search gateways, air carrier prefixes, ocean SCACs, ISO containers, unit conversions, action lists, tables, snippets, and live-decoded reference numbers with full-width nested cards up to 2 levels deep.
 
 ---
 
@@ -12,23 +12,27 @@ Press your global shortcut (`Ctrl+Shift+B` by default) or click the tray icon to
 
 - **Full-Width Stacked Nested Card System (Angular 22, Zoneless, Light/Dark Mode, Platform-Agnostic)**:
   - Responsive `420px–520px` (default `460px`) desktop widget frame with clean internal scrolling (`max-height: 680px`), Light & Dark themes (`[data-theme="light"]` / `[data-theme="dark"]` synced with OS preference + manual toggle), and zero OS-specific window buttons or key symbols.
-  - **Zero accordion tree lines**: Nested child cards span **100% of their parent's inner width** stacked vertically (`gap: 8px`) with depth communicated via subtle alternating inset surfaces (L0 → L1 → L2).
-  - **Unified Header-Strip Pattern**: `[Icon/Flag]` + `15px` semibold title + L0-only Pin (`3` max with blue-tinted pill, shake & toast feedback) + expand chevron + semantic/stoplight glance chips (`● DEV` green, `● QA` amber, `● PROD` red, blue codes, monospace clocks/temps).
-  - **5 Canonical Generic Nestable Templates** (plus `container-blueprint`, `dictionary-guide`, `kv-grid`):
-    1. `location` — Strictly header-only container (UNLOC·IATA, live IANA clock, currency, temp; no addresses/phones) expanding directly into full-width nested child cards.
-    2. `server-matrix` — Stoplight `● DEV` / `● QA` / `● PROD` rows with monospace hostnames and inline `[Copy]`, `[SSH]`, and `[↗]` buttons.
-    3. `website-link` — Multi-Chip Mode (2+ links) expanding to launch/copy rows, and Single-Button Mode (1 link) omitting the chevron so the whole card clicks to open with a top-right `↗`.
-    4. `pattern-breakdown` — 3-column equal-width Blue/Amber/Green segment tile grid (`Value` + `ROLE` + `Meaning`) + plain-English explanation + full-width nested entity cards.
-    5. `conversion` — Compact `Input ⇄ Output` strip with 1-click Copy and equivalent chips.
+  - **Zero accordion tree lines & zero empty accordions**: Nested child cards span **100% of their parent's inner width** stacked vertically (`gap: 8px`) via alternating inset surfaces (L0 → L1 → L2). Expand chevrons appear only when a card has renderable body content or children.
+  - **Pinned + Recent Empty State & Keyboard Flow**: Empty search displays **Pinned** (max 3 with active blue pill highlight) and **Recent** (last 6 used cards from SQLite `card_recents`) plus subtle total indexed card count. Navigate Level 0 cards with `ArrowDown`/`ArrowUp`, trigger primary actions with `Enter` (open `link`, copy `convert`, or toggle expand), and press `Escape` once to clear query or twice to hide the window.
+  - **9 Pure Generic Nestable Layouts** (strict zero-alias `layout` field):
+    1. `group` — Header-only container expanding directly into full-width nested child cards.
+    2. `link` — Single-Button clickable launch card with top-right `↗` and no chevron.
+    3. `action-list` — Compact rows with optional stoplight badge, primary text (optional mono), subtitle, and 1–3 `copy` / `open_url` buttons.
+    4. `facts` — Optional summary, optional segmented `views[]` switcher (e.g. Metric / Imperial), and read-only `Label / Value` grid (`[Copy]` rendered only when `copyable: true`).
+    5. `segments` — 2–4 equal-width Blue/Amber/Green click-to-copy token tiles + plain-English explanation + full-width nested entity cards.
+    6. `steps` — N-step visual timeline + summary + optional bullets.
+    7. `convert` — Compact `Input ⇄ Output` strip with 1-click `[Copy]` and clickable equivalent pills.
+    8. `table` — Sticky header (2–4 cols, max 8 visible rows), optional mono columns, `[Copy CSV]` and `[Copy MD]` footer buttons.
+    9. `snippet` — Optional compact inline `{{var}}` inputs live-interpolated into a monospace block + 1-click `[Copy]`.
 - **100% Optional, Deletable Modules (`~/.vex/modules/`)**:
-  - Nothing is forced from code and no sample/demo data is baked into the frontend or backend. All 6 packaged optional starter modules (**Air Carrier IATA Prefix Index**, **Ocean Carrier SCAC Index**, **ISO Container Sizes & Blueprints**, **Logistics Dictionary**, **Reference Number Decoders**, and **Generic Team Templates**) are optional packs installable at onboarding or via the **Modules** dialog.
-  - Every installed module lives as a real JSON file in `~/.vex/modules/<id>.json` that can be toggled, edited, updated via MCP, or deleted permanently (with live `fsnotify` hot-reload).
+  - Zero hardcoded sample data in runtime code. All 5 packaged optional starter modules (**Air Carrier IATA Prefix Index**, **Ocean Carrier SCAC Index**, **ISO Container Sizes & Blueprints**, **Logistics Dictionary**, and **Reference Number Decoders**) live as flat-on-disk 9-layout JSON packs installable at onboarding or via the **Modules** dialog.
+  - Every installed module lives as an editable JSON file in `~/.vex/modules/<id>.json` that can be toggled, exported, updated via MCP, or deleted permanently (with live `fsnotify` hot-reload).
 - **Loadable, Configurable Pattern Matching (`~/.vex/patterns/` & Module Patterns)**:
-  - Zero hardcoded rules in Go. Supports input normalizers (`trim`, `uppercase`, `strip-spaces`, `strip-dashes`), checksum validators (`iata-mod7`, `iso6346`, `luhn`), 3-column `segments[]` + `explanationTemplate`, live SQLite `dataLookups` across modules, recursive cross-card `linkRules`, and live dry-run testing in the **Patterns** dialog.
-- **High-Precision 4-Tier Search & Indexed SQLite v2 (`internal/indexer/store.go`)**:
-  - Ranks exact entity/code/tag/chip matches (`AMS` → `loc:AMS`) decisively first, followed by 1-hop contextual neighbors and whole-token FTS5 BM25, then prefix FTS5 and guarded metadata-only fallback — with value-only `SearchableBody()` indexing, a dynamic relevance cliff, and a focused `10`-card active query limit (`24` when browsing empty) to eliminate scrolling sprawl.
+  - Zero hardcoded rules in Go. Supports input normalizers (`trim`, `uppercase`, `strip-spaces`, `strip-dashes`), checksum validators (`iata-mod7`, `iso6346`, `luhn`), 2–4 column `segments[]` + `explanationTemplate`, live SQLite `dataLookups` across modules, recursive cross-card `linkRules`, per-rule Enabled toggles, and top-of-modal live testing with rendered card previews in the **Patterns** dialog.
+- **High-Precision 4-Tier Search & Indexed SQLite v3 (`internal/indexer/store.go`)**:
+  - Atomic v3 schema with `entity_links` dynamic 2-level cross-module nesting and `card_recents` usage tracking. Ranks exact entity/code/tag/chip matches decisively first, followed by 1-hop contextual neighbors and whole-token FTS5 BM25, then prefix FTS5 and guarded metadata-only fallback — with a strict layout-aware `SearchableBody()` whitelist, dynamic relevance cliff, and a focused `10`-card active query limit.
 - **Built-In MCP Hub & Agent Skill Sharing**:
-  - Runs as a **Domain MCP Server** (`--mcp-stdio` for Claude Desktop, Cursor, Copilot CLI; Streamable HTTP at `http://127.0.0.1:17380/mcp` for VS Code Copilot) exposing **19 tools**, **7 resources/templates**, and **1 prompt** so AI agents can query Vex data, transform raw CSV/JSON files into cards, enrich/create modules & pattern rules, and read shared agent skills (`list_skills`, `get_skill`, `search://skills`, `skill://{name}`).
+  - Runs as a **Domain MCP Server** (`--mcp-stdio` for Claude Desktop, Cursor, Copilot CLI; Streamable HTTP at `http://127.0.0.1:17380/mcp` for VS Code Copilot) exposing **20 tools** (including strict `validate_module`) and **7 resources/templates** (including shared agent skills: `list_skills`, `get_skill`, `search://skills`, `skill://{name}`).
   - Also supports connecting to external MCP servers (`ClientManager`) and read-only `gh` / `az` CLI session checks.
 
 ---
@@ -75,7 +79,7 @@ go test -race -count=1 ./...
 go build -o bin\windows\vex.exe .
 ```
 
-### Run & Preview
+### Run & Validate
 ```bash
 # Launch desktop app (default data directory ~/.vex on macOS, %USERPROFILE%\.vex on Windows)
 ./bin/macos/vex        # macOS
@@ -83,6 +87,9 @@ go build -o bin\windows\vex.exe .
 
 # Launch with a clean isolated data directory (opens starter module onboarding)
 ./bin/macos/vex --data-dir /tmp/vex-fresh
+
+# Validate one or more module JSON manifests against the strict 9-layout schema
+./bin/macos/vex validate path/to/module.json
 
 # Run headless MCP stdio server (for Claude Desktop, Cursor, Copilot CLI)
 ./bin/macos/vex --mcp-stdio
@@ -97,12 +104,11 @@ go build -o bin\windows\vex.exe .
 ---
 
 ## Security Posture
-- **100% Local-First & `localOnly` Cloud RAG Guardrail**: All cards, modules, patterns, and SQLite FTS5 indexes live locally in `~/.vex`. Items marked `localOnly: true` are automatically stripped from cloud LLM calls (`openai`, `anthropic`, `gemini`) while remaining searchable locally and via Ollama.
-- **Native OS Credential Store (`internal/secrets`)**: AI API keys are stored in macOS Keychain or Windows Credential Manager — never persisted in plaintext `config.json`.
+- **100% Local-First**: All cards, modules, patterns, logs, and SQLite FTS5 indexes live locally in `~/.vex` with zero embedded cloud AI calls.
 - **Loopback-Only MCP HTTP + CSRF/DNS-Rebinding Guard**: `127.0.0.1:17380` rejects non-loopback `Host` and cross-origin `Origin` headers.
 - **Safe Action Execution**: `open_url` / `open_pwa` strictly validate `http://` / `https://` URLs and reject shell metacharacters; arbitrary shell execution is disabled.
 
 ---
 
 ## Roadmap
-See [TODO.md](TODO.md) for the phased Vex implementation history, open clarifications, and upcoming backlog.
+See [TODO.md](TODO.md) for the phased Vex implementation history and upcoming backlog.

@@ -1,9 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed } from '@angular/core';
-import { ConversionData, ConversionEquivalent } from '../models/card-node.model';
+import { ConvertEquivalent, ConvertLayoutData } from '../models/card-node.model';
 import { BaseCardTemplate } from './base-card-template';
 
+/**
+ * ConvertCardComponent (`convert`):
+ * Input ⇄ Output highlight strip + 1-click [Copy] + clickable equivalent pills.
+ */
 @Component({
-  selector: 'app-conversion-card',
+  selector: 'app-convert-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -24,7 +28,7 @@ import { BaseCardTemplate } from './base-card-template';
 
       @if (equivalents().length > 0) {
         <div class="equiv-row">
-          @for (eq of equivalents(); track eq.label + eq.value) {
+          @for (eq of equivalents(); track eq.label + eq.value + $index) {
             <button
               type="button"
               class="equiv-chip"
@@ -65,12 +69,15 @@ import { BaseCardTemplate } from './base-card-template';
         color: var(--accent);
         font-weight: 700;
         font-size: 14px;
+        flex-shrink: 0;
       }
       .conv-output {
         font-size: 14px;
         font-weight: 700;
         color: var(--chip-blue-text);
         flex: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
       }
       .copy-btn {
         min-block-size: 26px;
@@ -82,6 +89,7 @@ import { BaseCardTemplate } from './base-card-template';
         font-size: 11.5px;
         font-weight: 600;
         cursor: pointer;
+        flex-shrink: 0;
       }
       .copy-btn:hover {
         border-color: var(--accent);
@@ -117,10 +125,10 @@ import { BaseCardTemplate } from './base-card-template';
     `,
   ],
 })
-export class ConversionCardComponent extends BaseCardTemplate<ConversionData> {
+export class ConvertCardComponent extends BaseCardTemplate<ConvertLayoutData> {
   readonly inputText = computed(() => this.node().data?.input || this.node().title);
-  readonly outputText = computed(() => this.node().data?.output || this.node().data?.result || '');
-  readonly equivalents = computed<ConversionEquivalent[]>(() => {
+  readonly outputText = computed(() => this.node().data?.output || '');
+  readonly equivalents = computed<ConvertEquivalent[]>(() => {
     const raw = this.node().data?.equivalents;
     return Array.isArray(raw) ? raw : [];
   });

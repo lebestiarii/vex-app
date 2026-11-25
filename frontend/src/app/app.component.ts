@@ -2,10 +2,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
+  ElementRef,
   HostListener,
   inject,
   OnInit,
   signal,
+  viewChild,
+  viewChildren,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ModulesDialogComponent } from './components/modules-dialog.component';
@@ -43,6 +47,7 @@ import { VexBridgeService } from './services/vex-bridge.service';
                 <line x1="13.6" y1="13.6" x2="17.5" y2="17.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
               </svg>
               <input
+                #searchInputEl
                 id="rolodex-search"
                 type="search"
                 class="search-input"
@@ -56,7 +61,7 @@ import { VexBridgeService } from './services/vex-bridge.service';
                 <button
                   type="button"
                   class="clear-btn"
-                  (click)="onQueryChange('')"
+                  (click)="clearQuery()"
                   aria-label="Clear search"
                 >
                   Clear
@@ -67,7 +72,14 @@ import { VexBridgeService } from './services/vex-bridge.service';
 
           <div class="controls-bar">
             <span class="bar-hint">
-              {{ orderedCards().length }} {{ orderedCards().length === 1 ? 'card' : 'cards' }}
+              @if (isEmptyQuery()) {
+                {{ totalIndexedCount() }} indexed {{ totalIndexedCount() === 1 ? 'card' : 'cards' }}
+              } @else {
+                {{ orderedSearchCards().length }} {{ orderedSearchCards().length === 1 ? 'match' : 'matches' }}
+                @if (totalIndexedCount() > 0) {
+                  · {{ totalIndexedCount() }} indexed
+                }
+              }
             </span>
 
             <div class="toolbar-actions">
@@ -102,37 +114,87 @@ import { VexBridgeService } from './services/vex-bridge.service';
         <main class="frame-scroll" id="rolodex-main">
           @if (loading()) {
             <div class="status-card" role="status">Searching…</div>
-          } @else if (orderedCards().length > 0) {
-            @if (pinnedCountInView() > 0 && !query().trim()) {
-              <div class="section-meta">
-                <span>Pinned ({{ state.pinnedIds().length }}/{{ maxPins }})</span>
+          } @else if (isEmptyQuery()) {
+            @if (pinnedEmptyCards().length > 0 || recentEmptyCards().length > 0) {
+              @if (pinnedEmptyCards().length > 0) {
+                <section class="card-section" aria-label="Pinned cards">
+                  <div class="section-meta">
+                    <span>Pinned ({{ pinnedEmptyCards().length }}/{{ maxPins }})</span>
+                  </div>
+                  <div class="card-stack">
+                    @for (card of pinnedEmptyCards(); track card.id) {
+                      <app-rolodex-card-shell
+                        [node]="card"
+                        [depth]="0"
+                        [selected]="selectedIndex() === $index"
+                      />
+                    }
+                  </div>
+                </section>
+              }
+
+              @if (recentEmptyCards().length > 0) {
+                <section class="card-section" aria-label="Recent cards">
+                  <div class="section-meta">
+                    <span>Recent</span>
+                  </div>
+                  <div class="card-stack">
+                    @for (card of recentEmptyCards(); track card.id) {
+                      <app-rolodex-card-shell
+                        [node]="card"
+                        [depth]="0"
+                        [selected]="selectedIndex() === pinnedEmptyCards().length + $index"
+                      />
+                    }
+                  </div>
+                </section>
+              }
+            } @else if (totalIndexedCount() > 0) {
+              <div class="empty-state ready-state">
+                <div class="empty-icon" aria-hidden="true">🔎</div>
+                <h2 class="empty-title">
+                  {{ totalIndexedCount() }} indexed {{ totalIndexedCount() === 1 ? 'card' : 'cards' }} ready
+                </h2>
+                <p class="empty-desc">
+                  Type to search cards, decode tracking IDs, or convert units. Cards you expand, open, or copy appear here under Recent.
+                </p>
+              </div>
+            } @else {
+              <div class="empty-state">
+                <div class="empty-icon" aria-hidden="true">🗂️</div>
+                <h2 class="empty-title">No optional modules loaded</h2>
+                <p class="empty-desc">
+                  All modules are optional and deletable. Install reference packs in Modules or push cards via MCP.
+                </p>
+                <div class="empty-actions">
+                  <button type="button" class="primary-btn" (click)="openModules(true)">
+                    Choose Starter Modules
+                  </button>
+                </div>
               </div>
             }
-
+          } @else if (orderedSearchCards().length > 0) {
             <div class="card-stack">
-              @for (card of orderedCards(); track card.id) {
-                <app-rolodex-card-shell [node]="card" [depth]="0" />
+              @for (card of orderedSearchCards(); track card.id) {
+                <app-rolodex-card-shell
+                  [node]="card"
+                  [depth]="0"
+                  [selected]="selectedIndex() === $index"
+                  [autoExpand]="orderedSearchCards().length === 1"
+                />
               }
             </div>
           } @else {
             <div class="empty-state">
               <div class="empty-icon" aria-hidden="true">🗂️</div>
-              <h2 class="empty-title">
-                {{ query().trim() ? 'No matching cards' : 'No optional modules loaded' }}
-              </h2>
+              <h2 class="empty-title">No matching cards</h2>
               <p class="empty-desc">
-                @if (query().trim()) {
-                  No indexed cards or active pattern rules matched your query.
-                } @else {
-                  All modules are optional and deletable. Install reference packs in Modules or push cards via MCP.
-                }
+                No indexed cards or active pattern rules matched your query.
               </p>
               <div class="empty-actions">
-                @if (query().trim()) {
-                  <button type="button" class="primary-btn" (click)="onQueryChange('')">
-                    Reset Search
-                  </button>
-                }
+                <button type="button" class="primary-btn" (click)="clearQuery()">
+                  Reset Search
+                </button>
                 <button type="button" class="primary-btn" (click)="openModules(true)">
                   Choose Starter Modules
                 </button>
@@ -255,6 +317,11 @@ import { VexBridgeService } from './services/vex-bridge.service';
         color: var(--text-muted);
       }
 
+      .search-input::-webkit-search-cancel-button {
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
       .clear-btn {
         min-block-size: 24px;
         padding: 2px 7px;
@@ -312,8 +379,14 @@ import { VexBridgeService } from './services/vex-bridge.service';
         flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
         scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+      }
+
+      .card-section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
       }
 
       .section-meta {
@@ -382,21 +455,52 @@ import { VexBridgeService } from './services/vex-bridge.service';
 export class AppComponent implements OnInit {
   readonly bridge = inject(VexBridgeService);
   readonly state = inject(RolodexStateService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly maxPins = MAX_PINS;
 
   readonly query = signal<string>('');
-  readonly cards = signal<CardNode[]>([]);
+  readonly searchCards = signal<CardNode[]>([]);
+  readonly recentCards = signal<CardNode[]>([]);
+  readonly totalIndexedCount = signal<number>(0);
+  readonly selectedIndex = signal<number>(-1);
   readonly loading = signal<boolean>(false);
   readonly modulesOpen = signal<boolean>(false);
   readonly onboardingMode = signal<boolean>(false);
   readonly patternsOpen = signal<boolean>(false);
 
+  private readonly searchInputEl = viewChild<ElementRef<HTMLInputElement>>('searchInputEl');
+  private readonly cardShells = viewChildren(RolodexCardShellComponent);
+
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-  readonly orderedCards = computed<CardNode[]>(() => {
+  readonly isEmptyQuery = computed(() => this.query().trim() === '');
+
+  readonly pinnedEmptyCards = computed<CardNode[]>(() => {
+    const ids = this.state.pinnedIds().slice(0, MAX_PINS);
+    if (ids.length === 0) return [];
+    const cached = this.state.pinnedCardsMap();
+    const recentById = new Map(this.recentCards().map((c) => [c.id, c]));
+    const searchById = new Map(this.searchCards().map((c) => [c.id, c]));
+
+    const resolved: CardNode[] = [];
+    for (const id of ids) {
+      const node = recentById.get(id) ?? searchById.get(id) ?? cached[id];
+      if (node) resolved.push(node);
+    }
+    return resolved;
+  });
+
+  readonly recentEmptyCards = computed<CardNode[]>(() => {
+    const pinnedSet = new Set(this.pinnedEmptyCards().map((c) => c.id));
+    return this.recentCards()
+      .filter((c) => !pinnedSet.has(c.id))
+      .slice(0, 6);
+  });
+
+  readonly orderedSearchCards = computed<CardNode[]>(() => {
     const pinned = this.state.pinnedIds();
-    const list = this.cards();
+    const list = this.searchCards();
     if (!pinned.length) return list;
 
     const pinRank = new Map<string, number>();
@@ -412,16 +516,26 @@ export class AppComponent implements OnInit {
     });
   });
 
-  readonly pinnedCountInView = computed(() => {
-    const pinned = new Set(this.state.pinnedIds());
-    return this.cards().filter((c) => pinned.has(c.id)).length;
+  readonly visibleCards = computed<CardNode[]>(() => {
+    if (this.isEmptyQuery()) {
+      return [...this.pinnedEmptyCards(), ...this.recentEmptyCards()];
+    }
+    return this.orderedSearchCards();
   });
+
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      if (this.searchTimer) {
+        clearTimeout(this.searchTimer);
+      }
+    });
+  }
 
   async ngOnInit(): Promise<void> {
     const prefs = await this.bridge.getUserPrefs();
     await this.refreshResults();
 
-    if (!prefs.onboardingCompleted && this.cards().length === 0) {
+    if (!prefs.onboardingCompleted && this.totalIndexedCount() === 0 && this.visibleCards().length === 0) {
       this.openModules(true);
     }
   }
@@ -436,6 +550,16 @@ export class AppComponent implements OnInit {
     }, 90);
   }
 
+  clearQuery(): void {
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+      this.searchTimer = null;
+    }
+    this.query.set('');
+    void this.refreshResults();
+    this.searchInputEl()?.nativeElement.focus();
+  }
+
   openModules(onboarding: boolean): void {
     this.onboardingMode.set(onboarding);
     this.modulesOpen.set(true);
@@ -444,25 +568,113 @@ export class AppComponent implements OnInit {
   async refreshResults(): Promise<void> {
     this.loading.set(true);
     try {
-      const limit = this.query().trim() ? 10 : 24;
-      const res = await this.bridge.searchRolodex(this.query(), limit);
-      this.cards.set(res);
+      const q = this.query().trim();
+      if (!q) {
+        const [recents, cols] = await Promise.all([
+          this.bridge.listRecentCards(6),
+          this.bridge.listCollections(),
+        ]);
+        this.recentCards.set(recents);
+        this.state.syncPinnedCards(recents);
+
+        const total = cols.reduce((sum, col) => sum + (col.cardCount ?? 0), 0);
+        this.totalIndexedCount.set(total);
+
+        // If persisted pinned IDs aren't in recents or snapshot cache yet, hydrate them once
+        const pinnedIds = this.state.pinnedIds();
+        const cached = this.state.pinnedCardsMap();
+        const recentSet = new Set(recents.map((r) => r.id));
+        const missingPinned = pinnedIds.some((id) => !recentSet.has(id) && !cached[id]);
+        if (missingPinned && total > 0) {
+          const fallback = await this.bridge.searchRolodex('', 50);
+          this.state.syncPinnedCards(fallback);
+        }
+
+        this.selectedIndex.set(this.visibleCards().length > 0 ? 0 : -1);
+      } else {
+        const res = await this.bridge.searchRolodex(q, 10);
+        this.searchCards.set(res);
+        this.state.syncPinnedCards(res);
+        this.selectedIndex.set(res.length > 0 ? 0 : -1);
+      }
     } finally {
       this.loading.set(false);
     }
   }
 
-  @HostListener('window:keydown.escape')
-  onEscape(): void {
+  @HostListener('window:keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent): void {
     if (this.modulesOpen() || this.patternsOpen()) {
       return;
     }
-    if (this.query().trim()) {
-      this.onQueryChange('');
+
+    if (event.key === 'Escape') {
+      if (this.query().trim()) {
+        event.preventDefault();
+        this.clearQuery();
+        return;
+      }
+      if (this.bridge.isDesktop()) {
+        event.preventDefault();
+        void this.bridge.hideWindow();
+      }
       return;
     }
-    if (this.bridge.isDesktop()) {
-      void this.bridge.hideWindow();
+
+    const target = event.target as HTMLElement | null;
+    const isSearchInput = target?.id === 'rolodex-search';
+    const isOtherInput =
+      !isSearchInput &&
+      (target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.tagName === 'SELECT');
+
+    if (isOtherInput) {
+      return;
     }
+
+    const list = this.visibleCards();
+    if (list.length === 0) {
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.selectedIndex.update((prev) => (prev < 0 ? 0 : (prev + 1) % list.length));
+      this.scrollSelectedIntoView();
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.selectedIndex.update((prev) => (prev <= 0 ? list.length - 1 : prev - 1));
+      this.scrollSelectedIntoView();
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      const isInteractiveTarget =
+        !isSearchInput &&
+        Boolean(target?.closest('button, a, [role="button"], input, textarea, select'));
+      if (isInteractiveTarget) {
+        return;
+      }
+
+      const idx = this.selectedIndex();
+      if (idx >= 0 && idx < list.length) {
+        const shells = this.cardShells();
+        const targetShell = shells[idx];
+        if (targetShell) {
+          event.preventDefault();
+          targetShell.triggerPrimaryAction();
+        }
+      }
+    }
+  }
+
+  private scrollSelectedIntoView(): void {
+    const idx = this.selectedIndex();
+    const shell = this.cardShells()[idx];
+    shell?.scrollIntoViewIfNeeded();
   }
 }

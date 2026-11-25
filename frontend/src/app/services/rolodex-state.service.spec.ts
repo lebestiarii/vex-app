@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CardNode } from '../models/card-node.model';
 import { MAX_PINS, RolodexStateService } from './rolodex-state.service';
 
 describe('RolodexStateService', () => {
@@ -19,8 +20,34 @@ describe('RolodexStateService', () => {
     return TestBed.inject(RolodexStateService);
   }
 
+  it('starts with zero hardcoded default pins and caches pinned CardNode snapshots', () => {
+    const svc = createService();
+    expect(svc.pinnedIds()).toEqual([]);
+
+    const sampleNode: CardNode = {
+      id: 'air-176',
+      layout: 'facts',
+      icon: '✈️',
+      title: 'Emirates SkyCargo (EK)',
+      chips: [{ label: 'Prefix 176', tone: 'amber' }],
+      data: { facts: [{ label: 'Hub', value: 'DXB' }] },
+    };
+
+    expect(svc.togglePin(sampleNode)).toBe(true);
+    expect(svc.pinnedIds()).toEqual(['air-176']);
+    expect(svc.pinnedCardsMap()['air-176']?.title).toBe('Emirates SkyCargo (EK)');
+
+    // Sync updates snapshot in place
+    svc.syncPinnedCards([{ ...sampleNode, title: 'Emirates SkyCargo Updated' }]);
+    expect(svc.pinnedCardsMap()['air-176']?.title).toBe('Emirates SkyCargo Updated');
+
+    // Unpin removes both ID and snapshot
+    expect(svc.togglePin('air-176')).toBe(false);
+    expect(svc.pinnedIds()).toEqual([]);
+    expect(svc.pinnedCardsMap()['air-176']).toBeUndefined();
+  });
+
   it('enforces MAX_PINS (3), shakes on 4th pin, and supports unpinning', () => {
-    localStorage.setItem('vex.rolodex.pinnedIds.v1', JSON.stringify([]));
     const svc = createService();
 
     expect(svc.togglePin('card-1')).toBe(true);
@@ -65,9 +92,12 @@ describe('RolodexStateService', () => {
     const svc = createService();
     svc.clockNow.set(new Date('2026-11-24T14:05:00.000Z'));
 
+    expect(svc.isClockChip('Etc/UTC')).toBe(true);
     expect(svc.formatClockChip('Etc/UTC')).toBe('14:05');
+    expect(svc.isClockChip('NLAMS · AMS')).toBe(false);
     expect(svc.formatClockChip('NLAMS · AMS')).toBe('NLAMS · AMS');
     expect(svc.formatClockChip('14°C')).toBe('14°C');
+    expect(svc.isClockChip('Not/A_Real_Zone')).toBe(false);
     expect(svc.formatClockChip('Not/A_Real_Zone')).toBe('Not/A_Real_Zone');
   });
 

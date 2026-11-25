@@ -19,7 +19,7 @@ Always follow this rule alongside `AGENTS.md` and `.agent/skills/`. Every new fe
 
 ## 3. Mandatory Phase Rhythm (Delegates to `after-action-review` Skill)
 1. **Pre-Phase Plan & Pause:** Before editing files, break work into **Phases → Stories (`X.1`, `X.2`, …)** with intent, file scope, and acceptance criteria, output the **AI Model, Context & Reasoning Plan** table (with intensity and strong vs. lighter model justification), confirm branch/worktree isolation, and **pause** for approval/model switching.
-2. **Phase-End Verification Gate:** Run all relevant toolchain checks below and execute the **7-point Documentation, Diagram & Skill Drift Sweep** (`.agent/skills/doc-drift-sweep/SKILL.md`).
+2. **Phase-End Verification Gate:** Run all relevant toolchain checks below and execute the **8-point Documentation, Diagram & Skill Drift Sweep** (`.agent/skills/doc-drift-sweep/SKILL.md`).
 3. **Structured AAR & User Walkthrough:** Deliver all 7 required sections from `.agent/skills/after-action-review/SKILL.md` (gate/drift results, changes by story with `file://` links, what went well, what went poorly, skill/instruction add/improve/remove recommendations, compact vs. fresh-chat + next-model handoff, and a step-by-step **User Verification Walkthrough**). **Pause for user approval** before merging.
 
 ## 4. Build & Verification Toolchains

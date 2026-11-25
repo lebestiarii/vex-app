@@ -3,13 +3,78 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  ElementRef,
   inject,
   input,
   linkedSignal,
 } from '@angular/core';
-import { CardNode, GlanceChip, WebsiteLinkData } from '../models/card-node.model';
+import {
+  ActionListLayoutData,
+  CardNode,
+  ConvertLayoutData,
+  FactsLayoutData,
+  GlanceChip,
+  LinkLayoutData,
+  SegmentsLayoutData,
+  SnippetLayoutData,
+  StepsLayoutData,
+  TableLayoutData,
+} from '../models/card-node.model';
 import { CardTemplateRegistry } from '../services/card-template-registry.service';
 import { RolodexStateService } from '../services/rolodex-state.service';
+import { VexBridgeService } from '../services/vex-bridge.service';
+
+function hasRenderableLayoutBody(node: CardNode<any>): boolean {
+  const data = node.data ?? {};
+  switch (node.layout) {
+    case 'group':
+    case 'link':
+      return false;
+    case 'action-list': {
+      const d = data as ActionListLayoutData;
+      return Array.isArray(d.rows) && d.rows.length > 0;
+    }
+    case 'facts': {
+      const d = data as FactsLayoutData;
+      return (
+        Boolean(d.summary?.trim()) ||
+        (Array.isArray(d.facts) && d.facts.length > 0) ||
+        (Array.isArray(d.views) && d.views.some((v) => Array.isArray(v.facts) && v.facts.length > 0)) ||
+        (Array.isArray(node.actions) && node.actions.length > 0)
+      );
+    }
+    case 'segments': {
+      const d = data as SegmentsLayoutData;
+      return (
+        (Array.isArray(d.segments) && d.segments.length > 0) ||
+        Boolean(d.explanation?.trim()) ||
+        Boolean(node.description?.trim())
+      );
+    }
+    case 'steps': {
+      const d = data as StepsLayoutData;
+      return (
+        (Array.isArray(d.steps) && d.steps.length > 0) ||
+        Boolean(d.summary?.trim()) ||
+        (Array.isArray(d.bullets) && d.bullets.length > 0)
+      );
+    }
+    case 'convert': {
+      const d = data as ConvertLayoutData;
+      return Boolean(d.input?.trim()) || Boolean(d.output?.trim());
+    }
+    case 'table': {
+      const d = data as TableLayoutData;
+      return Array.isArray(d.columns) && d.columns.length > 0;
+    }
+    case 'snippet': {
+      const d = data as SnippetLayoutData;
+      return Boolean(d.body?.trim());
+    }
+    default:
+      return false;
+  }
+}
 
 @Component({
   selector: 'app-rolodex-card-shell',
@@ -18,11 +83,12 @@ import { RolodexStateService } from '../services/rolodex-state.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (singleLinkUrl(); as directUrl) {
-      <!-- WebsiteLink Single-Button Mode (1 link): entire card is a clickable launch button with top-right ↗, no chevron -->
+      <!-- Link Layout: Single-Button clickable card with top-right ↗, no chevron -->
       <button
         type="button"
         class="rolodex-card single-link-card"
         [attr.data-depth]="depthClamped()"
+        [class.selected]="selected()"
         (click)="openSingleLink(directUrl)"
         [attr.aria-label]="'Open ' + node().title"
       >
@@ -47,7 +113,7 @@ import { RolodexStateService } from '../services/rolodex-state.service';
                 (keydown.enter)="onPinClick($event)"
                 (keyup.space)="onPinClick($event)"
               >
-                <span class="pin-glyph" aria-hidden="true">📌</span>
+                <span class="pin-glyph" [class.muted]="!isPinned()" aria-hidden="true">📌</span>
               </span>
             }
             <span class="external-arrow" aria-hidden="true">↗</span>
@@ -72,26 +138,41 @@ import { RolodexStateService } from '../services/rolodex-state.service';
         }
       </button>
     } @else {
-      <!-- Standard Expandable Stacked Card -->
+      <!-- Standard Stacked Card (expandable ONLY when leaf body or children exist) -->
       <article
         class="rolodex-card"
         [attr.data-depth]="depthClamped()"
-        [class.expanded]="isExpanded()"
+        [class.expanded]="isExpandable() && isExpanded()"
+        [class.selected]="selected()"
       >
-        <div class="header-strip" (click)="toggleExpanded()">
+        <div
+          class="header-strip"
+          [class.is-static]="!isExpandable()"
+          (click)="isExpandable() && toggleExpanded()"
+        >
           <div class="header-row-1">
             <div class="identity">
               <span class="card-icon" aria-hidden="true">{{ node().icon || '📄' }}</span>
-              <button
-                type="button"
-                class="title-trigger"
-                [class.title-l0]="depth() === 0"
-                [class.title-nested]="depth() > 0"
-                [attr.aria-expanded]="isExpanded()"
-                (click)="onTitleClick($event)"
-              >
-                {{ node().title }}
-              </button>
+              @if (isExpandable()) {
+                <button
+                  type="button"
+                  class="title-trigger"
+                  [class.title-l0]="depth() === 0"
+                  [class.title-nested]="depth() > 0"
+                  [attr.aria-expanded]="isExpanded()"
+                  (click)="onTitleClick($event)"
+                >
+                  {{ node().title }}
+                </button>
+              } @else {
+                <span
+                  class="title-text"
+                  [class.title-l0]="depth() === 0"
+                  [class.title-nested]="depth() > 0"
+                >
+                  {{ node().title }}
+                </span>
+              }
             </div>
 
             <div class="right-controls">
@@ -109,11 +190,13 @@ import { RolodexStateService } from '../services/rolodex-state.service';
                 </button>
               }
 
-              <span class="chevron" [class.open]="isExpanded()" aria-hidden="true">
-                <svg viewBox="0 0 12 12" class="chevron-svg">
-                  <path d="M4 2.5L8.5 6L4 9.5Z" fill="currentColor" />
-                </svg>
-              </span>
+              @if (isExpandable()) {
+                <span class="chevron" [class.open]="isExpanded()" aria-hidden="true">
+                  <svg viewBox="0 0 12 12" class="chevron-svg">
+                    <path d="M4 2.5L8.5 6L4 9.5Z" fill="currentColor" />
+                  </svg>
+                </span>
+              }
             </div>
           </div>
 
@@ -135,7 +218,7 @@ import { RolodexStateService } from '../services/rolodex-state.service';
           }
         </div>
 
-        @if (isExpanded()) {
+        @if (isExpandable() && isExpanded()) {
           <div class="expanded-body">
             @if (showLeafBody()) {
               <div class="leaf-slot">
@@ -168,7 +251,7 @@ import { RolodexStateService } from '../services/rolodex-state.service';
         display: block;
         width: 100%;
         border: 1px solid var(--border-l0);
-        transition: background-color 0.15s ease, border-color 0.15s ease;
+        transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
       }
 
       /* Depth-driven alternating inset surfaces (NO left-rail lines) */
@@ -194,7 +277,13 @@ import { RolodexStateService } from '../services/rolodex-state.service';
         padding: 10px;
       }
 
-      /* Single-button WebsiteLink mode */
+      /* Level 0 keyboard selection highlight */
+      .rolodex-card[data-depth='0'].selected {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent), var(--shadow-card);
+      }
+
+      /* Single-button Link mode */
       .single-link-card {
         text-align: start;
         cursor: pointer;
@@ -208,6 +297,10 @@ import { RolodexStateService } from '../services/rolodex-state.service';
       .header-strip {
         cursor: pointer;
         user-select: none;
+      }
+
+      .header-strip.is-static {
+        cursor: default;
       }
 
       .header-row-1 {
@@ -283,7 +376,8 @@ import { RolodexStateService } from '../services/rolodex-state.service';
         background: var(--bg-subtle);
       }
 
-      .pin-btn.pinned {
+      .pin-btn.pinned,
+      .pin-btn.pinned:hover {
         background: var(--chip-blue-bg);
         border-color: var(--chip-blue-border);
       }
@@ -436,18 +530,24 @@ import { RolodexStateService } from '../services/rolodex-state.service';
 export class RolodexCardShellComponent {
   readonly node = input.required<CardNode<any>>();
   readonly depth = input<number>(0);
+  readonly selected = input<boolean>(false);
+  readonly autoExpand = input<boolean>(false);
 
+  private readonly hostEl = inject(ElementRef<HTMLElement>);
   private readonly registry = inject(CardTemplateRegistry);
   private readonly state = inject(RolodexStateService);
+  private readonly bridge = inject(VexBridgeService);
 
-  readonly isExpanded = linkedSignal<boolean>(() => Boolean(this.node().defaultExpanded));
+  readonly isExpanded = linkedSignal<boolean>(() =>
+    Boolean(this.node().defaultExpanded || this.autoExpand())
+  );
 
   readonly depthClamped = computed(() => Math.min(2, Math.max(0, this.depth())));
   readonly canPin = computed(() => this.depth() === 0 && this.node().pinnable !== false);
   readonly isPinned = computed(() => this.state.isPinned(this.node().id));
   readonly isShaking = computed(() => this.state.shakingPinId() === this.node().id);
 
-  readonly templateComponent = computed(() => this.registry.resolve(this.node().template));
+  readonly templateComponent = computed(() => this.registry.resolve(this.node().layout));
 
   readonly outletInputs = computed(() => ({
     node: this.node(),
@@ -460,57 +560,39 @@ export class RolodexCardShellComponent {
   });
 
   /**
-   * WebsiteLink Single-Button Mode:
-   * When a website-link / env-bookmarks card has exactly 1 link (data.url or 1 bookmark with 1 URL)
-   * and no nested children, omit the chevron and render the entire card as a clickable button.
+   * Link Single-Button Mode:
+   * A `link` card with a valid URL and no nested children renders as a direct launch button
+   * with top-right ↗ and no chevron.
    */
   readonly singleLinkUrl = computed<string | null>(() => {
     const n = this.node();
-    if (n.template !== 'website-link' && n.template !== 'env-bookmarks') return null;
-    if ((n.children?.length ?? 0) > 0) return null;
-    const d = (n.data ?? {}) as WebsiteLinkData;
-    if (d.url && (!d.bookmarks || d.bookmarks.length === 0)) {
-      return d.url;
-    }
-    if (Array.isArray(d.bookmarks) && d.bookmarks.length === 1) {
-      const bm = d.bookmarks[0];
-      const urls: string[] = [];
-      if (Array.isArray(bm.links)) {
-        bm.links.forEach((l) => {
-          if (l.url) urls.push(l.url);
-        });
-      } else {
-        if (bm.qaUrl) urls.push(bm.qaUrl);
-        if (bm.prodUrl) urls.push(bm.prodUrl);
-      }
-      if (urls.length === 1) return urls[0];
-    }
-    return null;
+    if (n.layout !== 'link') return null;
+    if (this.nestedChildren().length > 0) return null;
+    const url = ((n.data ?? {}) as LinkLayoutData).url?.trim();
+    return url ? url : null;
   });
 
-  readonly showLeafBody = computed(() => {
-    const n = this.node();
-    // Location is strictly header-only (expanded state shows ONLY full-width nested children)
-    if (n.template === 'location' || n.template === 'branch-gateway') {
-      return false;
-    }
-    if (n.template === 'container-blueprint' && !n.data?.mode && this.nestedChildren().length > 0) {
-      return false;
-    }
-    return true;
-  });
+  readonly showLeafBody = computed(() => hasRenderableLayoutBody(this.node()));
+
+  readonly isExpandable = computed(
+    () => !this.singleLinkUrl() && (this.showLeafBody() || this.nestedChildren().length > 0)
+  );
 
   readonly displayChips = computed(() => {
     this.state.clockNow();
     const raw = (this.node().chips ?? []).slice(0, 4);
-    return raw.map((chip) => ({
-      ...chip,
-      renderedLabel: this.state.formatClockChip(chip.label),
-    }));
+    return raw.map((chip) => {
+      const isClock = this.state.isClockChip(chip.label);
+      return {
+        ...chip,
+        isClock,
+        renderedLabel: isClock ? this.state.formatClockChip(chip.label) : chip.label,
+      };
+    });
   });
 
-  shouldUseMono(chip: GlanceChip & { renderedLabel: string }): boolean {
-    if (chip.tone === 'mono') return true;
+  shouldUseMono(chip: GlanceChip & { renderedLabel: string; isClock: boolean }): boolean {
+    if (chip.tone === 'mono' || chip.isClock) return true;
     const text = chip.renderedLabel;
     return (
       /^[A-Z]{5}\s*·\s*[A-Z]{3}$/.test(text) ||
@@ -522,7 +604,41 @@ export class RolodexCardShellComponent {
   }
 
   toggleExpanded(): void {
-    this.isExpanded.update((open) => !open);
+    if (!this.isExpandable()) return;
+    const next = !this.isExpanded();
+    this.isExpanded.set(next);
+    if (next) {
+      void this.bridge.recordCardUsed(this.node().id);
+    }
+  }
+
+  triggerPrimaryAction(): void {
+    const directUrl = this.singleLinkUrl();
+    if (directUrl) {
+      this.openSingleLink(directUrl);
+      return;
+    }
+
+    const n = this.node();
+    if (n.layout === 'convert') {
+      const output = ((n.data ?? {}) as ConvertLayoutData).output?.trim();
+      if (output) {
+        void this.state.copyText('Converted Value', output);
+        void this.bridge.recordCardUsed(n.id);
+        return;
+      }
+    }
+
+    if (this.isExpandable()) {
+      this.toggleExpanded();
+    }
+  }
+
+  scrollIntoViewIfNeeded(): void {
+    const el = this.hostEl.nativeElement;
+    if (typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ block: 'nearest' });
+    }
   }
 
   onTitleClick(event: MouseEvent): void {
@@ -533,10 +649,11 @@ export class RolodexCardShellComponent {
   onPinClick(event: Event): void {
     event.stopPropagation();
     event.preventDefault();
-    this.state.togglePin(this.node().id);
+    this.state.togglePin(this.node());
   }
 
   openSingleLink(url: string): void {
     this.state.openExternalUrl(url);
+    void this.bridge.recordCardUsed(this.node().id);
   }
 }

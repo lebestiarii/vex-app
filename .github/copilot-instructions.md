@@ -15,7 +15,7 @@ This file is aligned with `AGENTS.md` and `.agent/rules/vex-workflow.md`. Consul
 ## Required Workflow Rhythm
 Follow `.agent/skills/after-action-review/SKILL.md` for every multi-step task:
 1. **Plan First:** Break work into **Phases → Stories (`X.1`, `X.2`, …)** with a **Model, Context & Reasoning Plan** table justifying strong vs. lighter models, confirm `feat/<topic>` branch (or `git worktree`), and **pause** for approval before coding.
-2. **Verify & Sweep:** Run the verification commands below and the 7-point audit in `.agent/skills/doc-drift-sweep/SKILL.md` (covering diagrams, full-repo folder structure, schemas, and skill usefulness).
+2. **Verify & Sweep:** Run the verification commands below and the 8-point audit in `.agent/skills/doc-drift-sweep/SKILL.md` (covering diagrams, full-repo folder structure, schemas, and skill usefulness).
 3. **AAR & Walkthrough:** Output gate/drift results, changes by story (`file://` links), what went well, what went poorly, skill add/improve/remove recommendations, compact vs. new-chat + next-model guidance, and a **User Verification Walkthrough**.
 4. **Merge Only After Approval:** Once approved by the user, merge worktree → feature branch (if used) → `main` (never `git push` unless asked), and suggest pruning stale worktrees/branches.
 

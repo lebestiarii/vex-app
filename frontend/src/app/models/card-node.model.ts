@@ -1,44 +1,54 @@
-export type CardTemplateType =
-  | 'location'
-  | 'server-matrix'
-  | 'website-link'
-  | 'pattern-breakdown'
-  | 'conversion'
-  | 'branch-gateway'
-  | 'env-bookmarks'
-  | 'reference-decoder'
-  | 'container-blueprint'
-  | 'branch-contact'
-  | 'dictionary-guide'
-  | 'kv-grid'
-  | 'shortcut'
-  | 'knowledge'
-  | 'command'
-  | 'metric-card';
+export type CardLayoutType =
+  | 'group'
+  | 'link'
+  | 'action-list'
+  | 'facts'
+  | 'segments'
+  | 'steps'
+  | 'convert'
+  | 'table'
+  | 'snippet';
+
+export const ALL_CARD_LAYOUTS: readonly CardLayoutType[] = [
+  'group',
+  'link',
+  'action-list',
+  'facts',
+  'segments',
+  'steps',
+  'convert',
+  'table',
+  'snippet',
+] as const;
+
+export type ChipTone = 'neutral' | 'blue' | 'amber' | 'green' | 'red' | 'mono';
+export type StoplightDot = 'green' | 'amber' | 'red';
 
 export interface GlanceChip {
   label: string;
-  tone: 'neutral' | 'blue' | 'amber' | 'green' | 'red' | 'mono';
-  dot?: 'green' | 'amber' | 'red';
+  tone: ChipTone;
+  dot?: StoplightDot;
 }
 
 export interface CardAction {
   id: string;
   label: string;
   shortcut?: string;
-  type: 'open_url' | 'open_pwa' | 'launch_app' | 'copy' | 'http' | 'ai_prompt' | string;
+  type: 'open_url' | 'open_pwa' | 'launch_app' | 'copy' | 'http' | string;
   target: string;
+  env?: Record<string, string>;
 }
 
 export interface CardNode<T = Record<string, unknown>> {
   id: string;
-  template: CardTemplateType;
+  layout: CardLayoutType;
   icon: string;
   title: string;
   subtitle?: string;
   description?: string;
   collection?: string;
   entityKey?: string;
+  parentEntityKey?: string;
   moduleId?: string;
   chips: GlanceChip[];
   data: T;
@@ -48,145 +58,109 @@ export interface CardNode<T = Record<string, unknown>> {
   pinnable?: boolean;
 }
 
-export interface ServerRow {
-  env?: string;
-  badge?: string;
-  tone?: 'green' | 'amber' | 'red' | 'neutral';
-  host?: string;
-  value?: string;
-  port?: string;
-  role?: string;
-  subtitle?: string;
-  sshCommand?: string;
-  url?: string;
-  copyValue?: string;
+// --- Strict Typed Payloads for the 9 Pure Generic Layouts ---
+
+export interface GroupLayoutData {
+  meta?: Record<string, string | number>;
 }
 
-export interface ServerMatrixData {
-  contract?: string;
-  servers?: ServerRow[];
-  rows?: ServerRow[];
-}
-
-export interface EnvLinkButton {
-  label: string;
+export interface LinkLayoutData {
   url: string;
-  tone?: 'green' | 'amber' | 'red' | 'blue' | 'neutral';
-  dot?: 'green' | 'amber' | 'red';
 }
 
-export interface BookmarkRow {
-  name: string;
+export interface RowAction {
+  label: string;
+  type: 'copy' | 'open_url';
+  value: string;
+  tone?: ChipTone;
+  dot?: StoplightDot;
+}
+
+export interface ActionListRow {
+  badge?: GlanceChip;
+  primary: string;
+  mono?: boolean;
   subtitle?: string;
-  links?: EnvLinkButton[];
-  qaLabel?: string;
-  prodLabel?: string;
-  qaUrl?: string;
-  prodUrl?: string;
+  actions: RowAction[];
 }
 
-export interface WebsiteLinkData {
-  contract?: string;
-  url?: string; // Single-button mode (1 link -> whole card is clickable with top-right ↗, no chevron)
-  bookmarks?: BookmarkRow[];
+export interface ActionListLayoutData {
+  rows: ActionListRow[];
 }
 
-export type EnvBookmarksData = WebsiteLinkData;
+export interface FactItem {
+  label: string;
+  value: string;
+  mono?: boolean;
+  copyable?: boolean;
+}
 
-export interface PatternSegment {
+export interface FactView {
+  label: string;
+  facts: FactItem[];
+}
+
+export interface FactsLayoutData {
+  summary?: string;
+  facts?: FactItem[];
+  views?: FactView[];
+}
+
+export interface SegmentTile {
   value: string;
   role: string;
   meaning: string;
   tone?: 'blue' | 'amber' | 'green' | 'neutral';
 }
 
-export interface PatternBreakdownData {
-  patternId?: string;
-  matchedInput?: string;
-  segments?: PatternSegment[];
-  explanation?: string;
-  [key: string]: unknown;
+export interface SegmentsLayoutData {
+  segments: SegmentTile[];
+  explanation: string;
 }
 
-export interface ConversionEquivalent {
-  label: string;
-  value: string;
-}
-
-export interface ConversionData {
-  input?: string;
-  output?: string;
-  result?: string;
-  category?: string;
-  equivalents?: ConversionEquivalent[];
-  [key: string]: unknown;
-}
-
-export interface DimensionTriple {
-  length: string;
-  width: string;
-  height: string;
-}
-
-export interface DoorDims {
-  width: string;
-  height: string;
-}
-
-export interface ContainerBlueprintData {
-  mode?: 'summary' | 'blueprint' | 'capacity';
-  isoCode?: string;
-  shortCode?: string;
-  aspect?: '20gp' | '40gp' | '40hc';
-  category?: string;
-  volumeCbm?: string;
-  volumeCuFt?: string;
-  maxPayload?: string;
-  tareWeight?: string;
-  maxGross?: string;
-  tempRange?: string;
-  intMetric?: DimensionTriple;
-  doorMetric?: DoorDims;
-  intImperial?: DimensionTriple;
-  doorImperial?: DoorDims;
-  euroPallets?: number;
-  euroNote?: string;
-  usPallets?: number;
-  usNote?: string;
-}
-
-export interface ContactRow {
-  label: string;
-  value: string;
-  mono?: boolean;
-  url?: string;
-  actionLabel?: string;
-}
-
-export interface BranchContactData {
-  phone?: string;
-  email?: string;
-  district?: string;
-  address?: string;
-  hours?: string;
-  mapUrl?: string;
-  note?: string;
-  rows?: ContactRow[];
-}
-
-export interface DictionaryStep {
-  index: number;
+export interface StepItem {
   label: string;
   caption?: string;
 }
 
-export interface DictionaryGuideData {
+export interface StepsLayoutData {
+  steps: StepItem[];
   activeStep?: number;
-  timelineLabel?: string;
-  steps?: DictionaryStep[];
   summary: string;
   bullets?: string[];
 }
+
+export interface ConvertEquivalent {
+  label: string;
+  value: string;
+}
+
+export interface ConvertLayoutData {
+  input: string;
+  output: string;
+  equivalents?: ConvertEquivalent[];
+}
+
+export interface TableLayoutData {
+  columns: string[];
+  rows: string[][];
+  monoColumns?: number[];
+  sourceUrl?: string;
+}
+
+export interface SnippetVar {
+  key: string;
+  label: string;
+  defaultValue?: string;
+}
+
+export interface SnippetLayoutData {
+  language?: string;
+  body: string;
+  vars?: SnippetVar[];
+}
+
+// --- Modules, Patterns, Diagnostics & Prefs ---
 
 export interface ModuleStatus {
   id: string;
@@ -218,6 +192,19 @@ export interface StarterModuleInfo {
   patternCount: number;
 }
 
+export interface CollectionStats {
+  collection: string;
+  cardCount: number;
+  tags?: string[];
+}
+
+export interface LogDiagnostics {
+  filePath: string;
+  level: string;
+  sizeBytes: number;
+  metricsAddr?: string;
+}
+
 export interface PatternLinkRule {
   targetEntityKey?: string;
   targetCollection?: string;
@@ -228,6 +215,7 @@ export interface PatternLinkRule {
   copyChildrenOnly?: boolean;
   attachUnder?: string;
   maxDepth?: number;
+  includeFields?: string[];
 }
 
 export interface PatternDataLookup {
@@ -237,11 +225,26 @@ export interface PatternDataLookup {
   fallbackValues?: Record<string, string>;
 }
 
+export interface PatternMCPLookup {
+  serverId: string;
+  toolName: string;
+  arguments?: Record<string, string>;
+}
+
+export interface PatternLiveHttpSpec {
+  urlTemplate: string;
+  auth?: string;
+  trigger?: 'auto' | 'manual';
+  cacheSeconds?: number;
+  layout?: CardLayoutType;
+}
+
 export interface PatternRule {
   id: string;
   name: string;
   category?: string;
   description?: string;
+  example?: string;
   enabled?: boolean;
   priority?: number;
   normalize?: string[];
@@ -254,22 +257,24 @@ export interface PatternRule {
   subtitleTemplate?: string;
   descriptionTemplate?: string;
   explanationTemplate?: string;
-  segments?: PatternSegment[];
+  segments?: SegmentTile[];
   collection?: string;
-  template?: CardTemplateType;
+  layout?: CardLayoutType;
   icon?: string;
   defaultExpanded?: boolean;
   chips?: GlanceChip[];
   fields?: Record<string, string>;
   linkEntityKeys?: string[];
   linkRules?: PatternLinkRule[];
+  actions?: CardAction[];
+  liveHttp?: PatternLiveHttpSpec;
+  liveMcp?: PatternMCPLookup;
   localOnly?: boolean;
 }
 
 export interface UserPrefs {
   onboardingCompleted: boolean;
   powerUserMode: boolean;
-  aiEnabled: boolean;
   launchAtLogin?: boolean;
   layoutMode?: string;
   selectedGoals?: string[];

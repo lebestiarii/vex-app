@@ -30,6 +30,7 @@ All extend `BaseCardTemplate<T>` and render inside `RolodexCardShellComponent` v
 
 ## 3. Empty State, Keyboard Flow & Dialog Standards
 - **Empty Search State:** Show **Pinned** (up to 3) + **Recent** (up to 6 from `listRecentCards()`), with a subtle total indexed count. Record usage on expand, open, or copy.
+- **Single-Result Auto-Expand:** When an active search returns exactly 1 result, pass `[autoExpand]="true"` to `RolodexCardShellComponent` so the lone match opens expanded immediately (while remaining collapsible via `linkedSignal`).
 - **Keyboard Navigation:** `ArrowDown` / `ArrowUp` selects Level 0 cards; `Enter` opens `link`, toggles expand, or copies primary output; `Escape` clears query first, then hides window on second press.
 - **Dialogs (`<dialog>` + `.showModal()`):**
   - Set initial focus on modal heading (`tabindex="-1"`) or search/test input—never leave an aggressive focus ring on `Close`.
