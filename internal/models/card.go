@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -535,7 +536,60 @@ func defaultActionLabel(actionType string) string {
 	}
 }
 
-// SearchableBody flattens Description, Data, Chips, Children, Sections, and Action targets for FTS5 and embeddings.
+// skippedDataKeys lists structural, URL, and UI-styling keys excluded from SearchableBody
+// so FTS5 and embeddings index human-readable values instead of JSON boilerplate.
+var skippedDataKeys = map[string]struct{}{
+	"contract":      {},
+	"url":           {},
+	"devurl":        {},
+	"dev_url":       {},
+	"qaurl":         {},
+	"qa_url":        {},
+	"produrl":       {},
+	"prod_url":      {},
+	"trackingurl":   {},
+	"tracking_url":  {},
+	"mapurl":        {},
+	"map_url":       {},
+	"sshcommand":    {},
+	"ssh_command":   {},
+	"mode":          {},
+	"aspect":        {},
+	"tone":          {},
+	"dot":           {},
+	"icon":          {},
+	"ianatimezone":  {},
+	"iana_timezone": {},
+}
+
+func isSkippedDataKey(key string) bool {
+	_, skip := skippedDataKeys[strings.ToLower(strings.TrimSpace(key))]
+	return skip
+}
+
+func isURLActionTarget(act CardAction) bool {
+	if act.Type == "open_url" || act.Type == "open_pwa" || act.Type == "http" {
+		return true
+	}
+	lower := strings.ToLower(strings.TrimSpace(act.Target))
+	return strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://")
+}
+
+// ChipsText returns a space-joined string of the card's non-empty glance chip labels.
+func (c SearchCard) ChipsText() string {
+	if len(c.Chips) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(c.Chips))
+	for _, ch := range c.Chips {
+		if lbl := strings.TrimSpace(ch.Label); lbl != "" {
+			parts = append(parts, lbl)
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+// SearchableBody flattens Description, value-only Data, Children, Sections, and human-readable Action metadata for FTS5 and embeddings.
 func (c SearchCard) SearchableBody() string {
 	var b strings.Builder
 	writeCardBody(&b, c, 0)
@@ -546,99 +600,182 @@ func writeCardBody(b *strings.Builder, c SearchCard, depth int) {
 	if depth > 3 {
 		return
 	}
-	if depth > 0 && c.Title != "" {
-		b.WriteString(c.Title)
-		b.WriteByte('\n')
-	}
-	if c.EntityKey != "" {
-		b.WriteString(c.EntityKey)
-		b.WriteByte('\n')
-	}
-	if c.Description != "" {
-		b.WriteString(c.Description)
-		b.WriteByte('\n')
-	}
-	for _, ch := range c.Chips {
-		if ch.Label != "" {
-			b.WriteString(ch.Label)
-			b.WriteByte(' ')
+	if depth > 0 {
+		if title := strings.TrimSpace(c.Title); title != "" {
+			b.WriteString(title)
+			b.WriteByte('\n')
+		}
+		if sub := strings.TrimSpace(c.Subtitle); sub != "" {
+			b.WriteString(sub)
+			b.WriteByte('\n')
+		}
+		if ek := strings.TrimSpace(c.EntityKey); ek != "" {
+			b.WriteString(ek)
+			b.WriteByte('\n')
+		}
+		if chips := c.ChipsText(); chips != "" {
+			b.WriteString(chips)
+			b.WriteByte('\n')
 		}
 	}
-	if len(c.Chips) > 0 {
+	if desc := strings.TrimSpace(c.Description); desc != "" {
+		b.WriteString(desc)
 		b.WriteByte('\n')
 	}
 	if len(c.Data) > 0 {
-		keys := make([]string, 0, len(c.Data))
-		for k := range c.Data {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			b.WriteString(k)
-			b.WriteString(": ")
-			b.WriteString(fmt.Sprintf("%v", c.Data[k]))
-			b.WriteByte('\n')
-		}
+		writeIndexableValue(b, c.Data, 0)
 	}
 	for _, sec := range c.Sections {
-		if sec.ModuleName != "" {
-			b.WriteString(sec.ModuleName)
+		if mn := strings.TrimSpace(sec.ModuleName); mn != "" {
+			b.WriteString(mn)
 			b.WriteByte(' ')
 		}
-		if sec.Title != "" {
-			b.WriteString(sec.Title)
+		if st := strings.TrimSpace(sec.Title); st != "" {
+			b.WriteString(st)
 			b.WriteByte('\n')
 		}
-		if sec.Notes != "" {
-			b.WriteString(sec.Notes)
+		if notes := strings.TrimSpace(sec.Notes); notes != "" {
+			b.WriteString(notes)
 			b.WriteByte('\n')
 		}
 		if len(sec.Fields) > 0 {
-			sKeys := make([]string, 0, len(sec.Fields))
-			for k := range sec.Fields {
-				sKeys = append(sKeys, k)
-			}
-			sort.Strings(sKeys)
-			for _, k := range sKeys {
-				b.WriteString(k)
-				b.WriteString(": ")
-				b.WriteString(fmt.Sprintf("%v", sec.Fields[k]))
-				b.WriteByte('\n')
-			}
+			writeIndexableValue(b, sec.Fields, 0)
 		}
 		for _, act := range sec.Actions {
-			if act.Label != "" {
-				b.WriteString(act.Label)
-				b.WriteByte(' ')
-			}
-			if act.Target != "" {
-				b.WriteString(act.Target)
-				b.WriteByte('\n')
-			}
+			writeActionBody(b, act)
 		}
 	}
 	for _, act := range c.Actions {
-		if act.Label != "" {
-			b.WriteString(act.Label)
-			b.WriteByte(' ')
-		}
-		if act.Target != "" {
-			b.WriteString(act.Target)
-			b.WriteByte('\n')
-		}
+		writeActionBody(b, act)
 	}
 	for _, child := range c.Children {
 		writeCardBody(b, child, depth+1)
 	}
 	if c.Provenance != nil {
-		if c.Provenance.SourceName != "" {
-			b.WriteString("source: ")
-			b.WriteString(c.Provenance.SourceName)
+		if src := strings.TrimSpace(c.Provenance.SourceName); src != "" {
+			b.WriteString(src)
 			b.WriteByte(' ')
 		}
-		if c.Provenance.Authority != "" {
-			b.WriteString(c.Provenance.Authority)
+		if auth := strings.TrimSpace(c.Provenance.Authority); auth != "" {
+			b.WriteString(auth)
 			b.WriteByte('\n')
+		}
+	}
+}
+
+func writeActionBody(b *strings.Builder, act CardAction) {
+	if lbl := strings.TrimSpace(act.Label); lbl != "" {
+		b.WriteString(lbl)
+		b.WriteByte('\n')
+	}
+	if target := strings.TrimSpace(act.Target); target != "" && !isURLActionTarget(act) {
+		b.WriteString(target)
+		b.WriteByte('\n')
+	}
+}
+
+func writeIndexableValue(b *strings.Builder, val any, depth int) {
+	if val == nil || depth > 6 {
+		return
+	}
+	switch v := val.(type) {
+	case string:
+		s := strings.TrimSpace(v)
+		if s != "" {
+			b.WriteString(s)
+			b.WriteByte('\n')
+		}
+	case bool:
+		// Skip boolean flags (UI/layout state, never meaningful search terms).
+	case int:
+		b.WriteString(strconv.Itoa(v))
+		b.WriteByte('\n')
+	case int8:
+		b.WriteString(strconv.FormatInt(int64(v), 10))
+		b.WriteByte('\n')
+	case int16:
+		b.WriteString(strconv.FormatInt(int64(v), 10))
+		b.WriteByte('\n')
+	case int32:
+		b.WriteString(strconv.FormatInt(int64(v), 10))
+		b.WriteByte('\n')
+	case int64:
+		b.WriteString(strconv.FormatInt(v, 10))
+		b.WriteByte('\n')
+	case uint:
+		b.WriteString(strconv.FormatUint(uint64(v), 10))
+		b.WriteByte('\n')
+	case uint8:
+		b.WriteString(strconv.FormatUint(uint64(v), 10))
+		b.WriteByte('\n')
+	case uint16:
+		b.WriteString(strconv.FormatUint(uint64(v), 10))
+		b.WriteByte('\n')
+	case uint32:
+		b.WriteString(strconv.FormatUint(uint64(v), 10))
+		b.WriteByte('\n')
+	case uint64:
+		b.WriteString(strconv.FormatUint(v, 10))
+		b.WriteByte('\n')
+	case float32:
+		b.WriteString(strconv.FormatFloat(float64(v), 'f', -1, 32))
+		b.WriteByte('\n')
+	case float64:
+		b.WriteString(strconv.FormatFloat(v, 'f', -1, 64))
+		b.WriteByte('\n')
+	case json.Number:
+		if s := strings.TrimSpace(v.String()); s != "" {
+			b.WriteString(s)
+			b.WriteByte('\n')
+		}
+	case map[string]any:
+		if len(v) == 0 {
+			return
+		}
+		keys := make([]string, 0, len(v))
+		for k := range v {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			if isSkippedDataKey(k) {
+				continue
+			}
+			writeIndexableValue(b, v[k], depth+1)
+		}
+	case map[string]string:
+		if len(v) == 0 {
+			return
+		}
+		keys := make([]string, 0, len(v))
+		for k := range v {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			if isSkippedDataKey(k) {
+				continue
+			}
+			writeIndexableValue(b, v[k], depth+1)
+		}
+	case []any:
+		for _, elem := range v {
+			writeIndexableValue(b, elem, depth+1)
+		}
+	case []string:
+		for _, elem := range v {
+			writeIndexableValue(b, elem, depth+1)
+		}
+	case []map[string]any:
+		for _, elem := range v {
+			writeIndexableValue(b, elem, depth+1)
+		}
+	default:
+		if s, ok := val.(fmt.Stringer); ok {
+			if txt := strings.TrimSpace(s.String()); txt != "" {
+				b.WriteString(txt)
+				b.WriteByte('\n')
+			}
 		}
 	}
 }

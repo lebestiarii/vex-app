@@ -14,7 +14,7 @@ flowchart TD
 
     subgraph Core["Go Backend Core (Acyclic Packages)"]
         RPC --> Search["Search & Pattern Engine\n(internal/search)\nParser + Converter + PatternEngine"]
-        Search --> Store["Hybrid SQLite Store\n(internal/indexer/store.go)\nFTS5 BM25 + Vector RRF (k=60)"]
+        Search --> Store["Hybrid SQLite v2 Store\n(internal/indexer/store.go)\n4-Tier Exact/Contextual + FTS5 + Vector"]
         Modules["Optional Module Compiler\n(internal/indexer/modules.go)\n~/.vex/modules/*.json + Starter Catalog"] -->|"ReplaceSourceFile\nmodule://compiled"| Store
         UserData["User JSON Files\n~/.vex/data/*.json\n~/.vex/modules/*.json\n~/.vex/patterns/*.json"] -->|"fsnotify Watcher"| Store
         RPC --> Runner["Safe Action Runner\n(internal/plugins/runner.go)\nURL Guard + Clipboard + HTTP"]
@@ -62,8 +62,10 @@ flowchart TD
   - **Extended templates**: `container-blueprint` (theme-adaptive SVG schematic + Metric/Imperial toggle + capacity boxes), `dictionary-guide` (N-step timeline), and `kv-grid` (click-to-copy key-value grid).
 - `VexBridgeService` isolates all Wails v3 RPC calls (`import('/wails/runtime.js')`) and returns clean empty state when opened outside Wails (zero hardcoded demo data in the bundle).
 
-### D. Loadable, Configurable Pattern Engine (`internal/models/pattern.go`, `internal/search/patterns.go`)
-- Zero hardcoded rules in Go: active rules come solely from enabled modules (`ModuleManifest.Patterns`) and `~/.vex/patterns/*.json`.
+### D. 4-Tier Precision Search & Configurable Pattern Engine (`internal/indexer/store.go`, `internal/search/`)
+- **SQLite Schema v2 (`PRAGMA user_version = 2`)**: Automatic idempotent in-place migration adds indexed `entity_key`, `entity_code`, `chips_text`, and `related_keys_json` columns, B-tree indexes (`idx_cards_entity_key`, `idx_cards_entity_code`, `idx_cards_updated_at`), and a 9-column `cards_fts` (`entity_key`, `title`, `chips`, `modifiers`, `tags`, `subtitle`, `body`). `SearchCard.SearchableBody()` extracts human-readable leaf values only (skipping structural JSON keys and URLs).
+- **4-Tier Ranking & Anti-Sprawl Cutoff (`SearchHybrid`)**: Ranks exact entity/code/tag/chip matches (`exact`, `88–100`) first, followed by 1-hop `RelatedKeys` contextual neighbors (`contextual`, `52–78`) and un-wildcarded whole-token FTS5 BM25 (`45–75`), then prefix FTS5 (`16–38`), and guarded metadata-only substring fallback (`fuzzy`, `5–14`, never scanning `card_json`). A dynamic relevance cliff (`0.25×` / `0.30×` top score) prunes weak tail noise on interactive searches while preserving full vector/hybrid RAG scoring.
+- **Loadable, Configurable `PatternEngine`**: Zero hardcoded rules in Go — active rules come solely from enabled modules (`ModuleManifest.Patterns`) and `~/.vex/patterns/*.json`.
 - Supports `enabled`, `priority`, pre-match `normalize` transforms, checksums (`iata-mod7`, `iso6346`, `luhn`), 3-column `segments[]` + `explanationTemplate`, live SQLite `dataLookups` across indexed modules, declarative recursive `linkRules` (`autoExpand`, `nestChildren`, `copyChildrenOnly`, `attachUnder`, `maxDepth`), optional `liveMcp` lookups, and `TestRule` dry runs.
 
 ### E. Tri-Modal MCP Hub, Agent Skill Sharing & Security (`internal/mcp/`, `internal/secrets/`, `internal/plugins/runner.go`)

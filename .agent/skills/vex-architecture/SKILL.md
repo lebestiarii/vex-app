@@ -66,7 +66,7 @@ Unified single-version application (no community/enterprise split):
 - **Validation & Schema**: Always call `models.ValidateAndNormalizeCard(&card, defaultCollection)` before indexing or writing to disk. `models.CardJSONSchema()` exports the canonical schema for `SearchCard`, `GlanceChip`, `PatternSegment`, `ModuleManifest`, `PatternRule`, and `ETLMappingRule`.
 
 ### 2. Hybrid Indexer, Optional Starter Modules & Live Watcher (`internal/indexer/`)
-- **Store (`store.go`)**: Embedded CGo-free SQLite (`modernc.org/sqlite`, `SetMaxOpenConns(1)`) with `cards`, `cards_fts` (FTS5 weighted BM25), and `card_embeddings` merged via RRF (`k=60`).
+- **Store (`store.go`)**: Embedded CGo-free SQLite (`modernc.org/sqlite`, `SetMaxOpenConns(1)`, `PRAGMA user_version = 2`) with indexed `entity_key`/`entity_code`/`chips_text`/`related_keys_json` columns, 9-column `cards_fts`, `card_embeddings`, 4-tier exact/contextual/prefix/guarded-fuzzy ranking + dynamic relevance cliff, and hybrid vector scoring (see `.agent/skills/vex-search-ranking/SKILL.md`).
 - **Optional Deletable Modules (`modules.go`, `starter_modules/*.json`)**:
   - **Zero forced hardcoded modules**: `LoadAllModules(modulesDir)` reads ONLY `~/.vex/modules/*.json`. Deleting a module (`DeleteModule` or removing the file on disk) removes it permanently.
   - **Optional Embedded Starter Catalog (`//go:embed starter_modules/*.json`)**: 6 real/generic optional packs (`air-carriers`, `ocean-carriers`, `containers`, `logistics-dictionary`, `reference-patterns`, `team-templates` — zero sample/dummy data) exposed via `ListStarterModules` / `InstallStarterModules` for onboarding or Module Manager installation.

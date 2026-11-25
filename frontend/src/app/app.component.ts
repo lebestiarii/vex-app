@@ -444,7 +444,8 @@ export class AppComponent implements OnInit {
   async refreshResults(): Promise<void> {
     this.loading.set(true);
     try {
-      const res = await this.bridge.searchRolodex(this.query(), 24);
+      const limit = this.query().trim() ? 10 : 24;
+      const res = await this.bridge.searchRolodex(this.query(), limit);
       this.cards.set(res);
     } finally {
       this.loading.set(false);

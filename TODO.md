@@ -43,6 +43,11 @@
   - [x] Transitioned to Angular 22 default **Zoneless** runtime (removed `zone.js`, `-34kb` bundle size), modernized `RolodexCardShellComponent` (`linkedSignal`) and `PatternsDialogComponent` (signal-bound `ngModel`), and added `DestroyRef` cleanup in `RolodexStateService`.
   - [x] Added offline **Vitest 5.1.1 + `happy-dom`** frontend test harness (`deno task test` / `ng test`) with 19 passing unit & component tests.
   - [x] Completed 6-point Documentation Drift Sweep, Windows PowerShell build/run parity, and added `.agent/skills/vex-frontend-testing/SKILL.md`.
+- [x] **Phase 9 — Search Precision, SQLite Schema v2 & Anti-Sprawl Ranking (`feat/search-precision`)**:
+  - [x] Upgraded embedded SQLite schema atomically (`PRAGMA user_version = 2`) with indexed `entity_key`, `entity_code`, `chips_text`, and `related_keys_json` columns, 9-column `cards_fts`, indexed `FindCardsByEntityKeys`, and lightweight metadata-first `FindRelatedCards`.
+  - [x] Rewrote `SearchCard.SearchableBody()` to extract human-readable leaf values only (excluding structural JSON keys, URLs, and Go map dumps) and added `ChipsText()`.
+  - [x] Implemented 4-tier `SearchHybrid` (`exact` → whole-token FTS5 & 1-hop `contextual` neighbors → prefix FTS5 → guarded metadata-only `fuzzy`), dynamic relevance cliff, converter/pattern score precedence, and `limit = 10` active query cap in `AppComponent` (UI/CSS untouched).
+  - [x] Added Go v0→v2 migration, `AMS` precision/anti-sprawl, and `AppComponent` Vitest specs (**21 passing frontend tests**, 11 Go packages passing with `-race`), plus `.agent/skills/vex-search-ranking/SKILL.md`.
 
 ---
 
