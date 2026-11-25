@@ -30,7 +30,6 @@ type ActionResult struct {
 	Error          string         `json:"error,omitempty"`
 	Data           map[string]any `json:"data,omitempty"`
 	DurationMs     int64          `json:"durationMs"`
-	OpenAIMode     bool           `json:"openAiMode,omitempty"`
 }
 
 // Runner executes SearchCard actions across macOS, Windows, and Linux.
@@ -203,11 +202,6 @@ func (r *Runner) Execute(ctx context.Context, card models.SearchCard, actionID s
 
 	case "http":
 		r.execHTTP(ctx, resolved, &res)
-
-	case "ai_prompt":
-		res.Success = true
-		res.Output = resolved
-		res.OpenAIMode = true
 
 	default:
 		res.Error = fmt.Sprintf("unsupported action type %q", action.Type)

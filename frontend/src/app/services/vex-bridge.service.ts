@@ -2,8 +2,14 @@ import { Injectable, signal } from '@angular/core';
 import {
   AppInfo,
   CardNode,
+  CLIAuthStatus,
+  CollectionStats,
+  ConnectedServerStatus,
+  ExternalServerConfig,
+  LogDiagnostics,
   ModuleStatus,
   PatternRule,
+  SegmentTile,
   StarterModuleInfo,
   UserPrefs,
 } from '../models/card-node.model';
@@ -25,7 +31,6 @@ export class VexBridgeService {
   private sessionPrefs: UserPrefs = {
     onboardingCompleted: false,
     powerUserMode: false,
-    aiEnabled: false,
   };
 
   private async getRuntime(): Promise<WailsRuntimeModule | null> {
@@ -70,9 +75,29 @@ export class VexBridgeService {
     await this.call('SetUserPrefs', prefs);
   }
 
-  async searchRolodex(query: string, limit = 20): Promise<CardNode[]> {
+  async searchRolodex(query: string, limit = 10): Promise<CardNode[]> {
     const desktopRes = await this.call<CardNode[]>('SearchRolodex', query, limit);
     return desktopRes ?? [];
+  }
+
+  async listRecentCards(limit = 6): Promise<CardNode[]> {
+    const res = await this.call<CardNode[]>('ListRecentCards', limit);
+    return res ?? [];
+  }
+
+  async recordCardUsed(id: string): Promise<void> {
+    const clean = (id ?? '').trim();
+    if (!clean) return;
+    await this.call('RecordCardUsed', clean);
+  }
+
+  async listCollections(): Promise<CollectionStats[]> {
+    const res = await this.call<CollectionStats[]>('ListCollections');
+    return res ?? [];
+  }
+
+  async getLogInfo(): Promise<LogDiagnostics | null> {
+    return this.call<LogDiagnostics>('GetLogInfo');
   }
 
   async listModules(): Promise<ModuleStatus[]> {
@@ -124,27 +149,103 @@ export class VexBridgeService {
     return res ?? [];
   }
 
+  async fetchPatternLiveHTTP(ruleID: string, rawQuery: string): Promise<CardNode | null> {
+    return this.call<CardNode>('FetchPatternLiveHTTP', ruleID, rawQuery);
+  }
+
+  async probeCLIAuth(): Promise<CLIAuthStatus[]> {
+    const res = await this.call<CLIAuthStatus[]>('ProbeCLIAuth');
+    return res ?? [];
+  }
+
+  async getConfiguredMCPServers(): Promise<ExternalServerConfig[]> {
+    const res = await this.call<ExternalServerConfig[]>('GetConfiguredMCPServers');
+    return res ?? [];
+  }
+
+  async listMCPServers(): Promise<ConnectedServerStatus[]> {
+    const res = await this.call<ConnectedServerStatus[]>('ListMCPServers');
+    return res ?? [];
+  }
+
+  async connectMCPServer(cfg: ExternalServerConfig): Promise<ConnectedServerStatus | null> {
+    return this.call<ConnectedServerStatus>('ConnectMCPServer', cfg);
+  }
+
+  async disconnectMCPServer(serverID: string): Promise<void> {
+    await this.call('DisconnectMCPServer', serverID);
+  }
+
+  async testMCPServer(serverID: string): Promise<ConnectedServerStatus | null> {
+    return this.call<ConnectedServerStatus>('TestMCPServer', serverID);
+  }
+
   async testPatternRule(rule: PatternRule, sampleInput: string): Promise<CardNode | null> {
     const res = await this.call<CardNode | null>('TestPatternRule', rule, sampleInput);
     if (res !== null) return res;
 
+    // Standalone browser fallback when Wails runtime is unavailable
+    let normalized = sampleInput;
+    for (const norm of rule.normalize ?? []) {
+      switch (norm.toLowerCase()) {
+        case 'trim':
+          normalized = normalized.trim();
+          break;
+        case 'uppercase':
+        case 'upper':
+          normalized = normalized.toUpperCase();
+          break;
+        case 'lowercase':
+        case 'lower':
+          normalized = normalized.toLowerCase();
+          break;
+        case 'strip-spaces':
+          normalized = normalized.replace(/\s+/g, '');
+          break;
+        case 'strip-dashes':
+          normalized = normalized.replace(/-/g, '');
+          break;
+      }
+    }
+
     const re = new RegExp(
-      rule.regex.replace(/\(\?P<([^>]+)>/g, '(?<$1>)'),
+      rule.regex.replace(/\(\?P<([^>]+)>/g, '(?<$1>'),
       rule.caseInsensitive ? 'i' : ''
     );
-    const m = re.exec(sampleInput.trim());
+    const m = re.exec(normalized);
     if (!m) return null;
-    const title = rule.titleTemplate.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, k: string) => {
-      if (k === 'match' || k === '0') return m[0];
-      return m.groups?.[k] ?? '';
-    });
+
+    const interpolate = (tmpl: string): string =>
+      tmpl.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, k: string) => {
+        if (k === 'match' || k === '0') return m[0];
+        if (k.startsWith('lookup.')) {
+          const name = k.slice('lookup.'.length);
+          const rawVal = m.groups?.[name] ?? '';
+          return rule.lookups?.[name]?.[rawVal] ?? rawVal;
+        }
+        return m.groups?.[k] ?? '';
+      });
+
+    const segments: SegmentTile[] = (rule.segments ?? []).map((seg) => ({
+      value: interpolate(seg.value),
+      role: interpolate(seg.role),
+      meaning: interpolate(seg.meaning),
+      tone: seg.tone,
+    }));
+
     return {
       id: `preview-${rule.id}`,
-      template: rule.template ?? 'pattern-breakdown',
+      layout: rule.layout ?? 'segments',
       icon: rule.icon ?? '🧩',
-      title,
-      chips: [{ label: rule.id, tone: 'blue' }],
-      data: { ...(m.groups ?? {}), match: m[0] },
+      title: interpolate(rule.titleTemplate),
+      chips: (rule.chips ?? [{ label: rule.id, tone: 'blue' }]).map((c) => ({
+        ...c,
+        label: interpolate(c.label),
+      })),
+      data: {
+        segments,
+        explanation: rule.explanationTemplate ? interpolate(rule.explanationTemplate) : '',
+      },
       defaultExpanded: true,
       pinnable: false,
     };

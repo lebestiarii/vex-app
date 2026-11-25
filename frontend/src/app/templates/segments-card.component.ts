@@ -1,15 +1,25 @@
 import { ChangeDetectionStrategy, Component, computed } from '@angular/core';
-import { PatternBreakdownData, PatternSegment } from '../models/card-node.model';
+import { SegmentsLayoutData, SegmentTile } from '../models/card-node.model';
 import { BaseCardTemplate } from './base-card-template';
 
+/**
+ * SegmentsCardComponent (`segments`):
+ * 2–4 equal-width Blue/Amber/Green token tiles + 1–2 sentence explanation.
+ * Nested children render below inside RolodexCardShellComponent's .nested-stack.
+ */
 @Component({
-  selector: 'app-pattern-breakdown-card',
+  selector: 'app-segments-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="breakdown-body">
+    <div class="segments-body">
       @if (segments().length > 0) {
-        <div class="segment-grid" role="list" aria-label="Decoded segments">
+        <div
+          class="segment-grid"
+          role="list"
+          aria-label="Decoded segments"
+          [style.--seg-count]="columnCount()"
+        >
           @for (seg of segments(); track seg.role + seg.value + $index) {
             <button
               type="button"
@@ -28,20 +38,20 @@ import { BaseCardTemplate } from './base-card-template';
       }
 
       @if (explanation()) {
-        <p class="breakdown-explanation">{{ explanation() }}</p>
+        <p class="segments-explanation">{{ explanation() }}</p>
       }
     </div>
   `,
   styles: [
     `
-      .breakdown-body {
+      .segments-body {
         display: flex;
         flex-direction: column;
         gap: 10px;
       }
       .segment-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(var(--seg-count, 3), minmax(0, 1fr));
         gap: 8px;
       }
       .segment-tile {
@@ -56,7 +66,8 @@ import { BaseCardTemplate } from './base-card-template';
         border: 1px solid var(--border-nested);
         background: var(--bg-subtle);
         cursor: pointer;
-        transition: filter 0.14s ease, transform 0.12s ease;
+        transition: filter 0.14s ease;
+        min-width: 0;
       }
       .segment-tile:hover {
         filter: brightness(0.97);
@@ -71,7 +82,6 @@ import { BaseCardTemplate } from './base-card-template';
       .segment-tile[data-tone='blue'] .seg-role {
         color: var(--tile-blue-role);
       }
-
       .segment-tile[data-tone='amber'] {
         background: var(--tile-amber-bg);
         border-color: var(--tile-amber-border);
@@ -82,7 +92,6 @@ import { BaseCardTemplate } from './base-card-template';
       .segment-tile[data-tone='amber'] .seg-role {
         color: var(--tile-amber-role);
       }
-
       .segment-tile[data-tone='green'] {
         background: var(--tile-green-bg);
         border-color: var(--tile-green-border);
@@ -93,7 +102,6 @@ import { BaseCardTemplate } from './base-card-template';
       .segment-tile[data-tone='green'] .seg-role {
         color: var(--tile-green-role);
       }
-
       .seg-value {
         font-size: 14px;
         font-weight: 700;
@@ -112,7 +120,7 @@ import { BaseCardTemplate } from './base-card-template';
         color: var(--text-primary);
         line-height: 1.25;
       }
-      .breakdown-explanation {
+      .segments-explanation {
         margin: 0;
         font-size: 12.5px;
         line-height: 1.5;
@@ -121,16 +129,21 @@ import { BaseCardTemplate } from './base-card-template';
     `,
   ],
 })
-export class PatternBreakdownCardComponent extends BaseCardTemplate<PatternBreakdownData> {
-  readonly segments = computed<PatternSegment[]>(() => {
+export class SegmentsCardComponent extends BaseCardTemplate<SegmentsLayoutData> {
+  readonly segments = computed<SegmentTile[]>(() => {
     const raw = this.node().data?.segments;
     return Array.isArray(raw) ? raw : [];
   });
 
-  readonly explanation = computed(() => {
-    const d = this.node().data;
-    return d?.explanation || this.node().description || '';
+  readonly columnCount = computed(() => {
+    const len = this.segments().length;
+    if (len <= 2) return Math.max(1, len);
+    return Math.min(4, len);
   });
+
+  readonly explanation = computed(
+    () => (this.node().data?.explanation ?? this.node().description ?? '').trim()
+  );
 
   defaultTone(index: number): 'blue' | 'amber' | 'green' {
     const order: ('blue' | 'amber' | 'green')[] = ['blue', 'amber', 'green'];

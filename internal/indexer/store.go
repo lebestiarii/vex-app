@@ -3,7 +3,6 @@ package indexer
 import (
 	"context"
 	"database/sql"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,26 +24,24 @@ type CollectionStats struct {
 	Tags       []string `json:"tags"`
 }
 
-// SearchOptions configures a hybrid lexical + semantic search query.
+// SearchOptions configures a lexical search query against the SQLite FTS5 index.
 type SearchOptions struct {
-	Query          string                  `json:"query"`
-	Collection     string                  `json:"collection,omitempty"`
-	Tags           []string                `json:"tags,omitempty"`
-	Modifier       string                  `json:"modifier,omitempty"`
-	Template       models.CardTemplateType `json:"template,omitempty"`
-	Limit          int                     `json:"limit,omitempty"`
-	QueryEmbedding []float32               `json:"-"`
-	EmbeddingModel string                  `json:"-"`
+	Query      string                `json:"query"`
+	Collection string                `json:"collection,omitempty"`
+	Tags       []string              `json:"tags,omitempty"`
+	Modifier   string                `json:"modifier,omitempty"`
+	Layout     models.CardLayoutType `json:"layout,omitempty"`
+	Limit      int                   `json:"limit,omitempty"`
 }
 
 // SearchResult pairs a matched SearchCard with ranking metadata.
 type SearchResult struct {
 	Card        models.SearchCard `json:"card"`
 	Score       float64           `json:"score"`
-	MatchSource string            `json:"matchSource"` // "exact", "contextual", "fts", "fuzzy", "vector", "hybrid", "filter"
+	MatchSource string            `json:"matchSource"` // "exact", "contextual", "fts", "fuzzy", "filter"
 }
 
-// Store manages the embedded SQLite FTS5 + Vector index.
+// Store manages the embedded SQLite FTS5 index, entity_links graph, and card_recents table.
 type Store struct {
 	mu sync.RWMutex
 	db *sql.DB
@@ -80,7 +77,7 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
-const currentSchemaVersion = 2
+const currentSchemaVersion = 3
 
 func normalizeEntityKey(raw string) (entityKey, entityCode string) {
 	ek := strings.ToLower(strings.TrimSpace(raw))
@@ -130,12 +127,13 @@ func (s *Store) migrate() error {
 	const createCardsTableSQL = `CREATE TABLE IF NOT EXISTS cards (
 		id TEXT PRIMARY KEY,
 		collection TEXT NOT NULL,
-		template TEXT NOT NULL,
+		layout TEXT NOT NULL,
 		title TEXT NOT NULL,
 		subtitle TEXT NOT NULL DEFAULT '',
 		description TEXT NOT NULL DEFAULT '',
 		entity_key TEXT NOT NULL DEFAULT '',
 		entity_code TEXT NOT NULL DEFAULT '',
+		parent_entity_key TEXT NOT NULL DEFAULT '',
 		chips_text TEXT NOT NULL DEFAULT '',
 		related_keys_json TEXT NOT NULL DEFAULT '[]',
 		tags_json TEXT NOT NULL DEFAULT '[]',
@@ -159,13 +157,17 @@ func (s *Store) migrate() error {
 		tokenize = 'porter unicode61'
 	);`
 
-	const createEmbeddingsTableSQL = `CREATE TABLE IF NOT EXISTS card_embeddings (
+	const createEntityLinksTableSQL = `CREATE TABLE IF NOT EXISTS entity_links (
+		source_card_id TEXT NOT NULL,
+		target_entity_key TEXT NOT NULL,
+		relation_type TEXT NOT NULL,
+		PRIMARY KEY (source_card_id, target_entity_key, relation_type),
+		FOREIGN KEY (source_card_id) REFERENCES cards(id) ON DELETE CASCADE
+	);`
+
+	const createCardRecentsTableSQL = `CREATE TABLE IF NOT EXISTS card_recents (
 		card_id TEXT PRIMARY KEY,
-		model TEXT NOT NULL,
-		content_hash TEXT NOT NULL,
-		vector BLOB NOT NULL,
-		dims INTEGER NOT NULL,
-		FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
+		last_used_at INTEGER NOT NULL
 	);`
 
 	indexStmts := []string{
@@ -173,12 +175,16 @@ func (s *Store) migrate() error {
 		`CREATE INDEX IF NOT EXISTS idx_cards_source_file ON cards(source_file);`,
 		`CREATE INDEX IF NOT EXISTS idx_cards_entity_key ON cards(entity_key);`,
 		`CREATE INDEX IF NOT EXISTS idx_cards_entity_code ON cards(entity_code);`,
+		`CREATE INDEX IF NOT EXISTS idx_cards_parent_entity_key ON cards(parent_entity_key);`,
 		`CREATE INDEX IF NOT EXISTS idx_cards_updated_at ON cards(updated_at DESC);`,
+		`CREATE INDEX IF NOT EXISTS idx_entity_links_target ON entity_links(target_entity_key, relation_type);`,
+		`CREATE INDEX IF NOT EXISTS idx_card_recents_last_used ON card_recents(last_used_at DESC);`,
 	}
 
 	// Fast path 1: Already at current schema version.
 	if cardsTableCount > 0 && userVersion >= currentSchemaVersion {
-		for _, stmt := range append([]string{createEmbeddingsTableSQL}, indexStmts...) {
+		ensureStmts := append([]string{createEntityLinksTableSQL, createCardRecentsTableSQL}, indexStmts...)
+		for _, stmt := range ensureStmts {
 			if _, err := s.db.Exec(stmt); err != nil {
 				return fmt.Errorf("ensure sqlite schema (%s): %w", stmt[:min(40, len(stmt))], err)
 			}
@@ -192,10 +198,10 @@ func (s *Store) migrate() error {
 	}
 	defer tx.Rollback()
 
-	// Fast path 2: Brand-new database — initialize directly at schema v2.
+	// Fast path 2: Brand-new database — initialize directly at schema v3.
 	if cardsTableCount == 0 {
 		initStmts := append(
-			[]string{createCardsTableSQL, createFTSTableSQL, createEmbeddingsTableSQL},
+			[]string{createCardsTableSQL, createFTSTableSQL, createEntityLinksTableSQL, createCardRecentsTableSQL},
 			indexStmts...,
 		)
 		initStmts = append(initStmts, fmt.Sprintf(`PRAGMA user_version = %d;`, currentSchemaVersion))
@@ -207,7 +213,7 @@ func (s *Store) migrate() error {
 		return tx.Commit()
 	}
 
-	// Upgrade path: Legacy v0/v1 database -> atomic in-place upgrade to v2 with full row backfill.
+	// Upgrade path: Legacy v0/v1/v2 database -> atomic in-place upgrade to v3.
 	existingCols := make(map[string]bool)
 	colRows, err := tx.Query(`PRAGMA table_info(cards);`)
 	if err != nil {
@@ -215,12 +221,12 @@ func (s *Store) migrate() error {
 	}
 	for colRows.Next() {
 		var (
-			cid      int
-			name     string
-			colType  string
-			notNull  int
-			dfltVal  sql.NullString
-			pk       int
+			cid     int
+			name    string
+			colType string
+			notNull int
+			dfltVal sql.NullString
+			pk      int
 		)
 		if err := colRows.Scan(&cid, &name, &colType, &notNull, &dfltVal, &pk); err != nil {
 			colRows.Close()
@@ -234,12 +240,22 @@ func (s *Store) migrate() error {
 	}
 	colRows.Close()
 
+	// Rename legacy `template` column to `layout` when upgrading from v0/v1/v2.
+	if existingCols["template"] && !existingCols["layout"] {
+		if _, err := tx.Exec(`ALTER TABLE cards RENAME COLUMN template TO layout;`); err != nil {
+			return fmt.Errorf("rename cards.template to layout: %w", err)
+		}
+		existingCols["layout"] = true
+	}
+
 	requiredCols := []struct {
 		name string
 		ddl  string
 	}{
+		{"layout", `ALTER TABLE cards ADD COLUMN layout TEXT NOT NULL DEFAULT 'facts';`},
 		{"entity_key", `ALTER TABLE cards ADD COLUMN entity_key TEXT NOT NULL DEFAULT '';`},
 		{"entity_code", `ALTER TABLE cards ADD COLUMN entity_code TEXT NOT NULL DEFAULT '';`},
+		{"parent_entity_key", `ALTER TABLE cards ADD COLUMN parent_entity_key TEXT NOT NULL DEFAULT '';`},
 		{"chips_text", `ALTER TABLE cards ADD COLUMN chips_text TEXT NOT NULL DEFAULT '';`},
 		{"related_keys_json", `ALTER TABLE cards ADD COLUMN related_keys_json TEXT NOT NULL DEFAULT '[]';`},
 	}
@@ -251,8 +267,15 @@ func (s *Store) migrate() error {
 		}
 	}
 
-	if _, err := tx.Exec(createEmbeddingsTableSQL); err != nil {
-		return fmt.Errorf("ensure card_embeddings: %w", err)
+	// Remove deprecated vector embeddings table.
+	if _, err := tx.Exec(`DROP TABLE IF EXISTS card_embeddings;`); err != nil {
+		return fmt.Errorf("drop deprecated card_embeddings: %w", err)
+	}
+	if _, err := tx.Exec(createEntityLinksTableSQL); err != nil {
+		return fmt.Errorf("create entity_links: %w", err)
+	}
+	if _, err := tx.Exec(createCardRecentsTableSQL); err != nil {
+		return fmt.Errorf("create card_recents: %w", err)
 	}
 	for _, stmt := range indexStmts {
 		if _, err := tx.Exec(stmt); err != nil {
@@ -260,12 +283,15 @@ func (s *Store) migrate() error {
 		}
 	}
 
-	// Rebuild cards_fts with the 9-column schema.
+	// Rebuild cards_fts with the 9-column schema and refresh entity_links.
 	if _, err := tx.Exec(`DROP TABLE IF EXISTS cards_fts;`); err != nil {
 		return fmt.Errorf("drop legacy cards_fts: %w", err)
 	}
 	if _, err := tx.Exec(createFTSTableSQL); err != nil {
-		return fmt.Errorf("create v2 cards_fts: %w", err)
+		return fmt.Errorf("create v3 cards_fts: %w", err)
+	}
+	if _, err := tx.Exec(`DELETE FROM entity_links;`); err != nil {
+		return fmt.Errorf("clear entity_links for backfill: %w", err)
 	}
 
 	// Read all existing cards into memory before issuing writes on the single connection.
@@ -302,13 +328,14 @@ func (s *Store) migrate() error {
 		var card models.SearchCard
 		if err := json.Unmarshal([]byte(r.cardJSON), &card); err == nil {
 			entityKey, entityCode := normalizeEntityKey(card.EntityKey)
+			parentKey, _ := normalizeEntityKey(card.ParentEntityKey)
 			chipsText := card.ChipsText()
 			relatedKeysJSON := marshalStringSliceJSON(card.RelatedKeys)
 			if _, err := tx.Exec(`
 				UPDATE cards
-				SET entity_key = ?, entity_code = ?, chips_text = ?, related_keys_json = ?
+				SET entity_key = ?, entity_code = ?, parent_entity_key = ?, chips_text = ?, related_keys_json = ?
 				WHERE id = ?
-			`, entityKey, entityCode, chipsText, relatedKeysJSON, r.id); err != nil {
+			`, entityKey, entityCode, parentKey, chipsText, relatedKeysJSON, r.id); err != nil {
 				return fmt.Errorf("backfill card %q metadata: %w", r.id, err)
 			}
 			collection := card.Collection
@@ -331,8 +358,10 @@ func (s *Store) migrate() error {
 			); err != nil {
 				return fmt.Errorf("backfill card %q fts: %w", r.id, err)
 			}
+			if err := syncEntityLinksTx(context.Background(), tx, r.id, parentKey, card.RelatedKeys); err != nil {
+				return fmt.Errorf("backfill card %q entity_links: %w", r.id, err)
+			}
 		} else {
-			// Defensive fallback if a legacy row had malformed JSON: preserve its scalar text in FTS.
 			var tags, mods []string
 			_ = json.Unmarshal([]byte(r.tagsJSON), &tags)
 			_ = json.Unmarshal([]byte(r.modifiersJSON), &mods)
@@ -359,7 +388,34 @@ func (s *Store) migrate() error {
 	return tx.Commit()
 }
 
-// UpsertCard inserts or updates a single card in both the main table and FTS5 index.
+func syncEntityLinksTx(ctx context.Context, tx *sql.Tx, cardID, parentKey string, relatedKeys []string) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM entity_links WHERE source_card_id = ?`, cardID); err != nil {
+		return err
+	}
+	if parentKey != "" {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO entity_links (source_card_id, target_entity_key, relation_type)
+			VALUES (?, ?, 'child_of')
+		`, cardID, parentKey); err != nil {
+			return err
+		}
+	}
+	for _, rk := range relatedKeys {
+		normRK, _ := normalizeEntityKey(rk)
+		if normRK == "" {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `
+			INSERT OR IGNORE INTO entity_links (source_card_id, target_entity_key, relation_type)
+			VALUES (?, ?, 'related_to')
+		`, cardID, normRK); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// UpsertCard inserts or updates a single card in the main table, FTS5 index, and entity_links.
 func (s *Store) UpsertCard(ctx context.Context, card models.SearchCard, sourceFile string) error {
 	if err := models.ValidateAndNormalizeCard(&card, card.Collection); err != nil {
 		return err
@@ -403,7 +459,6 @@ func (s *Store) ReplaceCollection(ctx context.Context, collection string, cards 
 	}
 	defer tx.Rollback()
 
-	// Find existing cards for this sourceFile (or collection if sourceFile is empty) to prune removed ones.
 	var rows *sql.Rows
 	if sourceFile != "" {
 		rows, err = tx.QueryContext(ctx, `SELECT id FROM cards WHERE source_file = ?`, sourceFile)
@@ -499,6 +554,67 @@ func (s *Store) ReplaceSourceFile(ctx context.Context, sourceFile string, cards 
 	}
 
 	return tx.Commit()
+}
+
+// RecordCardUsed records or updates the last-used timestamp for cardID in card_recents.
+func (s *Store) RecordCardUsed(ctx context.Context, cardID string) error {
+	id := strings.TrimSpace(cardID)
+	if id == "" {
+		return nil
+	}
+	now := time.Now().UTC().UnixNano()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO card_recents (card_id, last_used_at)
+		VALUES (?, ?)
+		ON CONFLICT(card_id) DO UPDATE SET last_used_at = excluded.last_used_at
+	`, id, now)
+	return err
+}
+
+// ListRecentCards returns up to limit most recently used indexed cards (with up to 2 levels
+// of flat-on-disk children dynamically assembled via entity_links).
+func (s *Store) ListRecentCards(ctx context.Context, limit int) ([]models.SearchCard, error) {
+	if limit <= 0 {
+		limit = 6
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT c.card_json
+		FROM card_recents r
+		JOIN cards c ON c.id = r.card_id
+		ORDER BY r.last_used_at DESC
+		LIMIT ?
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []models.SearchCard
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		var card models.SearchCard
+		if err := json.Unmarshal([]byte(raw), &card); err == nil {
+			out = append(out, card)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+
+	return s.hydrateChildrenLocked(ctx, out)
 }
 
 // FindRelatedCards returns up to limit other cards that share synergy with cardID
@@ -626,7 +742,6 @@ func (s *Store) FindRelatedCards(ctx context.Context, cardID string, limit int) 
 		matches = matches[:limit]
 	}
 
-	// Fetch card_json only for the top-K winning IDs.
 	placeholders := make([]string, len(matches))
 	args := make([]any, len(matches))
 	for i, m := range matches {
@@ -640,12 +755,12 @@ func (s *Store) FindRelatedCards(ctx context.Context, cardID string, limit int) 
 	if err != nil {
 		return nil, err
 	}
-	defer cardRows.Close()
 
 	byID := make(map[string]models.SearchCard, len(matches))
 	for cardRows.Next() {
 		var id, raw string
 		if err := cardRows.Scan(&id, &raw); err != nil {
+			cardRows.Close()
 			return nil, err
 		}
 		var card models.SearchCard
@@ -654,8 +769,10 @@ func (s *Store) FindRelatedCards(ctx context.Context, cardID string, limit int) 
 		}
 	}
 	if err := cardRows.Err(); err != nil {
+		cardRows.Close()
 		return nil, err
 	}
+	cardRows.Close()
 
 	out := make([]models.SearchCard, 0, len(matches))
 	for _, m := range matches {
@@ -663,7 +780,7 @@ func (s *Store) FindRelatedCards(ctx context.Context, cardID string, limit int) 
 			out = append(out, card)
 		}
 	}
-	return out, nil
+	return s.hydrateChildrenLocked(ctx, out)
 }
 
 // DeleteBySourceFile removes all cards indexed from a deleted JSON file.
@@ -711,6 +828,7 @@ func upsertCardTx(ctx context.Context, tx *sql.Tx, card models.SearchCard, sourc
 	modsJSON := marshalStringSliceJSON(card.Modifiers)
 	relatedKeysJSON := marshalStringSliceJSON(card.RelatedKeys)
 	entityKey, entityCode := normalizeEntityKey(card.EntityKey)
+	parentKey, _ := normalizeEntityKey(card.ParentEntityKey)
 	chipsText := card.ChipsText()
 
 	cardJSON, err := json.Marshal(card)
@@ -721,19 +839,20 @@ func upsertCardTx(ctx context.Context, tx *sql.Tx, card models.SearchCard, sourc
 
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO cards (
-			id, collection, template, title, subtitle, description,
-			entity_key, entity_code, chips_text, related_keys_json,
+			id, collection, layout, title, subtitle, description,
+			entity_key, entity_code, parent_entity_key, chips_text, related_keys_json,
 			tags_json, modifiers_json, card_json, content_hash, source_file, updated_at
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 			collection = excluded.collection,
-			template = excluded.template,
+			layout = excluded.layout,
 			title = excluded.title,
 			subtitle = excluded.subtitle,
 			description = excluded.description,
 			entity_key = excluded.entity_key,
 			entity_code = excluded.entity_code,
+			parent_entity_key = excluded.parent_entity_key,
 			chips_text = excluded.chips_text,
 			related_keys_json = excluded.related_keys_json,
 			tags_json = excluded.tags_json,
@@ -743,8 +862,8 @@ func upsertCardTx(ctx context.Context, tx *sql.Tx, card models.SearchCard, sourc
 			source_file = excluded.source_file,
 			updated_at = excluded.updated_at
 	`,
-		card.ID, card.Collection, string(card.Template), card.Title, card.Subtitle, card.Description,
-		entityKey, entityCode, chipsText, relatedKeysJSON,
+		card.ID, card.Collection, string(card.Layout), card.Title, card.Subtitle, card.Description,
+		entityKey, entityCode, parentKey, chipsText, relatedKeysJSON,
 		tagsJSON, modsJSON, string(cardJSON), hash, sourceFile, card.UpdatedAt.UTC().Format(time.RFC3339Nano),
 	)
 	if err != nil {
@@ -755,7 +874,7 @@ func upsertCardTx(ctx context.Context, tx *sql.Tx, card models.SearchCard, sourc
 	if _, err := tx.ExecContext(ctx, `DELETE FROM cards_fts WHERE id = ?`, card.ID); err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, `
+	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO cards_fts (id, collection, entity_key, title, chips, modifiers, tags, subtitle, body)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`,
@@ -768,11 +887,14 @@ func upsertCardTx(ctx context.Context, tx *sql.Tx, card models.SearchCard, sourc
 		strings.Join(card.Tags, " "),
 		card.Subtitle,
 		card.SearchableBody(),
-	)
-	return err
+	); err != nil {
+		return err
+	}
+
+	return syncEntityLinksTx(ctx, tx, card.ID, parentKey, card.RelatedKeys)
 }
 
-// GetCard retrieves a card by its ID.
+// GetCard retrieves a card by its ID with up to 2 levels of dynamic entity_links children hydrated.
 func (s *Store) GetCard(ctx context.Context, id string) (*models.SearchCard, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -789,7 +911,11 @@ func (s *Store) GetCard(ctx context.Context, id string) (*models.SearchCard, err
 	if err := json.Unmarshal([]byte(raw), &card); err != nil {
 		return nil, err
 	}
-	return &card, nil
+	hydrated, err := s.hydrateChildrenLocked(ctx, []models.SearchCard{card})
+	if err != nil {
+		return nil, err
+	}
+	return &hydrated[0], nil
 }
 
 // ListCards returns all cards (optionally filtered by collection).
@@ -874,60 +1000,132 @@ func (s *Store) ListCollections(ctx context.Context) ([]CollectionStats, error) 
 	return out, nil
 }
 
-// UpsertEmbedding stores a normalized vector embedding for a card.
-func (s *Store) UpsertEmbedding(ctx context.Context, cardID, model, contentHash string, vec []float32) error {
-	if len(vec) == 0 {
-		return errors.New("embedding vector is empty")
+// hydrateChildrenLocked dynamically assembles up to 2 levels of child cards (L0 -> L1 -> L2)
+// from entity_links (relation_type = 'child_of') in at most 2 batched SQL queries.
+func (s *Store) hydrateChildrenLocked(ctx context.Context, cards []models.SearchCard) ([]models.SearchCard, error) {
+	if len(cards) == 0 {
+		return cards, nil
 	}
-	blob := encodeFloat32Vector(normalizeVector(vec))
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// Level 1: collect normalized entityKeys from root cards.
+	rootKeys := collectEntityKeys(cards)
+	l1ByParent, err := s.queryChildrenByEntityKeysLocked(ctx, rootKeys)
+	if err != nil {
+		return nil, err
+	}
 
-	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO card_embeddings (card_id, model, content_hash, vector, dims)
-		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT(card_id) DO UPDATE SET
-			model = excluded.model,
-			content_hash = excluded.content_hash,
-			vector = excluded.vector,
-			dims = excluded.dims
-	`, cardID, model, contentHash, blob, len(vec))
-	return err
+	// Attach Level 1 children to each root card (preserving any inline children and deduplicating by ID).
+	var allL1 []models.SearchCard
+	for i := range cards {
+		seen := map[string]bool{cards[i].ID: true}
+		for _, inline := range cards[i].Children {
+			seen[inline.ID] = true
+		}
+		if ek, _ := normalizeEntityKey(cards[i].EntityKey); ek != "" {
+			for _, child := range l1ByParent[ek] {
+				if seen[child.ID] {
+					continue
+				}
+				seen[child.ID] = true
+				child.Children = append([]models.SearchCard(nil), child.Children...)
+				cards[i].Children = append(cards[i].Children, child)
+			}
+		}
+		allL1 = append(allL1, cards[i].Children...)
+	}
+
+	if len(allL1) == 0 {
+		return cards, nil
+	}
+
+	// Level 2: collect normalized entityKeys from all Level 1 children.
+	l1Keys := collectEntityKeys(allL1)
+	l2ByParent, err := s.queryChildrenByEntityKeysLocked(ctx, l1Keys)
+	if err != nil {
+		return nil, err
+	}
+
+	// Attach Level 2 grandchildren and enforce depth cap <= 2.
+	for i := range cards {
+		rootID := cards[i].ID
+		for j := range cards[i].Children {
+			l1 := &cards[i].Children[j]
+			seen := map[string]bool{rootID: true, l1.ID: true}
+			// Trim any inline depth > 2 children.
+			for k := range l1.Children {
+				seen[l1.Children[k].ID] = true
+				l1.Children[k].Children = nil
+			}
+			if ek, _ := normalizeEntityKey(l1.EntityKey); ek != "" {
+				for _, grand := range l2ByParent[ek] {
+					if seen[grand.ID] {
+						continue
+					}
+					seen[grand.ID] = true
+					grand.Children = nil // Hard depth cap at L2.
+					l1.Children = append(l1.Children, grand)
+				}
+			}
+		}
+	}
+
+	return cards, nil
 }
 
-// CardsNeedingEmbedding returns cards that either have no embedding or whose content_hash changed.
-func (s *Store) CardsNeedingEmbedding(ctx context.Context, model string) ([]models.SearchCard, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+func collectEntityKeys(cards []models.SearchCard) []string {
+	seen := make(map[string]struct{}, len(cards))
+	var out []string
+	for _, c := range cards {
+		if ek, _ := normalizeEntityKey(c.EntityKey); ek != "" {
+			if _, ok := seen[ek]; !ok {
+				seen[ek] = struct{}{}
+				out = append(out, ek)
+			}
+		}
+	}
+	return out
+}
+
+func (s *Store) queryChildrenByEntityKeysLocked(ctx context.Context, parentKeys []string) (map[string][]models.SearchCard, error) {
+	if len(parentKeys) == 0 {
+		return nil, nil
+	}
+	placeholders := make([]string, len(parentKeys))
+	args := make([]any, len(parentKeys))
+	for i, k := range parentKeys {
+		placeholders[i] = "?"
+		args[i] = k
+	}
 
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT c.card_json
-		FROM cards c
-		LEFT JOIN card_embeddings e ON c.id = e.card_id AND e.model = ?
-		WHERE e.card_id IS NULL OR e.content_hash != c.content_hash
-	`, model)
+		SELECT el.target_entity_key, c.card_json
+		FROM entity_links el
+		JOIN cards c ON c.id = el.source_card_id
+		WHERE el.relation_type = 'child_of'
+		  AND el.target_entity_key IN (`+strings.Join(placeholders, ",")+`)
+		ORDER BY c.title ASC, c.id ASC
+	`, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var out []models.SearchCard
+	grouped := make(map[string][]models.SearchCard, len(parentKeys))
 	for rows.Next() {
-		var raw string
-		if err := rows.Scan(&raw); err != nil {
+		var parentKey, raw string
+		if err := rows.Scan(&parentKey, &raw); err != nil {
 			return nil, err
 		}
-		var card models.SearchCard
-		if err := json.Unmarshal([]byte(raw), &card); err == nil {
-			out = append(out, card)
+		var child models.SearchCard
+		if err := json.Unmarshal([]byte(raw), &child); err == nil {
+			grouped[parentKey] = append(grouped[parentKey], child)
 		}
 	}
-	return out, rows.Err()
+	return grouped, rows.Err()
 }
 
 // SearchHybrid executes a 4-tier exact/contextual/prefix/guarded-fuzzy lexical search
-// combined with optional Vector Cosine similarity for hybrid RAG retrieval.
+// with dynamic relevance cliff and flat-on-disk 2-level child hydration via entity_links.
 func (s *Store) SearchHybrid(ctx context.Context, opts SearchOptions) ([]SearchResult, error) {
 	limit := opts.Limit
 	if limit <= 0 {
@@ -938,8 +1136,8 @@ func (s *Store) SearchHybrid(ctx context.Context, opts SearchOptions) ([]SearchR
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	// If no text query and no embedding, return filtered cards sorted by updated_at desc.
-	if query == "" && len(opts.QueryEmbedding) == 0 {
+	// If no text query, return filtered root cards sorted by updated_at desc.
+	if query == "" {
 		return s.searchFilterOnlyLocked(ctx, opts, limit)
 	}
 
@@ -948,16 +1146,13 @@ func (s *Store) SearchHybrid(ctx context.Context, opts SearchOptions) ([]SearchR
 		lexicalScore  float64
 		lexicalTier   int    // 1=exact, 2=fts-exact/contextual, 3=fts-prefix, 4=fuzzy
 		lexicalSource string // "exact", "contextual", "fts", "fuzzy"
-		vectorSim     float64
-		vectorRank    int
-		hasVector     bool
 	}
 
 	merged := make(map[string]*rankEntry)
 	recordLexical := func(card models.SearchCard, score float64, tier int, source string) {
 		entry, ok := merged[card.ID]
 		if !ok {
-			entry = &rankEntry{card: card, vectorRank: -1}
+			entry = &rankEntry{card: card}
 			merged[card.ID] = entry
 		}
 		if score > entry.lexicalScore {
@@ -972,132 +1167,99 @@ func (s *Store) SearchHybrid(ctx context.Context, opts SearchOptions) ([]SearchR
 		candidateLimit = 30
 	}
 
-	if query != "" {
-		tokens := tokenizeQuery(query)
-		exactFTSQuery := buildFTS5QueryFromTokens(tokens, false)
-		prefixFTSQuery := buildFTS5QueryFromTokens(tokens, true)
+	tokens := tokenizeQuery(query)
+	exactFTSQuery := buildFTS5QueryFromTokens(tokens, false)
+	prefixFTSQuery := buildFTS5QueryFromTokens(tokens, true)
 
-		// Tier 1 (80.0 - 100.0): Exact ID, entity_key, entity_code, title, modifier, tag, chip, or (CODE) match.
-		exactHits, exactSeeds, err := s.searchExactLocked(ctx, query, exactFTSQuery, opts, candidateLimit)
-		if err == nil {
-			for _, hit := range exactHits {
-				recordLexical(hit.card, hit.score, 1, "exact")
-			}
+	// Tier 1 (88.0 - 100.0): Exact ID, entity_key, entity_code, title, modifier, tag, chip, or (CODE) match.
+	exactHits, exactSeeds, err := s.searchExactLocked(ctx, query, exactFTSQuery, opts, candidateLimit)
+	if err == nil {
+		for _, hit := range exactHits {
+			recordLexical(hit.card, hit.score, 1, "exact")
 		}
+	}
 
-		// Tier 2a (45.0 - 75.0): Whole-token FTS5 BM25 match (no trailing prefix wildcard).
-		if exactFTSQuery != "" {
-			ftsExactHits, err := s.searchFTSLocked(ctx, exactFTSQuery, opts, candidateLimit)
-			if err == nil && len(ftsExactHits) > 0 {
-				bestMag := math.Abs(ftsExactHits[0].bm25)
-				if bestMag < 1e-6 {
-					bestMag = 1.0
-				}
-				for rank, hit := range ftsExactHits {
-					relQuality := math.Min(1.0, math.Abs(hit.bm25)/bestMag)
-					rankDecay := 1.0 / (1.0 + 0.12*float64(rank))
-					score := 45.0 + 30.0*(0.65*relQuality+0.35*rankDecay)
-					recordLexical(hit.card, score, 2, "fts")
-				}
+	// Tier 2a (45.0 - 75.0): Whole-token FTS5 BM25 match (no trailing prefix wildcard).
+	if exactFTSQuery != "" {
+		ftsExactHits, err := s.searchFTSLocked(ctx, exactFTSQuery, opts, candidateLimit)
+		if err == nil && len(ftsExactHits) > 0 {
+			bestMag := math.Abs(ftsExactHits[0].bm25)
+			if bestMag < 1e-6 {
+				bestMag = 1.0
 			}
-		}
-
-		// Tier 2b (52.0 - 78.0): 1-hop contextual neighbors linked to Tier 1 exact entity hits.
-		if len(exactSeeds) > 0 {
-			neighbors, err := s.searchContextualNeighborsLocked(ctx, exactSeeds, opts, 4)
-			if err == nil {
-				for rank, card := range neighbors {
-					base := 58.0 - float64(rank)*1.5
-					if existing, ok := merged[card.ID]; ok {
-						if existing.lexicalTier == 1 {
-							// Never demote a Tier 1 exact match.
-							continue
-						}
-						if existing.lexicalTier == 2 {
-							existing.lexicalScore = math.Min(78.0, math.Max(existing.lexicalScore+3.0, base))
-							existing.lexicalSource = "contextual"
-							continue
-						}
-					}
-					recordLexical(card, base, 2, "contextual")
-				}
-			}
-		}
-
-		// Tier 3 (18.0 - 38.0 header prefix; 16.0 - 24.0 body-only prefix): Prefix FTS5 match.
-		if prefixFTSQuery != "" {
-			ftsPrefixHits, err := s.searchFTSLocked(ctx, prefixFTSQuery, opts, candidateLimit)
-			if err == nil && len(ftsPrefixHits) > 0 {
-				bestMag := math.Abs(ftsPrefixHits[0].bm25)
-				if bestMag < 1e-6 {
-					bestMag = 1.0
-				}
-				for rank, hit := range ftsPrefixHits {
-					relQuality := math.Min(1.0, math.Abs(hit.bm25)/bestMag)
-					rankDecay := 1.0 / (1.0 + 0.12*float64(rank))
-					combined := 0.65*relQuality + 0.35*rankDecay
-					var score float64
-					if hasHeaderPrefixMatch(hit.card, tokens) {
-						score = 18.0 + 20.0*combined
-					} else {
-						// Body-only prefix hits stay below the 0.25*topScore cliff when Tier 1 exists.
-						score = 16.0 + 8.0*combined
-					}
-					recordLexical(hit.card, score, 3, "fts")
-				}
-			}
-		}
-
-		// Tier 4 (5.0 - 14.0): Guarded metadata-only substring fallback (NEVER scans card_json).
-		// Runs only when Tiers 1-3 yielded fewer than 3 hits and query has at least 3 runes.
-		if len(merged) < 3 && len([]rune(query)) >= 3 {
-			fuzzyCards, err := s.searchFuzzyLocked(ctx, query, opts, candidateLimit)
-			if err == nil {
-				for rank, card := range fuzzyCards {
-					score := 14.0 - math.Min(9.0, float64(rank)*1.2)
-					recordLexical(card, score, 4, "fuzzy")
-				}
+			for rank, hit := range ftsExactHits {
+				relQuality := math.Min(1.0, math.Abs(hit.bm25)/bestMag)
+				rankDecay := 1.0 / (1.0 + 0.12*float64(rank))
+				score := 45.0 + 30.0*(0.65*relQuality+0.35*rankDecay)
+				recordLexical(hit.card, score, 2, "fts")
 			}
 		}
 	}
 
-	// Optional Vector Cosine Similarity Search (for AI RAG / semantic hybrid mode).
-	if len(opts.QueryEmbedding) > 0 {
-		vecHits, err := s.searchVectorLocked(ctx, opts.QueryEmbedding, opts, candidateLimit)
+	// Tier 2b (52.0 - 78.0): 1-hop contextual neighbors linked to Tier 1 exact entity hits.
+	if len(exactSeeds) > 0 {
+		neighbors, err := s.searchContextualNeighborsLocked(ctx, exactSeeds, opts, 4)
 		if err == nil {
-			for rank, hit := range vecHits {
-				entry, ok := merged[hit.card.ID]
-				if !ok {
-					entry = &rankEntry{card: hit.card, vectorRank: -1}
-					merged[hit.card.ID] = entry
+			for rank, card := range neighbors {
+				base := 58.0 - float64(rank)*1.5
+				if existing, ok := merged[card.ID]; ok {
+					if existing.lexicalTier == 1 {
+						continue
+					}
+					if existing.lexicalTier == 2 {
+						existing.lexicalScore = math.Min(78.0, math.Max(existing.lexicalScore+3.0, base))
+						existing.lexicalSource = "contextual"
+						continue
+					}
 				}
-				entry.hasVector = true
-				entry.vectorSim = hit.sim
-				entry.vectorRank = rank
+				recordLexical(card, base, 2, "contextual")
+			}
+		}
+	}
+
+	// Tier 3 (18.0 - 38.0 header prefix; 16.0 - 24.0 body-only prefix): Prefix FTS5 match.
+	if prefixFTSQuery != "" {
+		ftsPrefixHits, err := s.searchFTSLocked(ctx, prefixFTSQuery, opts, candidateLimit)
+		if err == nil && len(ftsPrefixHits) > 0 {
+			bestMag := math.Abs(ftsPrefixHits[0].bm25)
+			if bestMag < 1e-6 {
+				bestMag = 1.0
+			}
+			for rank, hit := range ftsPrefixHits {
+				relQuality := math.Min(1.0, math.Abs(hit.bm25)/bestMag)
+				rankDecay := 1.0 / (1.0 + 0.12*float64(rank))
+				combined := 0.65*relQuality + 0.35*rankDecay
+				var score float64
+				if hasHeaderPrefixMatch(hit.card, tokens) {
+					score = 18.0 + 20.0*combined
+				} else {
+					score = 16.0 + 8.0*combined
+				}
+				recordLexical(hit.card, score, 3, "fts")
+			}
+		}
+	}
+
+	// Tier 4 (5.0 - 14.0): Guarded metadata-only substring fallback (NEVER scans card_json).
+	if len(merged) < 3 && len([]rune(query)) >= 3 {
+		fuzzyCards, err := s.searchFuzzyLocked(ctx, query, opts, candidateLimit)
+		if err == nil {
+			for rank, card := range fuzzyCards {
+				score := 14.0 - math.Min(9.0, float64(rank)*1.2)
+				recordLexical(card, score, 4, "fuzzy")
 			}
 		}
 	}
 
 	results := make([]SearchResult, 0, len(merged))
 	for _, e := range merged {
-		score := e.lexicalScore
 		source := e.lexicalSource
-		if e.hasVector {
-			vecScore := 40.0*e.vectorSim + 15.0/(1.0+0.15*float64(e.vectorRank))
-			if e.lexicalTier > 0 {
-				score = e.lexicalScore + vecScore
-				source = "hybrid"
-			} else {
-				score = vecScore
-				source = "vector"
-			}
-		}
 		if source == "" {
 			source = "fts"
 		}
 		results = append(results, SearchResult{
 			Card:        e.card,
-			Score:       score,
+			Score:       e.lexicalScore,
 			MatchSource: source,
 		})
 	}
@@ -1110,7 +1272,7 @@ func (s *Store) SearchHybrid(ctx context.Context, opts SearchOptions) ([]SearchR
 	})
 
 	// Dynamic relevance cliff: prune low-signal tail sprawl on interactive lexical queries.
-	if query != "" && len(opts.QueryEmbedding) == 0 && len(results) > 1 {
+	if len(results) > 1 {
 		topScore := results[0].Score
 		var cutoff float64
 		switch {
@@ -1128,6 +1290,40 @@ func (s *Store) SearchHybrid(ctx context.Context, opts SearchOptions) ([]SearchR
 			}
 			results = pruned
 		}
+	}
+
+	// Hydrate up to 2 levels of children via entity_links.
+	rawCards := make([]models.SearchCard, len(results))
+	for i := range results {
+		rawCards[i] = results[i].Card
+	}
+	hydrated, err := s.hydrateChildrenLocked(ctx, rawCards)
+	if err != nil {
+		return nil, err
+	}
+	for i := range results {
+		results[i].Card = hydrated[i]
+	}
+
+	// Deduplicate flat child cards that are already nested under a parent card present in results.
+	nestedChildIDs := make(map[string]bool)
+	for _, r := range results {
+		for _, ch := range r.Card.Children {
+			nestedChildIDs[ch.ID] = true
+			for _, grand := range ch.Children {
+				nestedChildIDs[grand.ID] = true
+			}
+		}
+	}
+	if len(nestedChildIDs) > 0 {
+		deduped := results[:0]
+		for _, r := range results {
+			if r.Card.ParentEntityKey != "" && nestedChildIDs[r.Card.ID] {
+				continue
+			}
+			deduped = append(deduped, r)
+		}
+		results = deduped
 	}
 
 	if len(results) > limit {
@@ -1196,8 +1392,7 @@ func (s *Store) searchExactLocked(ctx context.Context, query, exactFTSQuery stri
 	}
 	rows.Close()
 
-	// Pass 2: Column-scoped FTS5 exact-token lookup across structured metadata columns
-	// (entity_key, title, chips, modifiers, tags), then verified unstemmed in Go.
+	// Pass 2: Column-scoped FTS5 exact-token lookup across structured metadata columns.
 	if exactFTSQuery != "" {
 		scopedQuery := `{entity_key title chips modifiers tags} : (` + exactFTSQuery + `)`
 		ftsRows, err := s.db.QueryContext(ctx, `
@@ -1363,7 +1558,7 @@ func (s *Store) searchContextualNeighborsLocked(ctx context.Context, seeds []mod
 	}
 
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, title, entity_key, related_keys_json
+		SELECT id, title, entity_key, parent_entity_key, related_keys_json
 		FROM cards
 	`)
 	if err != nil {
@@ -1377,13 +1572,19 @@ func (s *Store) searchContextualNeighborsLocked(ctx context.Context, seeds []mod
 	}
 	var candidates []neighborCandidate
 	for rows.Next() {
-		var id, title, entityKey, relatedRaw string
-		if err := rows.Scan(&id, &title, &entityKey, &relatedRaw); err != nil {
+		var id, title, entityKey, parentKey, relatedRaw string
+		if err := rows.Scan(&id, &title, &entityKey, &parentKey, &relatedRaw); err != nil {
 			rows.Close()
 			return nil, err
 		}
 		if _, isSeed := seedIDs[id]; isSeed {
 			continue
+		}
+		// Cards directly attached as child_of a seed will be hydrated inside seed.Children instead of duplicated as siblings.
+		if parentKey != "" {
+			if _, isDirectChild := seedEntityKeys[parentKey]; isDirectChild {
+				continue
+			}
 		}
 		strength := 0
 		if entityKey != "" {
@@ -1432,7 +1633,6 @@ func (s *Store) searchContextualNeighborsLocked(ctx context.Context, seeds []mod
 		return candidates[i].title < candidates[j].title
 	})
 
-	// Fetch card_json only for matched neighbor IDs (cap fetch pool to stay lightweight).
 	fetchCap := maxNeighbors * 4
 	if len(candidates) > fetchCap {
 		candidates = candidates[:fetchCap]
@@ -1483,16 +1683,32 @@ func (s *Store) searchContextualNeighborsLocked(ctx context.Context, seeds []mod
 }
 
 func (s *Store) searchFilterOnlyLocked(ctx context.Context, opts SearchOptions, limit int) ([]SearchResult, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT card_json FROM cards ORDER BY updated_at DESC, title ASC`)
+	// When browsing without an explicit layout/tag/modifier filter, hide flat child cards whose parent
+	// exists in the index so they render cleanly nested under their parent instead of cluttering top-level browse.
+	hasExplicitFacet := opts.Layout != "" || opts.Modifier != "" || len(opts.Tags) > 0
+	var querySQL string
+	if hasExplicitFacet {
+		querySQL = `SELECT card_json FROM cards ORDER BY updated_at DESC, title ASC`
+	} else {
+		querySQL = `
+			SELECT c.card_json
+			FROM cards c
+			WHERE c.parent_entity_key = ''
+			   OR NOT EXISTS (SELECT 1 FROM cards p WHERE p.entity_key = c.parent_entity_key)
+			ORDER BY c.updated_at DESC, c.title ASC
+		`
+	}
+
+	rows, err := s.db.QueryContext(ctx, querySQL)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	out := make([]SearchResult, 0, limit)
+	var matchedCards []models.SearchCard
 	for rows.Next() {
 		var raw string
 		if err := rows.Scan(&raw); err != nil {
+			rows.Close()
 			return nil, err
 		}
 		var card models.SearchCard
@@ -1502,16 +1718,30 @@ func (s *Store) searchFilterOnlyLocked(ctx context.Context, opts SearchOptions, 
 		if !matchesFilters(card, opts) {
 			continue
 		}
+		matchedCards = append(matchedCards, card)
+		if len(matchedCards) >= limit {
+			break
+		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+
+	hydrated, err := s.hydrateChildrenLocked(ctx, matchedCards)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]SearchResult, 0, len(hydrated))
+	for _, card := range hydrated {
 		out = append(out, SearchResult{
 			Card:        card,
 			Score:       1.0,
 			MatchSource: "filter",
 		})
-		if len(out) >= limit {
-			break
-		}
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 type ftsCandidate struct {
@@ -1520,8 +1750,6 @@ type ftsCandidate struct {
 }
 
 func (s *Store) searchFTSLocked(ctx context.Context, ftsQuery string, opts SearchOptions, limit int) ([]ftsCandidate, error) {
-	// Weighted BM25 across 9 columns:
-	// id(0), collection(0), entity_key(14.0), title(12.0), chips(10.0), modifiers(9.0), tags(9.0), subtitle(6.0), body(2.0)
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT c.card_json, bm25(cards_fts, 0.0, 0.0, 14.0, 12.0, 10.0, 9.0, 9.0, 6.0, 2.0) AS rank_score
 		FROM cards_fts f
@@ -1607,73 +1835,8 @@ func (s *Store) searchFuzzyLocked(ctx context.Context, query string, opts Search
 	return out, rows.Err()
 }
 
-type vectorCandidate struct {
-	card models.SearchCard
-	sim  float64
-}
-
-func (s *Store) searchVectorLocked(ctx context.Context, queryVec []float32, opts SearchOptions, limit int) ([]vectorCandidate, error) {
-	qNorm := normalizeVector(queryVec)
-	var rows *sql.Rows
-	var err error
-	if opts.EmbeddingModel != "" {
-		rows, err = s.db.QueryContext(ctx, `
-			SELECT c.card_json, e.vector, e.dims
-			FROM card_embeddings e
-			JOIN cards c ON c.id = e.card_id
-			WHERE e.model = ?
-		`, opts.EmbeddingModel)
-	} else {
-		rows, err = s.db.QueryContext(ctx, `
-			SELECT c.card_json, e.vector, e.dims
-			FROM card_embeddings e
-			JOIN cards c ON c.id = e.card_id
-		`)
-	}
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var scored []vectorCandidate
-	for rows.Next() {
-		var raw string
-		var blob []byte
-		var dims int
-		if err := rows.Scan(&raw, &blob, &dims); err != nil {
-			return nil, err
-		}
-		if dims != len(qNorm) {
-			continue
-		}
-		var card models.SearchCard
-		if err := json.Unmarshal([]byte(raw), &card); err != nil {
-			continue
-		}
-		if !matchesFilters(card, opts) {
-			continue
-		}
-		vec := decodeFloat32Vector(blob, dims)
-		sim := dotProduct(qNorm, vec)
-		if sim > 0.05 {
-			scored = append(scored, vectorCandidate{card: card, sim: sim})
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].sim > scored[j].sim
-	})
-	if len(scored) > limit {
-		scored = scored[:limit]
-	}
-	return scored, nil
-}
-
 // FindCardsByEntityKeys returns indexed SearchCards whose EntityKey (or EntityCode when given a bare code)
-// matches any of the requested keys (case-insensitive) using B-tree indexes.
+// matches any of the requested keys (case-insensitive), with up to 2 levels of entity_links children hydrated.
 func (s *Store) FindCardsByEntityKeys(ctx context.Context, entityKeys []string) ([]models.SearchCard, error) {
 	seenFull := make(map[string]struct{}, len(entityKeys))
 	seenBare := make(map[string]struct{}, len(entityKeys))
@@ -1725,12 +1888,12 @@ func (s *Store) FindCardsByEntityKeys(ctx context.Context, entityKeys []string) 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	var out []models.SearchCard
 	for rows.Next() {
 		var raw string
 		if err := rows.Scan(&raw); err != nil {
+			rows.Close()
 			return nil, err
 		}
 		var card models.SearchCard
@@ -1738,14 +1901,20 @@ func (s *Store) FindCardsByEntityKeys(ctx context.Context, entityKeys []string) 
 			out = append(out, card)
 		}
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+
+	return s.hydrateChildrenLocked(ctx, out)
 }
 
 func matchesFilters(card models.SearchCard, opts SearchOptions) bool {
 	if opts.Collection != "" && !strings.EqualFold(card.Collection, models.Slugify(opts.Collection)) {
 		return false
 	}
-	if opts.Template != "" && card.Template != opts.Template {
+	if opts.Layout != "" && card.Layout != opts.Layout {
 		return false
 	}
 	if opts.Modifier != "" {
@@ -1811,45 +1980,4 @@ func buildFTS5QueryFromTokens(tokens []string, prefix bool) string {
 		}
 	}
 	return strings.Join(parts, " ")
-}
-
-func normalizeVector(v []float32) []float32 {
-	var sum float64
-	for _, x := range v {
-		sum += float64(x) * float64(x)
-	}
-	norm := math.Sqrt(sum)
-	out := make([]float32, len(v))
-	if norm == 0 {
-		return out
-	}
-	for i, x := range v {
-		out[i] = float32(float64(x) / norm)
-	}
-	return out
-}
-
-func dotProduct(a, b []float32) float64 {
-	n := min(len(a), len(b))
-	var sum float64
-	for i := 0; i < n; i++ {
-		sum += float64(a[i]) * float64(b[i])
-	}
-	return sum
-}
-
-func encodeFloat32Vector(v []float32) []byte {
-	buf := make([]byte, len(v)*4)
-	for i, f := range v {
-		binary.LittleEndian.PutUint32(buf[i*4:(i+1)*4], math.Float32bits(f))
-	}
-	return buf
-}
-
-func decodeFloat32Vector(b []byte, dims int) []float32 {
-	out := make([]float32, dims)
-	for i := 0; i < dims && (i+1)*4 <= len(b); i++ {
-		out[i] = math.Float32frombits(binary.LittleEndian.Uint32(b[i*4 : (i+1)*4]))
-	}
-	return out
 }

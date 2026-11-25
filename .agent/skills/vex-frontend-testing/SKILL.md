@@ -30,6 +30,7 @@ description: Offline Angular 22 zoneless unit & component testing guide for Vex 
 
 - **Never use `vi.useFakeTimers()` in component specs that await `fixture.whenStable()`**: Angular 22's zoneless change-detection scheduler relies on real timer/microtask ticks; freezing timers causes `fixture.whenStable()` to hang until Vitest's 5s timeout.
   - Keep `vi.useFakeTimers()` strictly in pure service specs (e.g., `RolodexStateService` toast/shake/clock timer tests) where `fixture.whenStable()` is not used.
+  - When a component's `async ngOnInit()` chains multiple `await` hops, explicitly await its public refresh method (e.g. `await fixture.componentInstance.refreshResults(); await fixture.whenStable();`) before asserting async DOM state.
 - **Clean Up Service Timers with `DestroyRef`**: Services that register `setInterval`, `setTimeout`, or `matchMedia` listeners (such as `RolodexStateService`) must register cleanup via `inject(DestroyRef).onDestroy(...)` so `TestBed` resets never leak open handles.
 - **Mock Wails RPC (`VexBridgeService`)**: Provide a `vi.fn()` mock for `VexBridgeService` in dialog/root component specs — never call `/wails/runtime.js` or bind network sockets.
 - **Zero Hardcoded Demo Data in Production**: Test fixtures belong strictly inside `*.spec.ts` files, never in `frontend/src/app/` runtime code.

@@ -36,9 +36,10 @@ func setupHubForTest(t *testing.T) (*HubServer, *indexer.Store, *search.Service,
 			Title:      "GitHub Dashboard",
 			Subtitle:   "Open GitHub repositories and pull requests",
 			Collection: "shortcuts",
-			Template:   models.TemplateAppShortcut,
+			Layout:     models.LayoutLink,
 			Tags:       []string{"dev", "git"},
 			Modifiers:  []string{"gh"},
+			Data:       map[string]any{"url": "https://github.com"},
 			Actions:    []models.CardAction{{ID: "open", Label: "Open", Type: "open_url", Target: "https://github.com/{{arg1}}"}},
 		},
 	})
@@ -48,10 +49,15 @@ func setupHubForTest(t *testing.T) (*HubServer, *indexer.Store, *search.Service,
 			Title:      "Staging Cluster Endpoints",
 			Subtitle:   "Key-Value Reference Card",
 			Collection: "devops",
-			Template:   models.TemplateKeyValue,
+			Layout:     models.LayoutFacts,
 			Tags:       []string{"staging", "k8s", "ops"},
-			Data:       map[string]any{"cluster": "staging-us-west-2", "api_url": "https://api.staging.internal"},
-			Actions:    []models.CardAction{{ID: "copy-api", Label: "Copy API URL", Type: "copy", Target: "https://api.staging.internal"}},
+			Data: map[string]any{
+				"facts": []map[string]any{
+					{"label": "Cluster", "value": "staging-us-west-2", "mono": true, "copyable": true},
+					{"label": "API URL", "value": "https://api.staging.internal", "mono": true, "copyable": true},
+				},
+			},
+			Actions: []models.CardAction{{ID: "copy-api", Label: "Copy API URL", Type: "copy", Target: "https://api.staging.internal"}},
 		},
 	})
 	store, err := indexer.OpenStore(":memory:")
@@ -197,13 +203,13 @@ func TestHubServer_AllResourcesToolsAndPrompts(t *testing.T) {
 		t.Fatalf("unexpected card resource content: %+v", cardRes.Contents)
 	}
 
-	// 3. Tools inventory
+	// 3. Tools inventory (20 tools including validate_module; rag_context_prompt removed)
 	toolsRes, err := cli.ListTools(ctx, mcplib.ListToolsRequest{})
 	if err != nil {
 		t.Fatalf("ListTools: %v", err)
 	}
-	if len(toolsRes.Tools) != 19 {
-		t.Fatalf("expected 19 MCP tools, got %d", len(toolsRes.Tools))
+	if len(toolsRes.Tools) != 20 {
+		t.Fatalf("expected 20 MCP tools, got %d", len(toolsRes.Tools))
 	}
 
 	// 4. get_card_schema
@@ -253,7 +259,7 @@ func TestHubServer_AllResourcesToolsAndPrompts(t *testing.T) {
 			"name":             "Services CSV",
 			"sourceFormat":     "csv",
 			"targetCollection": "services",
-			"defaultTemplate":  "shortcut",
+			"defaultLayout":    "link",
 			"titleField":       "{{Service}}",
 			"subtitleField":    "{{Owner}}",
 			"tagsField":        "Tags",
@@ -284,12 +290,12 @@ func TestHubServer_AllResourcesToolsAndPrompts(t *testing.T) {
 			"id":          "custom-ssh-prod",
 			"title":       "SSH Production Bastion",
 			"collection":  "devops",
-			"template":    "command",
+			"layout":      "snippet",
 			"description": "Connect to prod bastion",
 			"tags":        []string{"ssh", "prod"},
-			"data":        map[string]any{"host": "bastion.prod.internal"},
+			"data":        map[string]any{"language": "bash", "body": "ssh {{user}}@bastion.prod.internal"},
 			"actions": []map[string]any{
-				{"id": "copy-ssh", "label": "Copy SSH", "type": "copy", "target": "ssh {{user}}@{{data.host}}"},
+				{"id": "copy-ssh", "label": "Copy SSH", "type": "copy", "target": "ssh {{user}}@bastion.prod.internal"},
 			},
 		},
 	}))
@@ -310,8 +316,8 @@ func TestHubServer_AllResourcesToolsAndPrompts(t *testing.T) {
 	batchOut := extractToolText(t, callTool("batch_upsert_cards", map[string]any{
 		"collection": "notes",
 		"cards": []map[string]any{
-			{"title": "Incident Playbook", "template": "knowledge", "description": "Step 1: check Grafana"},
-			{"title": "Release Checklist", "template": "knowledge", "description": "Run go test -race"},
+			{"title": "Incident Playbook", "layout": "facts", "description": "Step 1: check Grafana", "data": map[string]any{"summary": "Check Grafana dashboards."}},
+			{"title": "Release Checklist", "layout": "facts", "description": "Run go test -race", "data": map[string]any{"summary": "Run full Go test suite."}},
 		},
 	}))
 	if !strings.Contains(batchOut, `"upsertedCount": 2`) {
@@ -324,22 +330,18 @@ func TestHubServer_AllResourcesToolsAndPrompts(t *testing.T) {
 		t.Fatalf("unexpected list_plugins output: %s", pluginsOut)
 	}
 
-	// 10. rag_context_prompt
-	promptRes, err := cli.GetPrompt(ctx, mcplib.GetPromptRequest{
-		Params: mcplib.GetPromptParams{
-			Name:      "rag_context_prompt",
-			Arguments: map[string]string{"topic": "staging", "collection": "devops"},
-		},
-	})
-	if err != nil {
-		t.Fatalf("GetPrompt rag_context_prompt: %v", err)
+	// 10. validate_module (valid + strict rejection of legacy template)
+	valOK := extractToolText(t, callTool("validate_module", map[string]any{
+		"module_json": `{"id":"ok-mod","name":"OK Module","version":"1.0.0","cards":[{"title":"Docs Link","collection":"docs","layout":"link","data":{"url":"https://docs.example"}}]}`,
+	}))
+	if !strings.Contains(valOK, `"valid": true`) {
+		t.Fatalf("expected valid=true from validate_module, got: %s", valOK)
 	}
-	if len(promptRes.Messages) == 0 {
-		t.Fatalf("expected prompt message")
-	}
-	pmText, ok := mcplib.AsTextContent(promptRes.Messages[0].Content)
-	if !ok || !strings.Contains(pmText.Text, "Staging Cluster Endpoints") {
-		t.Fatalf("expected staging card in rag_context_prompt, got: %+v", promptRes.Messages[0])
+	valBad := extractToolText(t, callTool("validate_module", map[string]any{
+		"module_json": `{"id":"bad-mod","name":"Bad Module","cards":[{"title":"Legacy","collection":"docs","template":"kv-grid","data":{"a":"b"}}]}`,
+	}))
+	if !strings.Contains(valBad, `"valid": false`) {
+		t.Fatalf("expected valid=false for legacy template, got: %s", valBad)
 	}
 }
 
@@ -452,8 +454,8 @@ func TestClientManager_ExternalMCPBridgeIndexesVirtualCards(t *testing.T) {
 	if len(res.Results) != 1 || res.Results[0].Card.Title != "search_issues" {
 		t.Fatalf("expected search_issues card under @mcp:github, got %+v", res.Results)
 	}
-	if res.Results[0].Card.Template != models.TemplateCommand {
-		t.Fatalf("expected command template for MCP tool card, got %q", res.Results[0].Card.Template)
+	if res.Results[0].Card.Layout != models.LayoutFacts {
+		t.Fatalf("expected facts layout for MCP tool card, got %q", res.Results[0].Card.Layout)
 	}
 
 	// Verify searchable via /mcp modifier!

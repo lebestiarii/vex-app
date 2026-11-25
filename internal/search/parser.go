@@ -17,15 +17,15 @@ const (
 
 // ParsedQuery is the structured representation of a Raycast-style search string.
 type ParsedQuery struct {
-	Raw        string                  `json:"raw"`
-	Mode       QueryMode               `json:"mode"`
-	Modifier   string                  `json:"modifier,omitempty"`
-	Collection string                  `json:"collection,omitempty"`
-	Tags       []string                `json:"tags,omitempty"`
-	Template   models.CardTemplateType `json:"template,omitempty"`
-	Params     map[string]string       `json:"params,omitempty"`
-	Args       []string                `json:"args,omitempty"`
-	Text       string                  `json:"text"`
+	Raw        string                `json:"raw"`
+	Mode       QueryMode             `json:"mode"`
+	Modifier   string                `json:"modifier,omitempty"`
+	Collection string                `json:"collection,omitempty"`
+	Tags       []string              `json:"tags,omitempty"`
+	Layout     models.CardLayoutType `json:"layout,omitempty"`
+	Params     map[string]string     `json:"params,omitempty"`
+	Args       []string              `json:"args,omitempty"`
+	Text       string                `json:"text"`
 }
 
 // Parse tokenizes a raw omnibar query into modifiers (/cmd), collections (@col),
@@ -83,10 +83,10 @@ func Parse(raw string) ParsedQuery {
 		if idx := strings.IndexByte(tok, ':'); idx > 0 && idx < len(tok)-1 && !strings.Contains(tok, "://") {
 			key := strings.ToLower(tok[:idx])
 			val := strings.Trim(tok[idx+1:], `"'`)
-			if key == "type" || key == "tpl" || key == "template" {
-				cand := models.CardTemplateType(strings.ToLower(val))
-				if models.ValidTemplates[cand] {
-					pq.Template = cand
+			if key == "layout" || key == "type" {
+				cand := models.CardLayoutType(strings.ToLower(val))
+				if models.ValidLayouts[cand] {
+					pq.Layout = cand
 					continue
 				}
 			}

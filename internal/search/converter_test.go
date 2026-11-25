@@ -3,6 +3,8 @@ package search
 import (
 	"strings"
 	"testing"
+
+	"vex/internal/models"
 )
 
 func TestTryConvertQueryUnits(t *testing.T) {
@@ -27,6 +29,12 @@ func TestTryConvertQueryUnits(t *testing.T) {
 		}
 		if card.ID != "builtin-unit-convert" {
 			t.Fatalf("expected ID builtin-unit-convert, got %q", card.ID)
+		}
+		if card.Layout != models.LayoutConvert {
+			t.Fatalf("expected layout %q, got %q", models.LayoutConvert, card.Layout)
+		}
+		if err := models.ValidateAndNormalizeCard(card, "system"); err != nil {
+			t.Fatalf("TryConvertQuery(%q) failed strict validation: %v", tc.query, err)
 		}
 		if !strings.Contains(card.Title, tc.wantSubstr) {
 			t.Fatalf("TryConvertQuery(%q): title %q does not contain %q", tc.query, card.Title, tc.wantSubstr)

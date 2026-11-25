@@ -89,9 +89,12 @@ func TransformWithRule(raw []byte, rule models.ETLMappingRule) ([]models.SearchC
 			collection = "imported"
 		}
 	}
-	template := rule.DefaultTemplate
-	if template == "" {
-		template = models.TemplateKnowledge
+	layout := rule.DefaultLayout
+	if layout == "" {
+		layout = models.LayoutFacts
+	}
+	if !models.ValidLayouts[layout] {
+		return nil, fmt.Errorf("invalid ETL defaultLayout %q", layout)
 	}
 
 	now := time.Now().UTC()
@@ -107,7 +110,7 @@ func TransformWithRule(raw []byte, rule models.ETLMappingRule) ([]models.SearchC
 			Subtitle:    resolveFieldExpr(row, rule.SubtitleField),
 			Description: resolveFieldExpr(row, rule.DescriptionField),
 			Collection:  collection,
-			Template:    template,
+			Layout:      layout,
 			Icon:        resolveFieldExpr(row, rule.IconField),
 			Modifiers:   append([]string(nil), rule.Modifiers...),
 			Data:        make(map[string]any),
@@ -135,9 +138,11 @@ func TransformWithRule(raw []byte, rule models.ETLMappingRule) ([]models.SearchC
 		}
 
 		// Action
+		var resolvedActionTarget string
 		if rule.ActionType != "" && rule.ActionTarget != "" {
 			target := resolveFieldExpr(row, rule.ActionTarget)
 			if target != "" {
+				resolvedActionTarget = target
 				card.Actions = append(card.Actions, models.CardAction{
 					Label:    rule.ActionLabel,
 					Shortcut: "Enter",
@@ -147,18 +152,67 @@ func TransformWithRule(raw []byte, rule models.ETLMappingRule) ([]models.SearchC
 			}
 		}
 
-		// Preserve structured data fields for RAG & kv-grid rendering
+		// Build strict layout-compliant payload from row fields.
+		selectedFields := make([]string, 0)
 		if len(rule.DataFields) > 0 {
-			for _, f := range rule.DataFields {
-				if val, ok := lookupNested(row, f); ok && val != nil && fmt.Sprintf("%v", val) != "" {
-					card.Data[f] = val
+			selectedFields = append(selectedFields, rule.DataFields...)
+		} else {
+			for k := range row {
+				selectedFields = append(selectedFields, k)
+			}
+			sort.Strings(selectedFields)
+		}
+
+		switch layout {
+		case models.LayoutGroup:
+			// Header-only container; no body fields.
+		case models.LayoutLink:
+			linkURL := resolvedActionTarget
+			if linkURL == "" {
+				for _, k := range []string{"url", "URL", "link", "Link", "href"} {
+					if v, ok := lookupNested(row, k); ok && v != nil {
+						s := strings.TrimSpace(fmt.Sprintf("%v", v))
+						if s != "" {
+							linkURL = s
+							break
+						}
+					}
 				}
 			}
-		} else {
-			for k, val := range row {
-				if val != nil && fmt.Sprintf("%v", val) != "" {
-					card.Data[k] = val
+			card.Data["url"] = linkURL
+		case models.LayoutSnippet:
+			body := card.Description
+			if body == "" && resolvedActionTarget != "" {
+				body = resolvedActionTarget
+			}
+			if body == "" {
+				body = card.Title
+			}
+			card.Data["body"] = body
+		default:
+			// LayoutFacts (and default fallback): project row columns into strict facts[].
+			facts := make([]map[string]any, 0, len(selectedFields))
+			for _, f := range selectedFields {
+				val, ok := lookupNested(row, f)
+				if !ok || val == nil {
+					continue
 				}
+				strVal := strings.TrimSpace(fmt.Sprintf("%v", val))
+				if strVal == "" {
+					continue
+				}
+				facts = append(facts, map[string]any{
+					"label": f,
+					"value": strVal,
+				})
+			}
+			if len(facts) > 0 {
+				card.Data["facts"] = facts
+			}
+			if card.Description != "" {
+				card.Data["summary"] = card.Description
+			} else if len(facts) == 0 {
+				card.Data["summary"] = card.Title
 			}
 		}
 

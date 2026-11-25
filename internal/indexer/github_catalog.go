@@ -217,6 +217,18 @@ func BuildGitHubCatalogModule(repos []GitHubRepoEntry) models.ModuleManifest {
 			tags = append(tags, strings.ToLower(r.Language))
 		}
 
+		facts := []map[string]any{
+			{"label": "Repository", "value": r.Name, "mono": true, "copyable": true},
+			{"label": "Portfolio", "value": tax.Portfolio},
+			{"label": "Team", "value": tax.Team},
+			{"label": "Product", "value": tax.Product},
+			{"label": "Component", "value": tax.Component},
+			{"label": "Default Branch", "value": nonEmpty(r.DefaultBranch, "main"), "mono": true},
+		}
+		if r.Language != "" {
+			facts = append(facts, map[string]any{"label": "Language", "value": r.Language})
+		}
+
 		cards = append(cards, models.SearchCard{
 			ID:          "repo-" + models.Slugify(r.Name),
 			EntityKey:   "repo:" + r.Name,
@@ -225,22 +237,19 @@ func BuildGitHubCatalogModule(repos []GitHubRepoEntry) models.ModuleManifest {
 			Subtitle:    fmt.Sprintf("Portfolio: %s • Team: %s • Product: %s (%s)", tax.Portfolio, tax.Team, tax.Product, tax.Component),
 			Description: r.Description,
 			Collection:  "github-catalog",
-			Template:    models.TemplateKeyValue,
+			Layout:      models.LayoutFacts,
 			Icon:        "terminal",
 			Tags:        tags,
 			Modifiers:   []string{"repo", "gh", "gt"},
-			GlancePills: []string{"Portfolio: " + tax.Portfolio, "Team: " + tax.Team, tax.Product},
+			Chips: []models.GlanceChip{
+				{Label: "Portfolio: " + tax.Portfolio, Tone: "amber"},
+				{Label: "Team: " + tax.Team, Tone: "neutral"},
+			},
 			RelatedKeys: []string{"portfolio:" + strings.ToLower(tax.Portfolio), "team:" + strings.ToLower(tax.Team)},
 			Provenance:  prov,
 			Data: map[string]any{
-				"repository":     r.Name,
-				"portfolio":      tax.Portfolio,
-				"team":           tax.Team,
-				"product":        tax.Product,
-				"component":      tax.Component,
-				"language":       r.Language,
-				"default_branch": nonEmpty(r.DefaultBranch, "main"),
-				"url":            repoURL,
+				"summary": r.Description,
+				"facts":   facts,
 			},
 			Actions: []models.CardAction{
 				{ID: "open-repo", Label: "Open Repository", Shortcut: "Enter", Type: "open_url", Target: repoURL},
@@ -271,18 +280,24 @@ func BuildGitHubCatalogModule(repos []GitHubRepoEntry) models.ModuleManifest {
 			Subtitle:    fmt.Sprintf("Teams: %s • Products: %s", strings.Join(teamsList, ", "), strings.Join(productsList, ", ")),
 			Description: fmt.Sprintf("Engineering portfolio summary for %s derived from standard gt-<portfolio>-<team>-<product>-<component> repositories.", pName),
 			Collection:  "github-catalog",
-			Template:    models.TemplateKeyValue,
+			Layout:      models.LayoutFacts,
 			Icon:        "book-open",
 			Tags:        append([]string{"portfolio", "directory", "teams", "products", "github", strings.ToLower(pName)}, strings.ToLower(pName)),
 			Modifiers:   []string{"portfolio", "team", "gt"},
-			GlancePills: []string{fmt.Sprintf("%d Teams", len(teamsList)), fmt.Sprintf("%d Products", len(productsList)), fmt.Sprintf("%d Repos", len(ps.repos))},
+			Chips: []models.GlanceChip{
+				{Label: fmt.Sprintf("%d Teams", len(teamsList)), Tone: "amber"},
+				{Label: fmt.Sprintf("%d Products", len(productsList)), Tone: "neutral"},
+				{Label: fmt.Sprintf("%d Repos", len(ps.repos)), Tone: "mono"},
+			},
 			RelatedKeys: []string{"portfolio:" + strings.ToLower(pName)},
 			Provenance:  prov,
 			Data: map[string]any{
-				"portfolio":    pName,
-				"teams":        strings.Join(teamsList, ", "),
-				"products":     strings.Join(productsList, ", "),
-				"repositories": strings.Join(ps.repos, ", "),
+				"facts": []map[string]any{
+					{"label": "Portfolio", "value": pName},
+					{"label": "Teams", "value": strings.Join(teamsList, ", ")},
+					{"label": "Products", "value": strings.Join(productsList, ", ")},
+					{"label": "Repositories", "value": strings.Join(ps.repos, ", "), "copyable": true},
+				},
 			},
 			Actions: []models.CardAction{
 				{ID: "copy-repos", Label: "Copy Repo List", Shortcut: "Enter", Type: "copy", Target: strings.Join(ps.repos, "\n")},

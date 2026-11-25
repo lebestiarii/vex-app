@@ -29,7 +29,7 @@ func TestPluginManagerLoadAndDynamicSources(t *testing.T) {
 	manifestJSON := `{
 		"id": "sysinfo",
 		"name": "System Echo Plugin",
-		"description": "Returns dynamic cards from a local shell command",
+		"description": "Returns dynamic cards from a local endpoint",
 		"modifiers": ["sys", "echo"],
 		"icon": "activity",
 		"staticCards": [
@@ -37,7 +37,8 @@ func TestPluginManagerLoadAndDynamicSources(t *testing.T) {
 				"id": "sys-static-1",
 				"title": "System Overview",
 				"subtitle": "Static plugin card",
-				"template": "knowledge"
+				"layout": "facts",
+				"data": {"summary": "Static system overview."}
 			}
 		]
 	}`
@@ -54,7 +55,7 @@ func TestPluginManagerLoadAndDynamicSources(t *testing.T) {
 		t.Fatalf("expected 1 loaded plugin with sys-static-1, got %+v", loaded)
 	}
 
-	// Test dynamic HTTP plugin returning arbitrary JSON wrapped as metric-card (using in-memory RoundTripper)
+	// Test dynamic HTTP plugin returning arbitrary JSON wrapped as facts card (in-memory RoundTripper)
 	mgr.httpClient = &http.Client{
 		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 			body := `{"status":"healthy","latency_ms":14,"env":"` + r.URL.Query().Get("env") + `"}`
@@ -73,7 +74,7 @@ func TestPluginManagerLoadAndDynamicSources(t *testing.T) {
 		DynamicSource: &DynamicSourceConfig{
 			Type:           "http",
 			URL:            "http://health.local/status?env={{arg1}}",
-			ResponseFormat: "metric-card",
+			ResponseFormat: "facts",
 		},
 	}); err != nil {
 		t.Fatalf("Register HTTP plugin: %v", err)
@@ -84,11 +85,12 @@ func TestPluginManagerLoadAndDynamicSources(t *testing.T) {
 	if err != nil {
 		t.Fatalf("QueryPlugins http: %v", err)
 	}
-	if len(httpCards) != 1 || httpCards[0].Template != models.TemplateMetric {
-		t.Fatalf("expected 1 metric-card, got %+v", httpCards)
+	if len(httpCards) != 1 || httpCards[0].Layout != models.LayoutFacts {
+		t.Fatalf("expected 1 facts card, got %+v", httpCards)
 	}
-	if httpCards[0].Data["env"] != "staging" || httpCards[0].Data["status"] != "healthy" {
-		t.Errorf("unexpected HTTP metric data: %+v", httpCards[0].Data)
+	body := httpCards[0].SearchableBody()
+	if !strings.Contains(body, "staging") || !strings.Contains(body, "healthy") {
+		t.Errorf("unexpected HTTP facts body: %q", body)
 	}
 }
 
@@ -97,12 +99,12 @@ func TestInterpolateAndActionRunner(t *testing.T) {
 		ID:         "deploy-card",
 		Title:      "Deploy Service",
 		Collection: "devops",
-		Template:   models.TemplateCommand,
-		Data:       map[string]any{"host": "10.0.0.9", "user": "ops"},
+		Layout:     models.LayoutSnippet,
+		Data:       map[string]any{"body": "ssh ops@10.0.0.9", "language": "bash"},
 		Actions: []models.CardAction{
-			{ID: "shell-act", Type: "shell", Target: `printf '{"host":"{{data.host}}","env":"{{env}}","arg":"{{arg1}}"}'`},
+			{ID: "shell-act", Type: "shell", Target: `printf '{"env":"{{env}}","arg":"{{arg1}}"}'`},
 			{ID: "open-act", Type: "open_url", Target: "https://example.com/{{arg1}}?env={{env}}"},
-			{ID: "copy-act", Type: "copy", Target: "{{data.user}}@{{data.host}}"},
+			{ID: "copy-act", Type: "copy", Target: "ops@{{arg1}}"},
 			{ID: "ai-act", Type: "ai_prompt", Target: "Explain deployment for {{arg1}}"},
 		},
 	}
@@ -137,14 +139,14 @@ func TestInterpolateAndActionRunner(t *testing.T) {
 
 	// 3. Copy action
 	resCopy := runner.Execute(ctx, card, "copy-act", pq, nil)
-	if !resCopy.Success || copiedText != "ops@10.0.0.9" {
+	if !resCopy.Success || copiedText != "ops@api-gateway" {
 		t.Fatalf("unexpected copy result: %+v (copied=%q)", resCopy, copiedText)
 	}
 
-	// 4. AI prompt action
+	// 4. Removed ai_prompt action type is rejected
 	resAI := runner.Execute(ctx, card, "ai-act", pq, nil)
-	if !resAI.Success || !resAI.OpenAIMode || resAI.Output != "Explain deployment for api-gateway" {
-		t.Fatalf("unexpected ai_prompt result: %+v", resAI)
+	if resAI.Success || !strings.Contains(resAI.Error, "unsupported action type") {
+		t.Fatalf("expected removed ai_prompt action to be rejected, got: %+v", resAI)
 	}
 
 	// 5. HTTP action (in-memory RoundTripper)
@@ -164,6 +166,7 @@ func TestInterpolateAndActionRunner(t *testing.T) {
 	httpCard := models.SearchCard{
 		ID:      "webhook-card",
 		Title:   "Trigger Webhook",
+		Layout:  models.LayoutGroup,
 		Actions: []models.CardAction{{ID: "hook", Type: "http", Target: "POST http://webhook.local/trigger"}},
 	}
 	resHTTP := runner.Execute(ctx, httpCard, "hook", search.Parse(""), nil)

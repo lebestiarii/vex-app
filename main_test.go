@@ -1,22 +1,25 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"vex/internal/ai"
 	"vex/internal/autostart"
+	"vex/internal/mcp"
 	"vex/internal/models"
-	"vex/internal/secrets"
 )
 
 func TestAppServiceEndToEnd(t *testing.T) {
 	baseDir := t.TempDir()
-	backend, err := InitBackendWithSecrets(baseDir, false, secrets.NewMemoryStore())
+	backend, err := InitBackend(baseDir, false)
 	if err != nil {
-		t.Fatalf("InitBackendWithSecrets: %v", err)
+		t.Fatalf("InitBackend: %v", err)
 	}
 	defer backend.Close()
 
@@ -31,53 +34,62 @@ func TestAppServiceEndToEnd(t *testing.T) {
 		t.Fatalf("expected 0 installed modules on fresh start, got %d", len(initialMods))
 	}
 	starters := svc.ListStarterModules()
-	if len(starters) != 6 {
-		t.Fatalf("expected 6 optional starter modules available for onboarding, got %d", len(starters))
+	if len(starters) != 5 {
+		t.Fatalf("expected 5 optional starter modules (team-templates removed), got %d", len(starters))
 	}
 
-	// 2. Onboarding installs selected optional starter modules as real files in ~/.vex/modules/
+	// 2. Onboarding installs all 5 optional starter modules as real files in ~/.vex/modules/
 	statuses, err := svc.InstallStarterModules([]string{
 		"air-carriers",
 		"ocean-carriers",
 		"containers",
 		"logistics-dictionary",
 		"reference-patterns",
-		"team-templates",
 	})
-	if err != nil || len(statuses) != 6 {
+	if err != nil || len(statuses) != 5 {
 		t.Fatalf("InstallStarterModules failed: count=%d err=%v", len(statuses), err)
 	}
 
-	// 3. Rolodex search & pattern decoding: HBL 7031234567 -> 3-segment pattern-breakdown card
+	// 3. Rolodex search & pattern decoding: HBL 7031234567 -> 3-segment "segments" card
 	hblNodes, err := svc.SearchRolodex("7031234567", 5)
 	if err != nil || len(hblNodes) == 0 {
 		t.Fatalf("SearchRolodex 7031234567 failed: nodes=%+v err=%v", hblNodes, err)
 	}
-	if hblNodes[0].Template != models.TemplatePatternBreakdown {
+	if hblNodes[0].Layout != models.LayoutSegments {
 		t.Fatalf("unexpected HBL Rolodex tree: %+v", hblNodes[0])
 	}
 
-	// 4. MAWB 176-12345675 -> Emirates MAWB with Mod-7 ✓ + nested guide & SkyCargo tracking links
+	// 4. MAWB 176-12345675 -> Emirates MAWB with Mod-7 ✓ + nested guide & SkyCargo tracking link
 	awbNodes, err := svc.SearchRolodex("176-12345675", 5)
 	if err != nil || len(awbNodes) == 0 || !strings.Contains(awbNodes[0].Title, "Emirates MAWB") {
 		t.Fatalf("SearchRolodex 176-12345675 failed: nodes=%+v err=%v", awbNodes, err)
 	}
 
-	// 5. Deleting a packaged starter module removes it from disk and index permanently
+	// 5. Card Recents Wails RPC (RecordCardUsed + ListRecentCards)
+	if err := svc.RecordCardUsed("container-40hc"); err != nil {
+		t.Fatalf("RecordCardUsed: %v", err)
+	}
+	recents, err := svc.ListRecentCards(6)
+	if err != nil || len(recents) != 1 || recents[0].ID != "container-40hc" || len(recents[0].Children) != 2 {
+		t.Fatalf("ListRecentCards unexpected: recents=%+v err=%v", recents, err)
+	}
+
+	// 6. Deleting a packaged starter module removes it from disk and index permanently
 	afterDel, err := svc.DeleteModule("containers")
-	if err != nil || len(afterDel) != 5 {
+	if err != nil || len(afterDel) != 4 {
 		t.Fatalf("DeleteModule(containers) failed: count=%d err=%v", len(afterDel), err)
 	}
 	if _, err := os.Stat(filepath.Join(baseDir, "modules", "containers.json")); !os.IsNotExist(err) {
 		t.Fatalf("expected containers.json to be deleted from modules dir")
 	}
 
-	// 6. UpsertCard writes to JSON and indexes immediately
+	// 7. UpsertCard writes to JSON and indexes immediately
 	created, err := svc.UpsertCard(models.SearchCard{
 		Title:      "Internal Wiki",
 		Collection: "docs",
-		Template:   models.TemplateAppShortcut,
+		Layout:     models.LayoutLink,
 		Tags:       []string{"wiki"},
+		Data:       map[string]any{"url": "https://wiki.internal"},
 		Actions: []models.CardAction{
 			{ID: "open", Label: "Open", Type: "open_url", Target: "https://wiki.internal"},
 		},
@@ -94,7 +106,7 @@ func TestAppServiceEndToEnd(t *testing.T) {
 		t.Fatalf("expected upserted card in @docs search, got %+v (err=%v)", resp2, err)
 	}
 
-	// 7. CSV SampleRawData + ImportWithRule
+	// 8. CSV SampleRawData + ImportWithRule
 	csvRaw := "Tool,Link\nLinear,https://linear.app\nVercel,https://vercel.com\n"
 	sample, err := svc.SampleRawData(csvRaw, "tools.csv")
 	if err != nil || sample.Format != "csv" || sample.TotalRows != 2 {
@@ -105,7 +117,7 @@ func TestAppServiceEndToEnd(t *testing.T) {
 		Name:             "Dev Tools",
 		SourceFormat:     "csv",
 		TargetCollection: "tools",
-		DefaultTemplate:  models.TemplateAppShortcut,
+		DefaultLayout:    models.LayoutLink,
 		TitleField:       "{{Tool}}",
 		ActionType:       "open_url",
 		ActionTarget:     "{{Link}}",
@@ -114,7 +126,7 @@ func TestAppServiceEndToEnd(t *testing.T) {
 		t.Fatalf("ImportWithRule failed: %+v err=%v", imp, err)
 	}
 
-	// 8. Custom Pattern Rule CRUD & TestPatternRule
+	// 9. Custom Pattern Rule CRUD & TestPatternRule
 	customRule := models.PatternRule{
 		ID:            "po-ref",
 		Name:          "Purchase Order",
@@ -122,10 +134,10 @@ func TestAppServiceEndToEnd(t *testing.T) {
 		Normalize:     []string{"trim", "uppercase"},
 		Regex:         `^PO-(?P<num>\d{6})$`,
 		TitleTemplate: "Purchase Order PO-{{num}}",
-		Template:      models.TemplateReferenceDecoder,
+		Layout:        models.LayoutSegments,
 	}
 	testedNode, err := svc.TestPatternRule(customRule, "po-123456")
-	if err != nil || testedNode == nil || testedNode.Title != "Purchase Order PO-123456" {
+	if err != nil || testedNode == nil || testedNode.Title != "Purchase Order PO-123456" || testedNode.Layout != models.LayoutSegments {
 		t.Fatalf("TestPatternRule failed: node=%+v err=%v", testedNode, err)
 	}
 	if _, err := svc.UpsertPatternRule(customRule); err != nil {
@@ -133,19 +145,6 @@ func TestAppServiceEndToEnd(t *testing.T) {
 	}
 	if _, err := svc.DeletePatternRule("po-ref"); err != nil {
 		t.Fatalf("DeletePatternRule: %v", err)
-	}
-
-	// 9. Config persistence via SetAIConfig
-	if err := svc.SetAIConfig(ai.Config{
-		Provider:  ai.ProviderOpenAI,
-		BaseURL:   "https://models.github.ai/inference",
-		ChatModel: "openai/gpt-4o-mini",
-	}); err != nil {
-		t.Fatalf("SetAIConfig: %v", err)
-	}
-	reloaded := loadRuntimeConfig(filepath.Join(baseDir, "config.json"))
-	if reloaded.AI.Provider != ai.ProviderOpenAI || reloaded.AI.ChatModel != "openai/gpt-4o-mini" {
-		t.Fatalf("expected persisted AI config, got %+v", reloaded.AI)
 	}
 
 	// 10. Hotkey default + live reconfiguration & persistence
@@ -166,12 +165,12 @@ func TestAppServiceEndToEnd(t *testing.T) {
 
 	// 11. Instant Unit Conversion & 3D Cargo Volumetric Weight Calculator
 	convResp, err := svc.Search("1588 kg to lbs", 5)
-	if err != nil || len(convResp.Results) == 0 || convResp.Results[0].Card.ID != "builtin-unit-convert" {
-		t.Fatalf("expected builtin-unit-convert for '1588 kg to lbs', got %+v err=%v", convResp, err)
+	if err != nil || len(convResp.Results) == 0 || convResp.Results[0].Card.ID != "builtin-unit-convert" || convResp.Results[0].Card.Layout != models.LayoutConvert {
+		t.Fatalf("expected builtin-unit-convert (convert) for '1588 kg to lbs', got %+v err=%v", convResp, err)
 	}
 
-	// 12. Shareable custom module import & export
-	customJSON := `{"id":"accounting-fx","name":"Accounting & FX Codes","category":"Finance","description":"Billing codes","version":"1.0.0","cards":[{"title":"FX Spot Rate Lookup","collection":"accounting","template":"shortcut","actions":[{"id":"open","label":"Open FX","type":"open_url","target":"https://fx.internal"}]}]}`
+	// 12. Shareable custom module import & export (strict 9-layout schema)
+	customJSON := `{"id":"accounting-fx","name":"Accounting & FX Codes","category":"Finance","description":"Billing codes","version":"1.0.0","cards":[{"title":"FX Spot Rate Lookup","collection":"accounting","layout":"link","data":{"url":"https://fx.internal"}}]}`
 	importedMod, err := svc.ImportModuleJSON(customJSON)
 	if err != nil || importedMod == nil || !importedMod.Enabled {
 		t.Fatalf("ImportModuleJSON failed: mod=%+v err=%v", importedMod, err)
@@ -207,6 +206,30 @@ func TestAppServiceEndToEnd(t *testing.T) {
 	}
 }
 
+func TestRunValidateCLI(t *testing.T) {
+	dir := t.TempDir()
+	validFile := filepath.Join(dir, "valid.json")
+	invalidFile := filepath.Join(dir, "invalid.json")
+
+	if err := os.WriteFile(validFile, []byte(`{"id":"ok","name":"OK","version":"1.0.0","cards":[{"title":"Docs","collection":"docs","layout":"link","data":{"url":"https://docs.example"}}]}`), 0o644); err != nil {
+		t.Fatalf("write valid.json: %v", err)
+	}
+	if err := os.WriteFile(invalidFile, []byte(`{"id":"bad","name":"Bad","cards":[{"title":"Legacy","collection":"docs","template":"kv-grid","data":{"a":"b"}}]}`), 0o644); err != nil {
+		t.Fatalf("write invalid.json: %v", err)
+	}
+
+	var outBuf, errBuf bytes.Buffer
+	if code := runValidateCLI([]string{validFile}, &outBuf, &errBuf); code != 0 || !strings.Contains(outBuf.String(), "OK") {
+		t.Fatalf("expected exit 0 for valid module, got code=%d stdout=%q stderr=%q", code, outBuf.String(), errBuf.String())
+	}
+
+	outBuf.Reset()
+	errBuf.Reset()
+	if code := runValidateCLI([]string{invalidFile}, &outBuf, &errBuf); code == 0 || !strings.Contains(errBuf.String(), "FAIL") {
+		t.Fatalf("expected non-zero exit for invalid module, got code=%d stdout=%q stderr=%q", code, outBuf.String(), errBuf.String())
+	}
+}
+
 func TestBuildInfoUnified(t *testing.T) {
 	origName, origVersion, origFeed := AppName, AppVersion, UpdateFeedURL
 	t.Cleanup(func() {
@@ -232,57 +255,75 @@ func TestBuildInfoUnified(t *testing.T) {
 	}
 }
 
-func TestSecretStoreAPIKeyPersistenceAndMigration(t *testing.T) {
-	baseDir := t.TempDir()
-	memSecrets := secrets.NewMemoryStore()
+type testRoundTripper func(*http.Request) (*http.Response, error)
 
-	legacyJSON := `{
-  "ai": {
-    "provider": "openai",
-    "baseUrl": "https://api.openai.com/v1",
-    "apiKey": "sk-legacy-plaintext",
-    "chatModel": "gpt-4o-mini"
-  },
-  "mcpAddr": "127.0.0.1:17380",
-  "hotkey": "Ctrl+Shift+B"
+func (f testRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
 }
-`
-	if err := os.WriteFile(filepath.Join(baseDir, "config.json"), []byte(legacyJSON), 0o600); err != nil {
-		t.Fatalf("write legacy config: %v", err)
-	}
 
-	backend, err := InitBackendWithSecrets(baseDir, false, memSecrets)
+func TestAppService_FetchPatternLiveHTTPAndMCPPresets(t *testing.T) {
+	baseDir := t.TempDir()
+	backend, err := InitBackend(baseDir, false)
 	if err != nil {
-		t.Fatalf("InitBackendWithSecrets: %v", err)
+		t.Fatalf("InitBackend: %v", err)
 	}
 	defer backend.Close()
 
-	if got := backend.AI.GetConfig().APIKey; got != "sk-legacy-plaintext" {
-		t.Fatalf("expected migrated APIKey in memory, got %q", got)
-	}
-	stored, err := memSecrets.Get(secretServiceName, secretAccountAIAPIKey)
-	if err != nil || stored != "sk-legacy-plaintext" {
-		t.Fatalf("expected migrated key in secret store, got %q (err=%v)", stored, err)
+	// Replace default LiveHTTP client with mocked RoundTripper + mocked gh CLI token runner
+	mockLive := mcp.NewLiveHTTPClient(
+		mcp.WithCommandRunner(func(_ context.Context, name string, args ...string) (string, string, error) {
+			return "mock-gh-token", "", nil
+		}),
+		mcp.WithHTTPTransport(testRoundTripper(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(strings.NewReader(`{"title":"Hydrated Issue","state":"open","comments":3,"user":{"login":"octocat"},"html_url":"https://github.com/octocat/vex/issues/99"}`)),
+			}, nil
+		})),
+	)
+	backend.LiveHTTP = mockLive
+	backend.Search.SetLiveHTTPExecutor(mockLive)
+
+	svc := backend.AppService
+
+	// 1. Recommended MCP presets exposed cleanly via GetConfiguredMCPServers
+	presets := svc.GetConfiguredMCPServers()
+	if len(presets) < 2 {
+		t.Fatalf("expected >=2 configured/preset MCP servers, got %d", len(presets))
 	}
 
-	rawAfterMigration, err := os.ReadFile(filepath.Join(baseDir, "config.json"))
+	// 2. Install reference-patterns starter pack (includes disabled-by-default github-issue-pr & ado-work-item)
+	if _, err := svc.InstallStarterModules([]string{"reference-patterns"}); err != nil {
+		t.Fatalf("InstallStarterModules: %v", err)
+	}
+	rules := svc.ListPatternRules()
+	foundGH := false
+	foundADO := false
+	for _, r := range rules {
+		if r.ID == "github-issue-pr" {
+			foundGH = true
+			if r.IsEnabled() {
+				t.Fatal("expected github-issue-pr starter pattern to be disabled by default")
+			}
+		}
+		if r.ID == "ado-work-item" {
+			foundADO = true
+			if r.IsEnabled() {
+				t.Fatal("expected ado-work-item starter pattern to be disabled by default")
+			}
+		}
+	}
+	if !foundGH || !foundADO {
+		t.Fatalf("expected github-issue-pr and ado-work-item starter patterns, foundGH=%v foundADO=%v", foundGH, foundADO)
+	}
+
+	// 3. On-demand FetchPatternLiveHTTP hydrates github-issue-pr child card
+	node, err := svc.FetchPatternLiveHTTP("github-issue-pr", "octocat/vex#99")
 	if err != nil {
-		t.Fatalf("read config.json: %v", err)
+		t.Fatalf("FetchPatternLiveHTTP: %v", err)
 	}
-	if strings.Contains(string(rawAfterMigration), "sk-legacy-plaintext") {
-		t.Fatalf("config.json still contains legacy plaintext key: %s", string(rawAfterMigration))
-	}
-
-	if err := backend.AppService.SetAIConfig(ai.Config{
-		Provider:  ai.ProviderOpenAI,
-		BaseURL:   "https://api.openai.com/v1",
-		APIKey:    "sk-updated-secret",
-		ChatModel: "gpt-4o-mini",
-	}); err != nil {
-		t.Fatalf("SetAIConfig: %v", err)
-	}
-	stored2, err := memSecrets.Get(secretServiceName, secretAccountAIAPIKey)
-	if err != nil || stored2 != "sk-updated-secret" {
-		t.Fatalf("expected updated key in secret store, got %q (err=%v)", stored2, err)
+	if node == nil || len(node.Children) != 1 || node.Children[0].Title != "Hydrated Issue" {
+		t.Fatalf("expected hydrated child card 'Hydrated Issue', got %+v", node)
 	}
 }

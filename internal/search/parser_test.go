@@ -15,19 +15,19 @@ func TestParseQueryModifiers(t *testing.T) {
 		wantModifier   string
 		wantCollection string
 		wantTags       []string
-		wantTemplate   models.CardTemplateType
+		wantLayout     models.CardLayoutType
 		wantParams     map[string]string
 		wantArgs       []string
 		wantText       string
 	}{
 		{
-			name:           "full modifier, collection, tags, template, params and quoted args",
-			input:          `/gh @devops #prod #k8s type:command env:staging branch:"release 2.0" deploy`,
+			name:           "full modifier, collection, tags, layout, params and quoted args",
+			input:          `/gh @devops #prod #k8s layout:snippet env:staging branch:"release 2.0" deploy`,
 			wantMode:       ModeSearch,
 			wantModifier:   "gh",
 			wantCollection: "devops",
 			wantTags:       []string{"prod", "k8s"},
-			wantTemplate:   models.TemplateCommand,
+			wantLayout:     models.LayoutSnippet,
 			wantParams:     map[string]string{"env": "staging", "branch": "release 2.0"},
 			wantArgs:       []string{"deploy"},
 			wantText:       "deploy",
@@ -73,8 +73,8 @@ func TestParseQueryModifiers(t *testing.T) {
 			if !reflect.DeepEqual(got.Tags, tc.wantTags) {
 				t.Errorf("Tags: got %v, want %v", got.Tags, tc.wantTags)
 			}
-			if got.Template != tc.wantTemplate {
-				t.Errorf("Template: got %q, want %q", got.Template, tc.wantTemplate)
+			if got.Layout != tc.wantLayout {
+				t.Errorf("Layout: got %q, want %q", got.Layout, tc.wantLayout)
 			}
 			wantParams := tc.wantParams
 			if wantParams == nil {

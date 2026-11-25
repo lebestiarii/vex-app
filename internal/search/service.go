@@ -2,6 +2,7 @@ package search
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -15,8 +16,11 @@ type DynamicPluginProvider interface {
 	QueryPlugins(ctx context.Context, q ParsedQuery) ([]models.SearchCard, error)
 }
 
-// EmbedderFunc generates a vector embedding for semantic search when configured.
-type EmbedderFunc func(ctx context.Context, text string) ([]float32, string, error)
+// LiveMCPQueryProvider routes slash-modifier queries (/gh, /ado) to connected external
+// MCP servers and maps responses onto Vex's generic SearchCard layouts.
+type LiveMCPQueryProvider interface {
+	QueryExternalMCP(ctx context.Context, modifier, query string, limit int) ([]models.SearchCard, error)
+}
 
 // SearchResponse is returned to the Wails frontend and MCP tools for every query.
 type SearchResponse struct {
@@ -25,18 +29,19 @@ type SearchResponse struct {
 	Total   int                    `json:"total"`
 }
 
-// Service coordinates query parsing, hybrid SQLite search, pattern decoding, and dynamic plugin cards.
+// Service coordinates query parsing, SQLite FTS5 search, pattern decoding, and dynamic plugin cards.
 type Service struct {
 	store    *indexer.Store
 	patterns *PatternEngine
 
 	mu             sync.RWMutex
 	pluginProvider DynamicPluginProvider
-	embedder       EmbedderFunc
 	livePatterns   LivePatternExecutor
+	liveHTTP       LiveHTTPExecutor
+	liveMCPQuery   LiveMCPQueryProvider
 }
 
-// NewService creates a SearchService backed by the hybrid SQLite Store.
+// NewService creates a SearchService backed by the SQLite Store.
 func NewService(store *indexer.Store) *Service {
 	return &Service{
 		store:    store,
@@ -51,7 +56,7 @@ func (s *Service) SetPatternRules(rules []models.PatternRule) {
 	}
 }
 
-// PatternRules returns all active compiled PatternRules (custom + built-in).
+// PatternRules returns all active compiled PatternRules.
 func (s *Service) PatternRules() []models.PatternRule {
 	if s.patterns == nil {
 		return nil
@@ -66,18 +71,38 @@ func (s *Service) SetLivePatternExecutor(exec LivePatternExecutor) {
 	s.livePatterns = exec
 }
 
+// SetLiveHTTPExecutor attaches a read-only GET HTTP client for PatternRules with liveHttp lookups.
+func (s *Service) SetLiveHTTPExecutor(exec LiveHTTPExecutor) {
+	s.mu.Lock()
+	s.liveHTTP = exec
+	s.mu.Unlock()
+	if s.patterns != nil {
+		s.patterns.SetLiveHTTPExecutor(exec)
+	}
+}
+
+// SetLiveMCPQueryProvider attaches an external MCP query bridge for /gh and /ado modifiers.
+func (s *Service) SetLiveMCPQueryProvider(p LiveMCPQueryProvider) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.liveMCPQuery = p
+}
+
+// FetchPatternLiveHTTP executes a pattern rule's liveHttp GET lookup on demand
+// and returns the hydrated PatternMatchResult.
+func (s *Service) FetchPatternLiveHTTP(ctx context.Context, ruleID, rawQuery string) (*PatternMatchResult, error) {
+	s.mu.RLock()
+	livePatterns := s.livePatterns
+	liveHTTP := s.liveHTTP
+	s.mu.RUnlock()
+	return s.patterns.FetchLiveHTTP(ctx, ruleID, rawQuery, s.store, livePatterns, liveHTTP)
+}
+
 // SetPluginProvider attaches a dynamic plugin manager to the search pipeline.
 func (s *Service) SetPluginProvider(p DynamicPluginProvider) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.pluginProvider = p
-}
-
-// SetEmbedder attaches an optional embedding generator for semantic RAG search.
-func (s *Service) SetEmbedder(fn EmbedderFunc) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.embedder = fn
 }
 
 // Parse exposes the Raycast query parser directly (useful for live UI badge rendering).
@@ -94,8 +119,8 @@ func (s *Service) Search(ctx context.Context, rawQuery string, limit int) (*Sear
 
 	s.mu.RLock()
 	pluginProvider := s.pluginProvider
-	embedder := s.embedder
 	livePatterns := s.livePatterns
+	liveMCPQuery := s.liveMCPQuery
 	s.mu.RUnlock()
 
 	opts := indexer.SearchOptions{
@@ -103,16 +128,8 @@ func (s *Service) Search(ctx context.Context, rawQuery string, limit int) (*Sear
 		Collection: pq.Collection,
 		Tags:       pq.Tags,
 		Modifier:   pq.Modifier,
-		Template:   pq.Template,
+		Layout:     pq.Layout,
 		Limit:      limit,
-	}
-
-	// Optional semantic embedding for hybrid RRF (especially valuable in AI RAG mode).
-	if embedder != nil && pq.Text != "" {
-		if vec, modelName, err := embedder(ctx, pq.Text); err == nil && len(vec) > 0 {
-			opts.QueryEmbedding = vec
-			opts.EmbeddingModel = modelName
-		}
 	}
 
 	results, err := s.store.SearchHybrid(ctx, opts)
@@ -164,6 +181,36 @@ func (s *Service) Search(ctx context.Context, rawQuery string, limit int) (*Sear
 		}
 	}
 
+	// Route /gh and /ado slash modifiers to connected external MCP servers (GitHub / Azure DevOps).
+	if liveMCPQuery != nil && pq.Mode == ModeSearch && isExternalMCPModifier(pq.Modifier) {
+		mcpCards, mcpErr := liveMCPQuery.QueryExternalMCP(ctx, pq.Modifier, externalMCPQueryText(pq), limit)
+		if mcpErr == nil && len(mcpCards) > 0 {
+			seen := make(map[string]struct{}, len(results)+len(mcpCards))
+			prepended := make([]indexer.SearchResult, 0, len(mcpCards)+len(results))
+			for i, mc := range mcpCards {
+				if _, exists := seen[mc.ID]; exists {
+					continue
+				}
+				seen[mc.ID] = struct{}{}
+				prepended = append(prepended, indexer.SearchResult{
+					Card:        mc,
+					Score:       135.0 - float64(i)*0.5,
+					MatchSource: "mcp-live",
+				})
+			}
+			for _, r := range results {
+				if _, exists := seen[r.Card.ID]; exists {
+					continue
+				}
+				prepended = append(prepended, r)
+			}
+			results = prepended
+			if len(results) > limit {
+				results = results[:limit]
+			}
+		}
+	}
+
 	// Merge dynamic plugin results when a plugin provider is attached and query is not AI-only.
 	if pluginProvider != nil && pq.Mode != ModeAI {
 		dynCards, dynErr := pluginProvider.QueryPlugins(ctx, pq)
@@ -207,11 +254,14 @@ func (s *Service) Search(ctx context.Context, rawQuery string, limit int) (*Sear
 			Title:      "Open URL",
 			Subtitle:   pq.Text,
 			Collection: "system",
-			Template:   models.TemplateAppShortcut,
+			Layout:     models.LayoutLink,
 			Icon:       "globe",
+			Data: map[string]any{
+				"url": pq.Text,
+			},
 			Actions: []models.CardAction{
 				{ID: "open", Label: "Open in Browser", Shortcut: "Enter", Type: "open_url", Target: pq.Text},
-				{ID: "pwa", Label: "Open as Web App", Shortcut: "Cmd+Enter", Type: "open_pwa", Target: pq.Text},
+				{ID: "pwa", Label: "Open as Web App", Type: "open_pwa", Target: pq.Text},
 			},
 			UpdatedAt: time.Now().UTC(),
 		}
@@ -227,4 +277,31 @@ func (s *Service) Search(ctx context.Context, rawQuery string, limit int) (*Sear
 		Results: results,
 		Total:   len(results),
 	}, nil
+}
+
+func isExternalMCPModifier(mod string) bool {
+	switch strings.ToLower(strings.TrimSpace(mod)) {
+	case "gh", "github", "ado", "azure-devops":
+		return true
+	default:
+		return false
+	}
+}
+
+func externalMCPQueryText(pq ParsedQuery) string {
+	parts := make([]string, 0, len(pq.Params)+1)
+	if len(pq.Params) > 0 {
+		keys := make([]string, 0, len(pq.Params))
+		for k := range pq.Params {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			parts = append(parts, k+":"+pq.Params[k])
+		}
+	}
+	if strings.TrimSpace(pq.Text) != "" {
+		parts = append(parts, strings.TrimSpace(pq.Text))
+	}
+	return strings.TrimSpace(strings.Join(parts, " "))
 }

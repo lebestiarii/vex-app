@@ -1,15 +1,15 @@
 import { TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { CardTemplateType } from '../models/card-node.model';
-import { BranchContactCardComponent } from '../templates/branch-contact-card.component';
-import { ContainerBlueprintCardComponent } from '../templates/container-blueprint-card.component';
-import { ConversionCardComponent } from '../templates/conversion-card.component';
-import { DictionaryGuideCardComponent } from '../templates/dictionary-guide-card.component';
-import { GenericKvCardComponent } from '../templates/generic-kv-card.component';
-import { LocationCardComponent } from '../templates/location-card.component';
-import { PatternBreakdownCardComponent } from '../templates/pattern-breakdown-card.component';
-import { ServerMatrixCardComponent } from '../templates/server-matrix-card.component';
-import { WebsiteLinkCardComponent } from '../templates/website-link-card.component';
+import { CardLayoutType } from '../models/card-node.model';
+import { ActionListCardComponent } from '../templates/action-list-card.component';
+import { ConvertCardComponent } from '../templates/convert-card.component';
+import { FactsCardComponent } from '../templates/facts-card.component';
+import { GroupCardComponent } from '../templates/group-card.component';
+import { LinkCardComponent } from '../templates/link-card.component';
+import { SegmentsCardComponent } from '../templates/segments-card.component';
+import { SnippetCardComponent } from '../templates/snippet-card.component';
+import { StepsCardComponent } from '../templates/steps-card.component';
+import { TableCardComponent } from '../templates/table-card.component';
 import { CardTemplateRegistry } from './card-template-registry.service';
 
 describe('CardTemplateRegistry', () => {
@@ -20,25 +20,19 @@ describe('CardTemplateRegistry', () => {
     registry = TestBed.inject(CardTemplateRegistry);
   });
 
-  it('resolves all 5 canonical generic templates', () => {
-    expect(registry.resolve('location')).toBe(LocationCardComponent);
-    expect(registry.resolve('server-matrix')).toBe(ServerMatrixCardComponent);
-    expect(registry.resolve('website-link')).toBe(WebsiteLinkCardComponent);
-    expect(registry.resolve('pattern-breakdown')).toBe(PatternBreakdownCardComponent);
-    expect(registry.resolve('conversion')).toBe(ConversionCardComponent);
+  it('resolves all 9 pure generic layouts to their exact components', () => {
+    expect(registry.resolve('group')).toBe(GroupCardComponent);
+    expect(registry.resolve('link')).toBe(LinkCardComponent);
+    expect(registry.resolve('action-list')).toBe(ActionListCardComponent);
+    expect(registry.resolve('facts')).toBe(FactsCardComponent);
+    expect(registry.resolve('segments')).toBe(SegmentsCardComponent);
+    expect(registry.resolve('steps')).toBe(StepsCardComponent);
+    expect(registry.resolve('convert')).toBe(ConvertCardComponent);
+    expect(registry.resolve('table')).toBe(TableCardComponent);
+    expect(registry.resolve('snippet')).toBe(SnippetCardComponent);
   });
 
-  it('resolves backwards-compatible template aliases', () => {
-    expect(registry.resolve('branch-gateway')).toBe(LocationCardComponent);
-    expect(registry.resolve('env-bookmarks')).toBe(WebsiteLinkCardComponent);
-    expect(registry.resolve('reference-decoder')).toBe(PatternBreakdownCardComponent);
-  });
-
-  it('resolves extended domain templates and falls back to GenericKvCardComponent', () => {
-    expect(registry.resolve('container-blueprint')).toBe(ContainerBlueprintCardComponent);
-    expect(registry.resolve('branch-contact')).toBe(BranchContactCardComponent);
-    expect(registry.resolve('dictionary-guide')).toBe(DictionaryGuideCardComponent);
-    expect(registry.resolve('kv-grid')).toBe(GenericKvCardComponent);
-    expect(registry.resolve('unknown-template' as CardTemplateType)).toBe(GenericKvCardComponent);
+  it('falls back defensively to FactsCardComponent for unknown layouts', () => {
+    expect(registry.resolve('unknown-layout' as CardLayoutType)).toBe(FactsCardComponent);
   });
 });

@@ -1,28 +1,32 @@
 import { ChangeDetectionStrategy, Component, computed } from '@angular/core';
-import { DictionaryGuideData, DictionaryStep } from '../models/card-node.model';
+import { StepItem, StepsLayoutData } from '../models/card-node.model';
 import { BaseCardTemplate } from './base-card-template';
 
+/**
+ * StepsCardComponent (`steps`):
+ * N-step visual timeline + summary + optional bullets.
+ */
 @Component({
-  selector: 'app-dictionary-guide-card',
+  selector: 'app-steps-card',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="guide-body">
+    <div class="steps-body">
       @if (steps().length > 0) {
         <ol
           class="timeline"
           [style.--step-count]="steps().length"
-          [attr.aria-label]="timelineLabel()"
+          aria-label="Process steps"
         >
-          @for (step of steps(); track step.index) {
+          @for (step of steps(); track step.label + $index) {
             <li
               class="timeline-step"
-              [class.completed]="step.index < activeStep()"
-              [class.active]="step.index === activeStep()"
-              [attr.aria-current]="step.index === activeStep() ? 'step' : null"
+              [class.completed]="activeStep() > 0 && $index + 1 < activeStep()"
+              [class.active]="activeStep() > 0 && $index + 1 === activeStep()"
+              [attr.aria-current]="activeStep() > 0 && $index + 1 === activeStep() ? 'step' : null"
             >
               <div class="step-track">
-                <span class="step-badge">{{ step.index }}</span>
+                <span class="step-badge">{{ $index + 1 }}</span>
                 @if (!$last) {
                   <span class="step-line" aria-hidden="true"></span>
                 }
@@ -36,10 +40,12 @@ import { BaseCardTemplate } from './base-card-template';
         </ol>
       }
 
-      <p class="guide-summary">{{ summary() }}</p>
+      @if (summary()) {
+        <p class="steps-summary">{{ summary() }}</p>
+      }
 
       @if (bullets().length > 0) {
-        <ul class="guide-bullets">
+        <ul class="steps-bullets">
           @for (item of bullets(); track $index) {
             <li>{{ item }}</li>
           }
@@ -49,7 +55,7 @@ import { BaseCardTemplate } from './base-card-template';
   `,
   styles: [
     `
-      .guide-body {
+      .steps-body {
         display: flex;
         flex-direction: column;
         gap: 10px;
@@ -69,6 +75,7 @@ import { BaseCardTemplate } from './base-card-template';
         display: flex;
         flex-direction: column;
         gap: 3px;
+        min-width: 0;
       }
       .step-track {
         display: flex;
@@ -116,6 +123,7 @@ import { BaseCardTemplate } from './base-card-template';
         font-size: 11.5px;
         font-weight: 700;
         color: var(--text-primary);
+        line-height: 1.25;
       }
       .timeline-step.active .step-label {
         color: var(--chip-blue-text);
@@ -125,13 +133,13 @@ import { BaseCardTemplate } from './base-card-template';
         color: var(--text-muted);
         line-height: 1.25;
       }
-      .guide-summary {
+      .steps-summary {
         margin: 0;
         font-size: 12.5px;
         line-height: 1.55;
         color: var(--text-secondary);
       }
-      .guide-bullets {
+      .steps-bullets {
         margin: 0;
         padding-inline-start: 18px;
         display: flex;
@@ -144,18 +152,20 @@ import { BaseCardTemplate } from './base-card-template';
     `,
   ],
 })
-export class DictionaryGuideCardComponent extends BaseCardTemplate<DictionaryGuideData> {
-  readonly activeStep = computed(() => this.node().data?.activeStep ?? 1);
-  readonly timelineLabel = computed(() => this.node().data?.timelineLabel || 'Process steps');
-  readonly steps = computed<DictionaryStep[]>(() => {
+export class StepsCardComponent extends BaseCardTemplate<StepsLayoutData> {
+  readonly activeStep = computed(() => this.node().data?.activeStep ?? 0);
+
+  readonly steps = computed<StepItem[]>(() => {
     const raw = this.node().data?.steps;
     return Array.isArray(raw) ? raw : [];
   });
+
+  readonly summary = computed(
+    () => (this.node().data?.summary ?? this.node().description ?? '').trim()
+  );
+
   readonly bullets = computed<string[]>(() => {
     const raw = this.node().data?.bullets;
     return Array.isArray(raw) ? raw : [];
   });
-  readonly summary = computed(
-    () => this.node().data?.summary || this.node().description || 'Plain-English reference guide.'
-  );
 }

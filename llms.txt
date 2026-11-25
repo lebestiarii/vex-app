@@ -4,34 +4,41 @@
 
 ## Core Documentation
 - [README.md](README.md): Overview, capabilities, prerequisites, and platform-specific build/run commands (`bin/macos/vex`, `bin\windows\vex.exe`).
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Acyclic Go package graph, optional module system, full-width stacked card UI, pattern engine, and MCP hub.
-- [docs/TEMPLATE_BLUEPRINTS.md](docs/TEMPLATE_BLUEPRINTS.md): ASCII layout blueprints, field-to-slot mappings, and cross-domain JSON examples for all 5 canonical templates (`location`, `server-matrix`, `website-link`, `pattern-breakdown`, `conversion`) plus extended templates (`container-blueprint`, `dictionary-guide`, `kv-grid`, `branch-contact`).
-- [TODO.md](TODO.md): Phased roadmap, open clarifications, and upcoming backlog.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Acyclic Go package graph, optional module system, 9 pure generic layouts, SQLite v3, pattern engine, and MCP hub.
+- [docs/TEMPLATE_BLUEPRINTS.md](docs/TEMPLATE_BLUEPRINTS.md): ASCII layout blueprints, strict zero-alias field contracts, and cross-domain JSON examples for all 9 pure generic layouts (`group`, `link`, `action-list`, `facts`, `segments`, `steps`, `convert`, `table`, `snippet`).
+- [TODO.md](TODO.md): Phased roadmap and upcoming backlog.
 
 ## Agent Instructions & Skills (Gemini + GitHub Copilot)
-- [AGENTS.md](AGENTS.md): Shared cross-agent instructions, Phase→Story AAR workflow, and macOS/Windows verification commands.
+- [AGENTS.md](AGENTS.md): Shared cross-agent instructions, Phase→Story planning & AAR rhythm, and macOS/Windows verification commands.
 - [.github/copilot-instructions.md](.github/copilot-instructions.md): GitHub Copilot entry point aligned with `AGENTS.md` and workspace skills.
-- [.agent/rules/vex-workflow.md](.agent/rules/vex-workflow.md): Build toolchains, branching discipline, architecture guardrails, and phase-end verification gates.
-- [.agent/skills/vex-architecture/SKILL.md](.agent/skills/vex-architecture/SKILL.md): Backend/frontend architecture, MCP tool/resource inventory (19 tools, 7 resources/templates), and schemas.
-- [.agent/skills/vex-rolodex-ui/SKILL.md](.agent/skills/vex-rolodex-ui/SKILL.md): Full-width stacked nested card design system, Light/Dark CSS tokens, and Angular 22 (Zoneless + Signals) component rules.
+- [.agent/rules/vex-workflow.md](.agent/rules/vex-workflow.md): Build toolchains, branching/worktree discipline, architecture guardrails, and phase-end verification gates.
+- [.agent/skills/after-action-review/SKILL.md](.agent/skills/after-action-review/SKILL.md): Standardized Pre-Phase Planning, Model/Reasoning Sizing, User Verification Walkthrough, After-Action Review (AAR), Context Handoff, and Git Merge/Prune rhythm.
+- [.agent/skills/git-branch-and-worktree-flow/SKILL.md](.agent/skills/git-branch-and-worktree-flow/SKILL.md): Standardized Git isolation, worktree management, post-approval merge ordering, and branch/worktree pruning discipline.
+- [.agent/skills/doc-drift-sweep/SKILL.md](.agent/skills/doc-drift-sweep/SKILL.md): 8-point post-phase audit for diagrams, architecture intent, full-repo folder structure, skill usefulness, schemas, and docs.
+- [.agent/skills/vex-architecture/SKILL.md](.agent/skills/vex-architecture/SKILL.md): Backend/frontend architecture, strict 9-layout schema, SQLite v3, and MCP tool/resource inventory (20 tools, 7 resources/templates).
+- [.agent/skills/vex-rolodex-ui/SKILL.md](.agent/skills/vex-rolodex-ui/SKILL.md): Full-width stacked nested card design system, Light/Dark CSS tokens, 9 layouts, Pinned+Recent, keyboard flow, and dialog UX standards.
 - [.agent/skills/vex-frontend-testing/SKILL.md](.agent/skills/vex-frontend-testing/SKILL.md): Offline Vitest 5 + `happy-dom` + Angular 22 Ivy Linker testing guide (`deno task test` / `ng test`).
-- [.agent/skills/vex-search-ranking/SKILL.md](.agent/skills/vex-search-ranking/SKILL.md): SQLite v2 schema, value-only `SearchableBody()`, 4-tier exact/contextual/prefix/guarded-fuzzy ranking, and dynamic relevance cliff.
-- [.agent/skills/vex-template-authoring/SKILL.md](.agent/skills/vex-template-authoring/SKILL.md): Guide for authoring generic card templates, optional JSON modules (`~/.vex/modules/`), and `PatternRule` decoders.
-- [.agent/skills/doc-drift-sweep/SKILL.md](.agent/skills/doc-drift-sweep/SKILL.md): 6-point post-phase documentation drift checklist.
+- [.agent/skills/vex-search-ranking/SKILL.md](.agent/skills/vex-search-ranking/SKILL.md): SQLite v3 schema (`entity_links`, `card_recents`), layout-aware `SearchableBody()` whitelist, 4-tier exact/contextual/prefix/guarded-fuzzy ranking, and dynamic relevance cliff.
+- [.agent/skills/vex-template-authoring/SKILL.md](.agent/skills/vex-template-authoring/SKILL.md): Guide for authoring strict zero-alias 9-layout cards, flat-on-disk JSON modules (`~/.vex/modules/`), and `PatternRule` decoders.
 
 ## Angular 22 UI Shell (`frontend/src/app/`)
 - [frontend/src/styles.css](frontend/src/styles.css): Light (`[data-theme="light"]`) and Dark (`[data-theme="dark"]`) CSS design tokens.
-- [frontend/src/app/models/card-node.model.ts](frontend/src/app/models/card-node.model.ts): TypeScript interfaces for `CardNode`, `GlanceChip`, `PatternRule`, `ModuleStatus`, and template data contracts.
-- [frontend/src/app/components/rolodex-card-shell.component.ts](frontend/src/app/components/rolodex-card-shell.component.ts): Recursive L0/L1/L2 full-width stacked card shell, L0-only pinning (max 3), and Single-Button `website-link` mode.
-- [frontend/src/app/services/card-template-registry.service.ts](frontend/src/app/services/card-template-registry.service.ts): Maps `CardTemplateType` strings to standalone template components via `NgComponentOutlet`.
-- [frontend/src/app/templates/base-card-template.ts](frontend/src/app/templates/base-card-template.ts): Abstract base directive for all card templates.
-- [frontend/src/app/services/vex-bridge.service.ts](frontend/src/app/services/vex-bridge.service.ts): Wails v3 RPC bridge (`/wails/runtime.js`); returns empty arrays outside Wails (zero hardcoded demo data).
+- [frontend/src/app/app.component.ts](frontend/src/app/app.component.ts): Root launcher shell with Pinned+Recent empty state, subtle total indexed count, and full Level 0 keyboard navigation (`ArrowDown`/`ArrowUp`/`Enter`/`Escape`).
+- [frontend/src/app/models/card-node.model.ts](frontend/src/app/models/card-node.model.ts): TypeScript interfaces for `CardLayoutType`, `CardNode`, all 9 strict layout data payloads, `PatternRule`, `PatternLiveHttpSpec`, `PatternLiveResultSpec`, `CLIAuthStatus`, `ExternalServerConfig`, `ConnectedServerStatus`, `ModuleStatus`, `CollectionStats`, and `LogDiagnostics`.
+- [frontend/src/app/components/rolodex-card-shell.component.ts](frontend/src/app/components/rolodex-card-shell.component.ts): Recursive L0/L1/L2 full-width stacked card shell, L0-only pinning (max 3), Single-Button `link` mode, zero empty accordions, live IANA clocks, on-demand manual `Fetch Live Data` hydration (`linkedSignal`), and usage tracking.
+- [frontend/src/app/components/modules-dialog.component.ts](frontend/src/app/components/modules-dialog.component.ts): Optional Modules & MCP dialog with 3-row cards, separated Starter Catalog (`[Install]`), live MCP status + `[Copy Client JSON]`, `gh`/`az` CLI auth status pills, and 1-click GitHub/Azure DevOps MCP preset connect/test/disconnect controls.
+- [frontend/src/app/components/patterns-dialog.component.ts](frontend/src/app/components/patterns-dialog.component.ts): Configurable Patterns dialog with top Live Test bar + rendered `segments` card preview, per-rule Enabled switch, `Live GET`/`Live MCP` badges, and collapsible `Edit JSON` disclosure with inline validator errors (including zero-secret `liveHttp` checks).
+- [frontend/src/app/services/card-template-registry.service.ts](frontend/src/app/services/card-template-registry.service.ts): Maps the 9 `CardLayoutType` strings to standalone `BaseCardTemplate<T>` components via `NgComponentOutlet`.
+- [frontend/src/app/templates/base-card-template.ts](frontend/src/app/templates/base-card-template.ts): Abstract base directive for all 9 layout components (`group`, `link`, `action-list`, `facts`, `segments`, `steps`, `convert`, `table`, `snippet`).
+- [frontend/src/app/services/vex-bridge.service.ts](frontend/src/app/services/vex-bridge.service.ts): Wails v3 RPC bridge (`/wails/runtime.js`) exposing search, recents, collections, modules, patterns, `fetchPatternLiveHTTP`, CLI auth probing, external MCP server connect/test/disconnect, and diagnostics.
 
 ## Go Backend & MCP Hub
-- [internal/models/card.go](internal/models/card.go): `SearchCard`, `CardNode`, `ModuleManifest`, `ETLMappingRule`, `ValidateAndNormalizeCard`, and `CardJSONSchema()`.
-- [internal/models/pattern.go](internal/models/pattern.go): `PatternRule`, `PatternSegmentSpec`, `PatternDataLookup`, and `PatternLinkRule`.
-- [internal/indexer/store.go](internal/indexer/store.go): Embedded SQLite v2 store (`PRAGMA user_version = 2`), 9-column `cards_fts`, 4-tier exact/contextual/prefix/fuzzy ranking, dynamic relevance cliff, and hybrid vector scoring.
-- [internal/indexer/modules.go](internal/indexer/modules.go): Optional, deletable JSON module loader/compiler (`~/.vex/modules/`) and embedded starter catalog (`internal/indexer/starter_modules/*.json`).
-- [internal/search/patterns.go](internal/search/patterns.go): Configurable regex/checksum pattern engine with SQLite `dataLookups` and recursive `linkRules`.
-- [internal/search/converter.go](internal/search/converter.go): Zero-latency unit converter and 3D cargo volume / IATA dimensional weight calculator (`conversion` template).
-- [internal/mcp/server.go](internal/mcp/server.go): Domain MCP server (`--mcp-stdio` and `127.0.0.1:17380/mcp`) with 19 tools, 7 resources/templates (including `list_skills`, `get_skill`, `search://skills`, `skill://{name}`), and 1 prompt.
+- [internal/models/card.go](internal/models/card.go) & [internal/models/layouts.go](internal/models/layouts.go): Strict zero-alias 9-layout structs (`CardLayoutType`), `SearchCard`, `CardNode`, `ModuleManifest`, `ETLMappingRule`, `ValidateAndNormalizeCard`, `ValidatePatternLiveHTTP`, `ValidateModuleManifest`, `ValidateModuleJSON`, layout-aware `SearchableBody()`, and strict `CardJSONSchema()`.
+- [internal/models/pattern.go](internal/models/pattern.go): `PatternRule`, `PatternSegmentSpec`, `PatternDataLookup`, `PatternLinkRule`, `PatternLiveHTTP`, `PatternLiveResultSpec`, and `PatternMCPLookup`.
+- [internal/indexer/store.go](internal/indexer/store.go): Embedded SQLite v3 store (`PRAGMA user_version = 3`), 9-column `cards_fts`, `entity_links` cross-module dynamic nesting (depth ≤ 2), `card_recents`, 4-tier exact/contextual/prefix/fuzzy ranking, and dynamic relevance cliff.
+- [internal/indexer/modules.go](internal/indexer/modules.go): Optional, deletable JSON module loader/compiler (`~/.vex/modules/`) and 5 embedded starter packs (`internal/indexer/starter_modules/*.json`).
+- [internal/search/patterns.go](internal/search/patterns.go): Configurable regex/checksum pattern engine (`layout: "segments"`) with SQLite `dataLookups` (`fact.<Label>`), recursive `linkRules`, `LiveHTTPExecutor` / `LivePatternExecutor` interfaces, JSON dot-path projection, and `FetchLiveHTTP`.
+- [internal/search/converter.go](internal/search/converter.go): Zero-latency unit converter and 3D cargo volume / IATA dimensional weight calculator (`layout: "convert"`).
+- [internal/mcp/server.go](internal/mcp/server.go): Domain MCP server (`--mcp-stdio` and `127.0.0.1:17380/mcp`) with 20 tools (including `validate_module`) and 7 resources/templates (including `list_skills`, `get_skill`, `search://skills`, `skill://{name}`).
+- [internal/mcp/live_http.go](internal/mcp/live_http.go): Read-only GET `LiveHTTPClient` with strict URL guard, in-memory TTL response cache, and cached hardcoded-arg `gh_cli` / `az_devops` / `env:VAR_NAME` auth.
+- [internal/mcp/client.go](internal/mcp/client.go), [internal/mcp/query_bridge.go](internal/mcp/query_bridge.go) & [internal/mcp/auth_probe.go](internal/mcp/auth_probe.go): External MCP `ClientManager`, `/gh` & `/ado` live query bridge onto generic layouts, read-only `gh`/`az` CLI auth probe, and GitHub/ADO MCP presets.
