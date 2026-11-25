@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"vex/internal/ai"
 	"vex/internal/autostart"
 	"vex/internal/indexer"
 	"vex/internal/logging"
@@ -21,20 +20,13 @@ import (
 	"vex/internal/models"
 	"vex/internal/plugins"
 	"vex/internal/search"
-	"vex/internal/secrets"
 	"vex/internal/updater"
-)
-
-const (
-	secretServiceName     = "vex"
-	secretAccountAIAPIKey = "ai_api_key"
 )
 
 // UserPrefs stores human-friendly UI and onboarding preferences in config.json.
 type UserPrefs struct {
 	OnboardingCompleted bool     `json:"onboardingCompleted"`
 	PowerUserMode       bool     `json:"powerUserMode"`
-	AIEnabled           bool     `json:"aiEnabled"`
 	LaunchAtLogin       bool     `json:"launchAtLogin,omitempty"`
 	LayoutMode          string   `json:"layoutMode,omitempty"` // "compact" (hero + runner-ups, default) or "split"
 	SelectedGoals       []string `json:"selectedGoals,omitempty"`
@@ -44,7 +36,6 @@ type UserPrefs struct {
 
 // RuntimeConfig is persisted at <baseDir>/config.json.
 type RuntimeConfig struct {
-	AI            ai.Config                  `json:"ai"`
 	MCPAddr       string                     `json:"mcpAddr"`
 	Hotkey        string                     `json:"hotkey"`
 	LogLevel      string                     `json:"logLevel,omitempty"`      // "debug" | "info" | "warn" | "error"
@@ -59,7 +50,6 @@ func defaultHotkey() string {
 
 func defaultRuntimeConfig() RuntimeConfig {
 	return RuntimeConfig{
-		AI:            ai.DefaultConfig(),
 		MCPAddr:       "127.0.0.1:17380",
 		Hotkey:        defaultHotkey(),
 		LogLevel:      "info",
@@ -88,29 +78,19 @@ type Backend struct {
 	Search     *search.Service
 	Plugins    *plugins.Manager
 	Runner     *plugins.Runner
-	AI         *ai.Service
 	MCPHub     *mcp.HubServer
 	MCPClients *mcp.ClientManager
 	Logger     *logging.Manager
-	Updater     *updater.Checker
-	Secrets     secrets.Store
-	Autostart   autostart.Manager
-	AppService  *AppService
+	Updater    *updater.Checker
+	Autostart  autostart.Manager
+	AppService *AppService
 
 	mu  sync.RWMutex
 	cfg RuntimeConfig
 }
 
-// InitBackend initializes storage, watcher, search, plugins, AI, and MCP services under baseDir.
+// InitBackend initializes storage, watcher, search, plugins, and MCP services under baseDir.
 func InitBackend(baseDir string, startWatcher bool) (*Backend, error) {
-	return InitBackendWithSecrets(baseDir, startWatcher, nil)
-}
-
-// InitBackendWithSecrets initializes the backend with an explicit secrets.Store (useful for tests).
-func InitBackendWithSecrets(baseDir string, startWatcher bool, secretStore secrets.Store) (*Backend, error) {
-	if secretStore == nil {
-		secretStore = secrets.NewDefaultStore()
-	}
 	if strings.TrimSpace(baseDir) == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -149,24 +129,6 @@ func InitBackendWithSecrets(baseDir string, startWatcher bool, secretStore secre
 	}
 	slog.SetDefault(logMgr.Logger())
 	logMgr.Component("app").Info("backend_initializing", "base_dir", baseDir, "log_level", logMgr.Level())
-
-	// Migrate any legacy plaintext AI API key from config.json into the OS secret store,
-	// or hydrate the in-memory AI config from the secret store.
-	if legacyKey := strings.TrimSpace(cfg.AI.APIKey); legacyKey != "" {
-		if err := secretStore.Set(secretServiceName, secretAccountAIAPIKey, legacyKey); err != nil {
-			logMgr.Component("app").Warn("ai_api_key_secret_migration_failed", "err", err)
-		} else {
-			cfg.AI.APIKey = ""
-			if saveErr := saveRuntimeConfig(configPath, cfg); saveErr != nil {
-				logMgr.Component("app").Warn("ai_api_key_config_scrub_failed", "err", saveErr)
-			} else {
-				logMgr.Component("app").Info("ai_api_key_migrated_to_secret_store")
-			}
-			cfg.AI.APIKey = legacyKey
-		}
-	} else if storedKey, err := secretStore.Get(secretServiceName, secretAccountAIAPIKey); err == nil && strings.TrimSpace(storedKey) != "" {
-		cfg.AI.APIKey = storedKey
-	}
 
 	store, err := indexer.OpenStore(dbPath)
 	if err != nil {
@@ -207,15 +169,6 @@ func InitBackendWithSecrets(baseDir string, startWatcher bool, secretStore secre
 
 	searchSvc := search.NewService(store)
 	searchSvc.SetPluginProvider(pluginMgr)
-
-	aiSvc := ai.NewService(searchSvc, store, cfg.AI)
-	if strings.TrimSpace(cfg.AI.EmbeddingModel) != "" {
-		searchSvc.SetEmbedder(func(ctx context.Context, text string) ([]float32, string, error) {
-			embedCtx, cancel := context.WithTimeout(ctx, 1500*time.Millisecond)
-			defer cancel()
-			return aiSvc.Embed(embedCtx, text)
-		})
-	}
 
 	var b *Backend
 	reloadPatterns := func() {
@@ -289,14 +242,12 @@ func InitBackendWithSecrets(baseDir string, startWatcher bool, secretStore secre
 		Search:      searchSvc,
 		Plugins:     pluginMgr,
 		Runner:      runner,
-		AI:          aiSvc,
 		MCPHub:      mcpHub,
 		MCPClients:  mcpClients,
 		Logger:      logMgr,
 		Updater:     updater.NewChecker(),
-		Secrets:     secretStore,
 		Autostart:   autostart.NewDefaultManager(currentAppInfo().Name),
-		cfg:         scrubConfigSecrets(cfg),
+		cfg:         cfg,
 	}
 	b.AppService = &AppService{backend: b}
 	logMgr.Component("app").Info("backend_ready", "active_cards", logMgr.Metrics.ActiveCards.Load(), "enabled_modules", logMgr.Metrics.EnabledModules.Load())
@@ -382,13 +333,7 @@ func loadRuntimeConfig(path string) RuntimeConfig {
 	return cfg
 }
 
-func scrubConfigSecrets(cfg RuntimeConfig) RuntimeConfig {
-	cfg.AI.APIKey = ""
-	return cfg
-}
-
 func saveRuntimeConfig(path string, cfg RuntimeConfig) error {
-	cfg = scrubConfigSecrets(cfg)
 	raw, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return err
@@ -619,10 +564,6 @@ func (s *AppService) SampleRawData(rawContent, filenameHint string) (*models.Raw
 	return indexer.SampleRawData([]byte(rawContent), filenameHint)
 }
 
-func (s *AppService) GenerateETLMappingWithPreview(rawContent, filenameHint, userHint string) (*ai.ETLMappingPreview, error) {
-	return s.backend.AI.GenerateETLMappingWithPreview(context.Background(), []byte(rawContent), filenameHint, userHint)
-}
-
 func (s *AppService) ImportWithRule(rawContent string, rule models.ETLMappingRule) (*ImportResult, error) {
 	cards, err := indexer.TransformWithRule([]byte(rawContent), rule)
 	if err != nil {
@@ -648,14 +589,6 @@ func (s *AppService) ImportWithRule(rawContent string, rule models.ETLMappingRul
 		ImportedCount: len(cards),
 		FilePath:      savedPath,
 	}, nil
-}
-
-func (s *AppService) AskRAG(req ai.RAGRequest) (*ai.RAGResponse, error) {
-	return s.backend.AI.AskRAG(context.Background(), req, nil)
-}
-
-func (s *AppService) GetAIConfig() ai.Config {
-	return s.backend.AI.GetConfig()
 }
 
 func (s *AppService) GetUserPrefs() UserPrefs {
@@ -705,11 +638,11 @@ func (s *AppService) SetEnabledModules(moduleIDs []string) ([]models.ModuleStatu
 }
 
 func (s *AppService) ImportModuleJSON(rawJSON string) (*models.ModuleStatus, error) {
-	var manifest models.ModuleManifest
-	if err := json.Unmarshal([]byte(rawJSON), &manifest); err != nil {
-		return nil, fmt.Errorf("invalid module JSON: %w", err)
+	manifest, valRes := models.ValidateModuleJSON([]byte(rawJSON))
+	if !valRes.Valid || manifest == nil {
+		return nil, fmt.Errorf("invalid module JSON: %w", valRes.Err())
 	}
-	saved, err := indexer.SaveCustomModule(s.backend.ModulesDir, manifest)
+	saved, err := indexer.SaveCustomModule(s.backend.ModulesDir, *manifest)
 	if err != nil {
 		return nil, err
 	}
@@ -849,47 +782,26 @@ func (s *AppService) ImportGitHubReposJSON(rawJSON string) (*models.ModuleStatus
 	return s.ImportModuleJSON(string(rawMod))
 }
 
-func (s *AppService) SetAIConfig(cfg ai.Config) error {
-	s.backend.AI.SetConfig(cfg)
-	normalized := s.backend.AI.GetConfig()
-
-	if s.backend.Secrets != nil {
-		if key := strings.TrimSpace(normalized.APIKey); key != "" {
-			if err := s.backend.Secrets.Set(secretServiceName, secretAccountAIAPIKey, key); err != nil {
-				return fmt.Errorf("store AI API key: %w", err)
-			}
-		} else {
-			if err := s.backend.Secrets.Delete(secretServiceName, secretAccountAIAPIKey); err != nil {
-				return fmt.Errorf("delete AI API key: %w", err)
-			}
-		}
-	}
-
-	if strings.TrimSpace(normalized.EmbeddingModel) != "" {
-		s.backend.Search.SetEmbedder(func(ctx context.Context, text string) ([]float32, string, error) {
-			embedCtx, cancel := context.WithTimeout(ctx, 1500*time.Millisecond)
-			defer cancel()
-			return s.backend.AI.Embed(embedCtx, text)
-		})
-	} else {
-		s.backend.Search.SetEmbedder(nil)
-	}
-
-	s.backend.mu.Lock()
-	scrubbedAI := normalized
-	scrubbedAI.APIKey = ""
-	s.backend.cfg.AI = scrubbedAI
-	snapshot := s.backend.cfg
-	s.backend.mu.Unlock()
-	return saveRuntimeConfig(s.backend.ConfigPath, snapshot)
-}
-
-func (s *AppService) SyncEmbeddings() (int, error) {
-	return s.backend.AI.SyncMissingEmbeddings(context.Background())
-}
-
 func (s *AppService) ListCollections() ([]indexer.CollectionStats, error) {
 	return s.backend.Store.ListCollections(context.Background())
+}
+
+// RecordCardUsed records usage of cardID in SQLite card_recents for the empty-state recents list.
+func (s *AppService) RecordCardUsed(cardID string) error {
+	return s.backend.Store.RecordCardUsed(context.Background(), cardID)
+}
+
+// ListRecentCards returns up to limit recently used cards projected as Rolodex CardNodes.
+func (s *AppService) ListRecentCards(limit int) ([]models.CardNode, error) {
+	cards, err := s.backend.Store.ListRecentCards(context.Background(), limit)
+	if err != nil {
+		return nil, err
+	}
+	nodes := make([]models.CardNode, 0, len(cards))
+	for _, c := range cards {
+		nodes = append(nodes, c.ToCardNode(0))
+	}
+	return nodes, nil
 }
 
 func (s *AppService) ListMCPServers() []mcp.ConnectedServerStatus {

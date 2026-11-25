@@ -385,29 +385,23 @@ func buildVirtualCards(cfg ExternalServerConfig, tools []mcplib.Tool, resources 
 			Subtitle:    fmt.Sprintf("MCP Tool • %s", cfg.Name),
 			Description: desc,
 			Collection:  collection,
-			Template:    models.TemplateCommand,
+			Layout:      models.LayoutFacts,
 			Icon:        "plug",
 			Tags:        []string{"mcp", cfg.ID, "mcp-tool"},
 			Modifiers:   []string{"mcp", cfg.ID},
 			Data: map[string]any{
-				"mcpServerId": cfg.ID,
-				"mcpServer":   cfg.Name,
-				"mcpKind":     "tool",
-				"toolName":    tool.Name,
-				"inputSchema": tool.InputSchema,
+				"summary": desc,
+				"facts": []map[string]any{
+					{"label": "MCP Server", "value": cfg.Name},
+					{"label": "Tool", "value": tool.Name, "mono": true, "copyable": true},
+					{"label": "Kind", "value": "tool"},
+				},
 			},
 			Actions: []models.CardAction{
 				{
-					ID:       "ask-tool",
-					Label:    "Use Tool with AI",
-					Shortcut: "Enter",
-					Type:     "ai_prompt",
-					Target:   fmt.Sprintf("Use MCP tool %s from server %s for: {{query}}", tool.Name, cfg.ID),
-				},
-				{
 					ID:       "copy-tool",
 					Label:    "Copy Tool Name",
-					Shortcut: "Cmd+C",
+					Shortcut: "Enter",
 					Type:     "copy",
 					Target:   tool.Name,
 				},
@@ -434,35 +428,32 @@ func buildVirtualCards(cfg ExternalServerConfig, tools []mcplib.Tool, resources 
 		if desc == "" {
 			desc = fmt.Sprintf("External MCP resource %s provided by %s.", res.URI, cfg.Name)
 		}
+		facts := []map[string]any{
+			{"label": "MCP Server", "value": cfg.Name},
+			{"label": "URI", "value": res.URI, "mono": true, "copyable": true},
+		}
+		if strings.TrimSpace(res.MIMEType) != "" {
+			facts = append(facts, map[string]any{"label": "MIME Type", "value": res.MIMEType, "mono": true})
+		}
 		card := models.SearchCard{
 			ID:          fmt.Sprintf("mcp-%s-res-%s", cfg.ID, models.Slugify(res.URI)),
 			Title:       title,
 			Subtitle:    res.URI,
 			Description: desc,
 			Collection:  collection,
-			Template:    models.TemplateKnowledge,
+			Layout:      models.LayoutFacts,
 			Icon:        "database",
 			Tags:        []string{"mcp", cfg.ID, "mcp-resource"},
 			Modifiers:   []string{"mcp", cfg.ID},
 			Data: map[string]any{
-				"mcpServerId": cfg.ID,
-				"mcpServer":   cfg.Name,
-				"mcpKind":     "resource",
-				"uri":         res.URI,
-				"mimeType":    res.MIMEType,
+				"summary": desc,
+				"facts":   facts,
 			},
 			Actions: []models.CardAction{
 				{
-					ID:       "ask-res",
-					Label:    "Summarize Resource with AI",
-					Shortcut: "Enter",
-					Type:     "ai_prompt",
-					Target:   fmt.Sprintf("Summarize MCP resource %s from %s", res.URI, cfg.Name),
-				},
-				{
 					ID:       "copy-uri",
 					Label:    "Copy Resource URI",
-					Shortcut: "Cmd+C",
+					Shortcut: "Enter",
 					Type:     "copy",
 					Target:   res.URI,
 				},

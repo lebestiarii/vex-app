@@ -15,9 +15,6 @@ type DynamicPluginProvider interface {
 	QueryPlugins(ctx context.Context, q ParsedQuery) ([]models.SearchCard, error)
 }
 
-// EmbedderFunc generates a vector embedding for semantic search when configured.
-type EmbedderFunc func(ctx context.Context, text string) ([]float32, string, error)
-
 // SearchResponse is returned to the Wails frontend and MCP tools for every query.
 type SearchResponse struct {
 	Parsed  ParsedQuery            `json:"parsed"`
@@ -25,18 +22,17 @@ type SearchResponse struct {
 	Total   int                    `json:"total"`
 }
 
-// Service coordinates query parsing, hybrid SQLite search, pattern decoding, and dynamic plugin cards.
+// Service coordinates query parsing, SQLite FTS5 search, pattern decoding, and dynamic plugin cards.
 type Service struct {
 	store    *indexer.Store
 	patterns *PatternEngine
 
 	mu             sync.RWMutex
 	pluginProvider DynamicPluginProvider
-	embedder       EmbedderFunc
 	livePatterns   LivePatternExecutor
 }
 
-// NewService creates a SearchService backed by the hybrid SQLite Store.
+// NewService creates a SearchService backed by the SQLite Store.
 func NewService(store *indexer.Store) *Service {
 	return &Service{
 		store:    store,
@@ -51,7 +47,7 @@ func (s *Service) SetPatternRules(rules []models.PatternRule) {
 	}
 }
 
-// PatternRules returns all active compiled PatternRules (custom + built-in).
+// PatternRules returns all active compiled PatternRules.
 func (s *Service) PatternRules() []models.PatternRule {
 	if s.patterns == nil {
 		return nil
@@ -73,13 +69,6 @@ func (s *Service) SetPluginProvider(p DynamicPluginProvider) {
 	s.pluginProvider = p
 }
 
-// SetEmbedder attaches an optional embedding generator for semantic RAG search.
-func (s *Service) SetEmbedder(fn EmbedderFunc) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.embedder = fn
-}
-
 // Parse exposes the Raycast query parser directly (useful for live UI badge rendering).
 func (s *Service) Parse(raw string) ParsedQuery {
 	return Parse(raw)
@@ -94,7 +83,6 @@ func (s *Service) Search(ctx context.Context, rawQuery string, limit int) (*Sear
 
 	s.mu.RLock()
 	pluginProvider := s.pluginProvider
-	embedder := s.embedder
 	livePatterns := s.livePatterns
 	s.mu.RUnlock()
 
@@ -103,16 +91,8 @@ func (s *Service) Search(ctx context.Context, rawQuery string, limit int) (*Sear
 		Collection: pq.Collection,
 		Tags:       pq.Tags,
 		Modifier:   pq.Modifier,
-		Template:   pq.Template,
+		Layout:     pq.Layout,
 		Limit:      limit,
-	}
-
-	// Optional semantic embedding for hybrid RRF (especially valuable in AI RAG mode).
-	if embedder != nil && pq.Text != "" {
-		if vec, modelName, err := embedder(ctx, pq.Text); err == nil && len(vec) > 0 {
-			opts.QueryEmbedding = vec
-			opts.EmbeddingModel = modelName
-		}
 	}
 
 	results, err := s.store.SearchHybrid(ctx, opts)
@@ -207,11 +187,14 @@ func (s *Service) Search(ctx context.Context, rawQuery string, limit int) (*Sear
 			Title:      "Open URL",
 			Subtitle:   pq.Text,
 			Collection: "system",
-			Template:   models.TemplateAppShortcut,
+			Layout:     models.LayoutLink,
 			Icon:       "globe",
+			Data: map[string]any{
+				"url": pq.Text,
+			},
 			Actions: []models.CardAction{
 				{ID: "open", Label: "Open in Browser", Shortcut: "Enter", Type: "open_url", Target: pq.Text},
-				{ID: "pwa", Label: "Open as Web App", Shortcut: "Cmd+Enter", Type: "open_pwa", Target: pq.Text},
+				{ID: "pwa", Label: "Open as Web App", Type: "open_pwa", Target: pq.Text},
 			},
 			UpdatedAt: time.Now().UTC(),
 		}

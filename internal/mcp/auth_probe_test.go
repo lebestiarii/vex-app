@@ -233,18 +233,28 @@ func TestModuleManagementMCPTools(t *testing.T) {
 	}
 
 	// 1. Install starter module via MCP
-	call("install_starter_module", map[string]any{"module_id": "team-templates"})
+	call("install_starter_module", map[string]any{"module_id": "logistics-dictionary"})
 	// 2. Get full module JSON via MCP
-	getRes := call("get_module", map[string]any{"module_id": "team-templates"})
+	getRes := call("get_module", map[string]any{"module_id": "logistics-dictionary"})
 	if len(getRes.Content) == 0 {
 		t.Fatalf("expected module JSON content from get_module")
 	}
-	// 3. Upsert custom module via MCP
+	// 3. Upsert custom module via MCP (strict 9-layout schema)
 	call("upsert_module", map[string]any{
-		"module_json": `{"id":"my-team-edi","name":"My Team EDI","category":"Templates","version":"1.0.0","cards":[{"id":"my-edi-1","title":"My Team EDI Servers","collection":"templates","template":"server-matrix","icon":"🖥️","chips":[{"label":"PROD","tone":"red","dot":"red"}],"data":{"servers":[{"env":"PROD","tone":"red","host":"team-prd-edi01.internal"}]}}]}`,
+		"module_json": `{"id":"my-team-edi","name":"My Team EDI","category":"Servers","version":"1.0.0","cards":[{"id":"my-edi-1","title":"My Team EDI Servers","collection":"servers","layout":"action-list","icon":"🖥️","chips":[{"label":"PROD","tone":"red","dot":"red"}],"data":{"rows":[{"badge":{"label":"PROD","tone":"red","dot":"red"},"primary":"team-prd-edi01.internal","mono":true,"actions":[{"label":"Copy","type":"copy","value":"team-prd-edi01.internal"}]}]}}]}`,
 	})
-	// 4. Delete installed module via MCP
-	call("delete_module", map[string]any{"module_id": "team-templates"})
+	// 4. Reject invalid legacy module in upsert_module
+	badReq := mcplib.CallToolRequest{}
+	badReq.Params.Name = "upsert_module"
+	badReq.Params.Arguments = map[string]any{
+		"module_json": `{"id":"legacy-bad","name":"Legacy Bad","cards":[{"title":"Legacy","collection":"test","template":"server-matrix","data":{"servers":[]}}]}`,
+	}
+	badRes, err := c.CallTool(ctx, badReq)
+	if err != nil || !badRes.IsError {
+		t.Fatalf("expected upsert_module to reject legacy template module, got res=%+v err=%v", badRes, err)
+	}
+	// 5. Delete installed module via MCP
+	call("delete_module", map[string]any{"module_id": "logistics-dictionary"})
 
 	if syncCount != 3 {
 		t.Fatalf("expected 3 OnModulesChanged callbacks (install, upsert, delete), got %d", syncCount)

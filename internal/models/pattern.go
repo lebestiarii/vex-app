@@ -12,10 +12,10 @@ type PatternMCPLookup struct {
 // (for example, resolving AWB prefix "176" via entityKey "air-carrier:176" or SCAC "MAEU"
 // via "ocean-carrier:MAEU") so updating a carrier module automatically updates pattern decoding.
 type PatternDataLookup struct {
-	Alias           string            `json:"alias"`                     // Capture namespace prefix, e.g. "carrier" -> {{carrier.name}}
-	TargetEntityKey string            `json:"targetEntityKey"`           // Template e.g. "air-carrier:{{prefix}}"
-	ExtractFields   map[string]string `json:"extractFields,omitempty"`   // outputKey -> source field ("title", "subtitle", "data.<k>")
-	FallbackValues  map[string]string `json:"fallbackValues,omitempty"`  // outputKey -> fallback if target card not indexed
+	Alias           string            `json:"alias"`                    // Capture namespace prefix, e.g. "carrier" -> {{carrier.name}}
+	TargetEntityKey string            `json:"targetEntityKey"`          // Template e.g. "air-carrier:{{prefix}}"
+	ExtractFields   map[string]string `json:"extractFields,omitempty"`  // outputKey -> source field ("title", "subtitle", "fact.<Label>", "meta.<k>", "data.<k>")
+	FallbackValues  map[string]string `json:"fallbackValues,omitempty"` // outputKey -> fallback if target card not indexed
 }
 
 // PatternLinkRule declaratively controls how a matched pattern links and nests enriched cards
@@ -31,11 +31,11 @@ type PatternLinkRule struct {
 	CopyChildrenOnly bool     `json:"copyChildrenOnly,omitempty"` // Attach only the linked card's children (e.g., Airline Tracking Links)
 	AttachUnder      string   `json:"attachUnder,omitempty"`      // Optional entityKey template of a previously linked child card to nest inside (falls back to top-level child)
 	MaxDepth         int      `json:"maxDepth,omitempty"`         // Max nesting depth (default 2)
-	IncludeFields    []string `json:"includeFields,omitempty"`    // Optional subset of Data fields to include in section summary
+	IncludeFields    []string `json:"includeFields,omitempty"`    // Optional subset of fact labels or data fields to include in section summary
 }
 
-// PatternSegmentSpec declaratively defines one tile in the 3-column segment breakdown grid
-// rendered by the pattern-breakdown template (e.g. MODE / BRANCH / SEQUENCE).
+// PatternSegmentSpec declaratively defines one tile in the segment breakdown grid
+// rendered by the "segments" layout (e.g. MODE / BRANCH / SEQUENCE).
 type PatternSegmentSpec struct {
 	Value   string `json:"value"`          // Template e.g. "{{mode}}"
 	Role    string `json:"role"`           // Uppercase micro label e.g. "MODE"
@@ -63,19 +63,18 @@ type PatternRule struct {
 	SubtitleTemplate    string                       `json:"subtitleTemplate,omitempty"`
 	DescriptionTemplate string                       `json:"descriptionTemplate,omitempty"`
 	ExplanationTemplate string                       `json:"explanationTemplate,omitempty"` // 1-2 sentence plain-English explanation below segment tiles
-	Segments            []PatternSegmentSpec         `json:"segments,omitempty"`            // 3-column breakdown tiles rendered by pattern-breakdown
+	Segments            []PatternSegmentSpec         `json:"segments,omitempty"`            // Breakdown tiles rendered by layout "segments"
 	Collection          string                       `json:"collection,omitempty"`          // Defaults to "patterns"
-	Template            CardTemplateType             `json:"template,omitempty"`            // Defaults to "pattern-breakdown"
+	Layout              CardLayoutType               `json:"layout,omitempty"`              // Defaults to "segments"
 	Icon                string                       `json:"icon,omitempty"`
 	DefaultExpanded     bool                         `json:"defaultExpanded,omitempty"`
-	Fields              map[string]string            `json:"fields,omitempty"`         // Structured data fields resolved from captures/lookups
-	GlancePills         []string                     `json:"glancePills,omitempty"`    // Legacy summary pill templates
+	Fields              map[string]string            `json:"fields,omitempty"`         // Optional structured fact templates for non-segments layouts
 	Chips               []GlanceChip                 `json:"chips,omitempty"`          // Typed glance chips (label supports {{templates}})
 	LinkEntityKeys      []string                     `json:"linkEntityKeys,omitempty"` // Shorthand templates resolving to EntityKeys for cross-card enrichment
 	LinkRules           []PatternLinkRule            `json:"linkRules,omitempty"`      // Rich declarative cross-card linking & nesting rules
 	Actions             []CardAction                 `json:"actions,omitempty"`        // Target templates interpolated with captures/lookups
 	LiveMCP             *PatternMCPLookup            `json:"liveMcp,omitempty"`        // Optional live MCP tool query when target server is connected
-	LocalOnly           bool                         `json:"localOnly,omitempty"`      // Exclude synthesized card from external cloud LLM RAG
+	LocalOnly           bool                         `json:"localOnly,omitempty"`      // Marks synthesized card as localOnly
 	Provenance          *Provenance                  `json:"provenance,omitempty"`
 }
 

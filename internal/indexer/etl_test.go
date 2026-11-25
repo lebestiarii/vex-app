@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,7 +32,7 @@ func TestETLCSVSampleAndTransform(t *testing.T) {
 		Name:             "Import SSH Hosts",
 		SourceFormat:     "csv",
 		TargetCollection: "servers",
-		DefaultTemplate:  models.TemplateKeyValue,
+		DefaultLayout:    models.LayoutFacts,
 		TitleField:       "Name",
 		SubtitleField:    "{{User}}@{{Host}}",
 		DescriptionField: "Notes",
@@ -50,19 +51,18 @@ func TestETLCSVSampleAndTransform(t *testing.T) {
 	if len(cards) != 2 {
 		t.Fatalf("expected 2 cards, got %d", len(cards))
 	}
-	if cards[0].Title != "Prod API" || cards[0].Subtitle != "ubuntu@10.0.1.10" {
+	if cards[0].Title != "Prod API" || cards[0].Subtitle != "ubuntu@10.0.1.10" || cards[0].Layout != models.LayoutFacts {
 		t.Errorf("unexpected card[0]: %+v", cards[0])
 	}
 	if len(cards[0].Actions) != 1 || cards[0].Actions[0].Target != "ssh ubuntu@10.0.1.10" {
 		t.Errorf("unexpected action: %+v", cards[0].Actions)
 	}
-	if cards[0].Data["Host"] != "10.0.1.10" {
-		t.Errorf("expected Data.Host to be preserved, got %+v", cards[0].Data)
+	if !strings.Contains(cards[0].SearchableBody(), "10.0.1.10") {
+		t.Errorf("expected Host fact in SearchableBody, got %q", cards[0].SearchableBody())
 	}
 }
 
 func TestETLNestedIncompatibleJSON(t *testing.T) {
-	// Simulates a browser bookmark export with nested object array
 	rawJSON := `{
 		"version": 1,
 		"roots": {
@@ -90,7 +90,7 @@ func TestETLNestedIncompatibleJSON(t *testing.T) {
 		SourceFormat:     "json",
 		RootPath:         sample.DetectedRootPath,
 		TargetCollection: "bookmarks",
-		DefaultTemplate:  models.TemplateAppShortcut,
+		DefaultLayout:    models.LayoutLink,
 		TitleField:       "name",
 		SubtitleField:    "url",
 		TagsField:        "meta.category",
@@ -105,8 +105,8 @@ func TestETLNestedIncompatibleJSON(t *testing.T) {
 	if len(cards) != 2 {
 		t.Fatalf("expected 2 bookmark cards, got %d", len(cards))
 	}
-	if cards[0].Actions[0].Target != "https://v3alpha.wails.io" {
-		t.Errorf("unexpected bookmark action target: %+v", cards[0].Actions[0])
+	if cards[0].Layout != models.LayoutLink || cards[0].Data["url"] != "https://v3alpha.wails.io" {
+		t.Errorf("unexpected bookmark link card: %+v", cards[0])
 	}
 	if len(cards[0].Tags) != 1 || cards[0].Tags[0] != "go" {
 		t.Errorf("expected nested tag 'go', got %v", cards[0].Tags)
@@ -123,7 +123,8 @@ func TestWatcherLiveReload(t *testing.T) {
 		Title:       "Initial Card",
 		Description: "Verifies startup scan.",
 		Collection:  "notes",
-		Template:    models.TemplateKnowledge,
+		Layout:      models.LayoutFacts,
+		Data:        map[string]any{"summary": "Initial startup scan note."},
 	}); err != nil {
 		t.Fatalf("UpsertCardToDisk initial: %v", err)
 	}
@@ -150,7 +151,6 @@ func TestWatcherLiveReload(t *testing.T) {
 	}
 	defer watcher.Stop()
 
-	// Verify initial card was indexed
 	initial, err := store.ListCards(ctx, "")
 	if err != nil {
 		t.Fatalf("ListCards: %v", err)
@@ -159,14 +159,14 @@ func TestWatcherLiveReload(t *testing.T) {
 		t.Fatalf("expected 1 initial card, got %d", len(initial))
 	}
 
-	// Add a brand new collection file and wait for fsnotify live indexing
 	newCard := models.SearchCard{
 		ID:          "live-note-1",
-		Title:       "Live Reloaded RAG Note",
+		Title:       "Live Reloaded Note",
 		Description: "Verifies real-time fsnotify file watching.",
 		Collection:  "live-notes",
-		Template:    models.TemplateKnowledge,
+		Layout:      models.LayoutFacts,
 		Tags:        []string{"realtime"},
+		Data:        map[string]any{"summary": "Real-time watch verification."},
 	}
 	savedPath, err := UpsertCardToDisk(tmpDir, newCard)
 	if err != nil {
@@ -187,7 +187,6 @@ func TestWatcherLiveReload(t *testing.T) {
 		}
 	}
 
-	// Remove the file and verify watcher prunes the card
 	if err := os.Remove(savedPath); err != nil {
 		t.Fatalf("os.Remove(%s): %v", savedPath, err)
 	}

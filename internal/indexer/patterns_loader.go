@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -138,19 +137,8 @@ func SavePatternRule(patternsDir string, rule models.PatternRule) (string, error
 	if rule.Name == "" {
 		rule.Name = rule.ID
 	}
-	if rule.Regex == "" {
-		return "", errors.New("pattern rule regex is required")
-	}
-	if rule.TitleTemplate == "" {
-		return "", errors.New("pattern rule titleTemplate is required")
-	}
-
-	expr := rule.Regex
-	if rule.CaseInsensitive && !strings.HasPrefix(expr, "(?i)") {
-		expr = "(?i)" + expr
-	}
-	if _, err := regexp.Compile(expr); err != nil {
-		return "", fmt.Errorf("invalid pattern regex %q: %w", rule.Regex, err)
+	if errs := models.ValidatePatternRule(&rule, ""); len(errs) > 0 {
+		return "", models.ValidationResult{Valid: false, Errors: errs}.Err()
 	}
 
 	if err := os.MkdirAll(patternsDir, 0o755); err != nil {

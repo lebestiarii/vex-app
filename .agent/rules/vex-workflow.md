@@ -43,11 +43,11 @@
 ---
 
 ## 4. Architecture, UI Stability & Cohesive Documentation Guardrails
-- **Acyclic Go Package Graph**: `internal/models` → `internal/indexer` → `internal/search` → `internal/plugins` → (`internal/ai`, `internal/mcp`) → `main`.
+- **Acyclic Go Package Graph**: `internal/models` → `internal/indexer` → `internal/search` → `internal/plugins` → `internal/mcp` → `main`.
 - **UI & Feel Stability Contract**: Preserve existing Light/Dark CSS tokens, layout geometry, card shell behavior, and interaction feel unless UI changes are explicitly requested.
 - **Desktop-First & Platform-Agnostic UI**: No CLI TUI code; never render OS-specific window buttons (traffic lights, Windows chrome) or OS-specific key symbols (`⌘`, `⌥`) in UI components.
 - **Zero Hardcoded Sample Data & Optional Deletable Modules**: Never hardcode demo/sample cards in Go or Angular (`frontend/src/`). Packaged optional starter packs live in `internal/indexer/starter_modules/*.json` and are installed into `~/.vex/modules/` only when selected.
-- **Generic Templates First**: Keep the 5 canonical Angular templates (`location`, `server-matrix`, `website-link`, `pattern-breakdown`, `conversion`) and extended templates (`container-blueprint`, `dictionary-guide`, `kv-grid`, `branch-contact`) content-agnostic and reusable across domains. Follow `.agent/skills/vex-rolodex-ui/SKILL.md`, `.agent/skills/vex-template-authoring/SKILL.md`, and `docs/TEMPLATE_BLUEPRINTS.md`.
+- **Generic Layouts First**: Keep the 9 pure generic layouts (`group`, `link`, `action-list`, `facts`, `segments`, `steps`, `convert`, `table`, `snippet`) content-agnostic, zero-alias, and reusable across domains. Follow `.agent/skills/vex-rolodex-ui/SKILL.md`, `.agent/skills/vex-template-authoring/SKILL.md`, and `docs/TEMPLATE_BLUEPRINTS.md`.
 - **macOS Main-Thread Safety**: Always wrap Wails window/tray/menu mutations inside `GlobalShortcut` or background callbacks with `application.InvokeAsync(func() { ... })`.
 - **Clean `--mcp-stdio`**: Never write non-JSON-RPC bytes to `stdout`.
 - **Less Is More UI**: No UI taglines, catchphrases, or marketing copy.

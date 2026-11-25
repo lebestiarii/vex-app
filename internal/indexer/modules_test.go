@@ -2,8 +2,10 @@ package indexer
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"vex/internal/models"
@@ -21,7 +23,7 @@ func TestParseRepoTaxonomy(t *testing.T) {
 	}
 }
 
-func TestStarterModulesAreOptionalInstallableAndDeletable(t *testing.T) {
+func TestStarterModulesStrictValidationInstallAndDynamicNesting(t *testing.T) {
 	modulesDir := t.TempDir()
 
 	// 1. Fresh user modulesDir has 0 installed modules (nothing forced from Go code!)
@@ -33,33 +35,52 @@ func TestStarterModulesAreOptionalInstallableAndDeletable(t *testing.T) {
 		t.Fatalf("expected 0 modules in clean modulesDir, got %d", len(initial))
 	}
 
-	// 2. Starter catalog contains all 6 real/generic optional modules and every card validates cleanly
-	starters := StarterModules()
-	if len(starters) != 6 {
-		t.Fatalf("expected 6 optional starter modules (zero sample packs), got %d", len(starters))
+	// 2. Starter catalog contains exactly 5 real optional modules (team-templates removed)
+	// and every embedded JSON file passes strict ValidateModuleJSON with 0 errors.
+	entries, err := fs.ReadDir(embeddedStarterModules, "starter_modules")
+	if err != nil {
+		t.Fatalf("ReadDir starter_modules: %v", err)
 	}
-	for _, m := range starters {
-		for i := range m.Cards {
-			c := m.Cards[i]
-			if err := models.ValidateAndNormalizeCard(&c, m.ID); err != nil {
-				t.Fatalf("starter module %q card %q invalid: %v", m.ID, c.ID, err)
+	var jsonFiles []string
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(strings.ToLower(e.Name()), ".json") {
+			if e.Name() == "team-templates.json" {
+				t.Fatalf("team-templates.json must be removed from starter_modules")
+			}
+			jsonFiles = append(jsonFiles, e.Name())
+			raw, readErr := embeddedStarterModules.ReadFile("starter_modules/" + e.Name())
+			if readErr != nil {
+				t.Fatalf("ReadFile(%s): %v", e.Name(), readErr)
+			}
+			mod, res := models.ValidateModuleJSON(raw)
+			if !res.Valid || mod == nil {
+				t.Fatalf("starter module %s failed strict ValidateModuleJSON: %v", e.Name(), res.Err())
 			}
 		}
 	}
+	if len(jsonFiles) != 5 {
+		t.Fatalf("expected 5 starter module JSON files, got %d (%v)", len(jsonFiles), jsonFiles)
+	}
 
-	// 3. Install selected starter modules -> written as real editable JSON files in modulesDir
-	installed, err := InstallStarterModules(modulesDir, []string{"air-carriers", "ocean-carriers", "containers", "logistics-dictionary", "reference-patterns", "team-templates"})
+	// 3. Install all 5 starter modules -> written as real editable JSON files in modulesDir
+	installed, err := InstallStarterModules(modulesDir, []string{
+		"air-carriers",
+		"ocean-carriers",
+		"containers",
+		"logistics-dictionary",
+		"reference-patterns",
+	})
 	if err != nil {
 		t.Fatalf("InstallStarterModules: %v", err)
 	}
-	if len(installed) != 6 {
-		t.Fatalf("expected 6 installed modules, got %d", len(installed))
+	if len(installed) != 5 {
+		t.Fatalf("expected 5 installed modules, got %d", len(installed))
 	}
 	if _, err := os.Stat(filepath.Join(modulesDir, "air-carriers.json")); err != nil {
 		t.Fatalf("expected air-carriers.json on disk: %v", err)
 	}
 
-	// Verify carrier counts and container blueprint cards
+	// 4. Sync into SQLite v3 and verify flat-on-disk children hydrate dynamically via entity_links
 	store, err := OpenStore(":memory:")
 	if err != nil {
 		t.Fatalf("OpenStore: %v", err)
@@ -71,16 +92,20 @@ func TestStarterModulesAreOptionalInstallableAndDeletable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SyncModules: %v", err)
 	}
-	if len(statuses) != 6 {
-		t.Fatalf("expected 6 module statuses, got %d", len(statuses))
+	if len(statuses) != 5 {
+		t.Fatalf("expected 5 module statuses, got %d", len(statuses))
 	}
 
 	hc40, err := store.GetCard(ctx, "container-40hc")
-	if err != nil || hc40 == nil || len(hc40.Children) != 2 {
-		t.Fatalf("expected container-40hc with 2 nested children, got %+v (err=%v)", hc40, err)
+	if err != nil || hc40 == nil || hc40.Layout != models.LayoutGroup || len(hc40.Children) != 2 {
+		t.Fatalf("expected container-40hc (group) with 2 dynamically hydrated children, got %+v (err=%v)", hc40, err)
+	}
+	ek176, err := store.GetCard(ctx, "air-carrier-176")
+	if err != nil || ek176 == nil || ek176.Layout != models.LayoutFacts || len(ek176.Children) != 1 || ek176.Children[0].Layout != models.LayoutLink {
+		t.Fatalf("expected air-carrier-176 (facts) with 1 link child, got %+v (err=%v)", ek176, err)
 	}
 
-	// 4. Deleting a module removes the JSON file permanently and never resurrects it
+	// 5. Deleting a module removes the JSON file permanently and never resurrects it
 	if err := DeleteModule(modulesDir, "containers"); err != nil {
 		t.Fatalf("DeleteModule(containers): %v", err)
 	}
@@ -88,8 +113,8 @@ func TestStarterModulesAreOptionalInstallableAndDeletable(t *testing.T) {
 		t.Fatalf("expected containers.json to be deleted from disk")
 	}
 	afterDel, _, err := LoadAllModules(modulesDir)
-	if err != nil || len(afterDel) != 5 {
-		t.Fatalf("expected 5 modules after deleting containers, got %d (err=%v)", len(afterDel), err)
+	if err != nil || len(afterDel) != 4 {
+		t.Fatalf("expected 4 modules after deleting containers, got %d (err=%v)", len(afterDel), err)
 	}
 }
 
@@ -106,7 +131,8 @@ func TestCompileLocalOnlyModulePropagation(t *testing.T) {
 					EntityKey:  "ent:1",
 					Title:      "Entity One",
 					Collection: "core",
-					Template:   models.TemplateKnowledge,
+					Layout:     models.LayoutFacts,
+					Data:       map[string]any{"summary": "Base entity"},
 				},
 			},
 		},
@@ -121,7 +147,8 @@ func TestCompileLocalOnlyModulePropagation(t *testing.T) {
 					ID:         "secret-runbook",
 					Title:      "Secret Runbook",
 					Collection: "vault",
-					Template:   models.TemplateKnowledge,
+					Layout:     models.LayoutFacts,
+					Data:       map[string]any{"summary": "Internal runbook"},
 				},
 			},
 			Overlays: []models.CardOverlay{
@@ -129,7 +156,7 @@ func TestCompileLocalOnlyModulePropagation(t *testing.T) {
 					TargetEntityKey: "ent:1",
 					Section: models.CardSection{
 						Title: "Internal Credentials",
-						Notes: "Do not send to cloud LLMs",
+						Notes: "Local only notes",
 					},
 				},
 				{

@@ -3,10 +3,15 @@ package main
 import (
 	"embed"
 	"flag"
+	"fmt"
+	"io"
 	"io/fs"
 	"log"
+	"os"
 	"runtime"
 	"strings"
+
+	"vex/internal/models"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -14,7 +19,39 @@ import (
 //go:embed all:frontend/dist
 var embeddedFrontend embed.FS
 
+func runValidateCLI(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 {
+		fmt.Fprintln(stderr, "usage: vex validate <module.json> [more.json...]")
+		return 1
+	}
+	exitCode := 0
+	for _, path := range args {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			fmt.Fprintf(stderr, "FAIL %s: %v\n", path, err)
+			exitCode = 1
+			continue
+		}
+		mod, res := models.ValidateModuleJSON(raw)
+		if !res.Valid {
+			fmt.Fprintf(stderr, "FAIL %s (%d error(s)):\n", path, len(res.Errors))
+			for _, fe := range res.Errors {
+				fmt.Fprintf(stderr, "  - %s\n", fe.String())
+			}
+			exitCode = 1
+			continue
+		}
+		fmt.Fprintf(stdout, "OK %s (module=%s cards=%d patterns=%d)\n", path, mod.ID, len(mod.Cards), len(mod.Patterns))
+	}
+	return exitCode
+}
+
 func main() {
+	// 0. CLI subcommand: `vex validate <path.json> [...]`
+	if len(os.Args) >= 2 && os.Args[1] == "validate" {
+		os.Exit(runValidateCLI(os.Args[2:], os.Stdout, os.Stderr))
+	}
+
 	mcpStdio := flag.Bool("mcp-stdio", false, "Run headless MCP JSON-RPC server over stdio (for Claude Desktop, Cursor, Copilot CLI, VS Code)")
 	dataDir := flag.String("data-dir", "", "Override base data directory (default ~/.vex)")
 	mcpAddrFlag := flag.String("mcp-addr", "", "Override HTTP MCP server address (default 127.0.0.1:17380; pass 'off' to disable)")

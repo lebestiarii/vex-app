@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -286,22 +287,34 @@ func parseDynamicOutput(p PluginManifest, raw []byte) ([]models.SearchCard, erro
 		}
 	}
 
-	// Wrap arbitrary JSON object into a metric-card or kv-grid widget card
+	// Wrap arbitrary JSON object into a strict facts layout card
 	var dataMap map[string]any
 	if err := json.Unmarshal(trimmed, &dataMap); err == nil && len(dataMap) > 0 {
-		tpl := models.TemplateMetric
-		if format == "kv-grid" {
-			tpl = models.TemplateKeyValue
+		keys := make([]string, 0, len(dataMap))
+		for k := range dataMap {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		facts := make([]map[string]any, 0, len(keys))
+		for _, k := range keys {
+			val := strings.TrimSpace(fmt.Sprintf("%v", dataMap[k]))
+			if val != "" {
+				facts = append(facts, map[string]any{"label": k, "value": val})
+			}
+		}
+		payload := map[string]any{"facts": facts}
+		if len(facts) == 0 {
+			payload = map[string]any{"summary": p.Name}
 		}
 		card := models.SearchCard{
 			ID:         fmt.Sprintf("plugin-%s-live", p.ID),
 			Title:      p.Name,
 			Subtitle:   p.Description,
 			Collection: col,
-			Template:   tpl,
+			Layout:     models.LayoutFacts,
 			Icon:       p.Icon,
 			Modifiers:  p.Modifiers,
-			Data:       dataMap,
+			Data:       payload,
 			Actions: []models.CardAction{
 				{ID: "copy-json", Label: "Copy JSON Output", Shortcut: "Enter", Type: "copy", Target: string(trimmed)},
 			},
@@ -319,9 +332,10 @@ func parseDynamicOutput(p PluginManifest, raw []byte) ([]models.SearchCard, erro
 		Subtitle:    firstLine(textOut),
 		Description: textOut,
 		Collection:  col,
-		Template:    models.TemplateKnowledge,
+		Layout:      models.LayoutSnippet,
 		Icon:        p.Icon,
 		Modifiers:   p.Modifiers,
+		Data:        map[string]any{"body": textOut},
 		Actions: []models.CardAction{
 			{ID: "copy-out", Label: "Copy Output", Shortcut: "Enter", Type: "copy", Target: textOut},
 		},

@@ -4,7 +4,7 @@
   "category": "Patterns",
   "description": "Configurable pattern-matching module emitting 3-column segment breakdown cards for House Bills, IATA MAWBs (Mod-7), and ISO 6346 Containers (Mod-11) with full-width nested entities.",
   "icon": "🧩",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "defaultEnabled": true,
   "patterns": [
     {
@@ -49,7 +49,7 @@
         { "value": "{{serial}}", "role": "SEQUENCE", "meaning": "Shipment #", "tone": "green" }
       ],
       "collection": "patterns",
-      "template": "pattern-breakdown",
+      "layout": "segments",
       "icon": "🧩",
       "defaultExpanded": true,
       "chips": [
@@ -57,13 +57,6 @@
         { "label": "Valid ✓", "tone": "green" },
         { "label": "Origin: {{lookup.branch}}", "tone": "neutral" }
       ],
-      "fields": {
-        "reference_type": "House Bill of Lading (HBL)",
-        "reference_number": "{{match}}",
-        "mode": "{{lookup.mode}}",
-        "origin_branch": "{{lookup.branch}}",
-        "serial": "{{serial}}"
-      },
       "linkRules": [
         {
           "targetEntityKey": "loc:{{lookup.branch}}",
@@ -92,10 +85,9 @@
           "alias": "carrier",
           "targetEntityKey": "air-carrier:{{prefix}}",
           "extractFields": {
-            "name": "data.shortName",
+            "name": "fact.Short Name",
             "fullName": "title",
-            "iata": "data.iataCode",
-            "trackingUrl": "data.trackingUrl"
+            "iata": "fact.IATA Code"
           },
           "fallbackValues": {
             "name": "IATA Carrier",
@@ -112,22 +104,14 @@
         { "value": "{{check}}", "role": "MOD-7", "meaning": "{{checksum.status}}", "tone": "green" }
       ],
       "collection": "air-freight",
-      "template": "pattern-breakdown",
+      "layout": "segments",
       "icon": "✈️",
       "defaultExpanded": true,
       "chips": [
-        { "label": "MAWB", "tone": "blue" },
+        { "label": "IATA Air", "tone": "blue" },
         { "label": "Mod-7 {{checksum.symbol}}", "tone": "green" },
         { "label": "Prefix {{prefix}}", "tone": "neutral" }
       ],
-      "fields": {
-        "reference_type": "IATA Master Air Waybill (MAWB)",
-        "awb_number": "{{prefix}}-{{serial}}{{check}}",
-        "airline_prefix": "{{prefix}}",
-        "carrier": "{{carrier.fullName}}",
-        "serial_number": "{{serial}}",
-        "check_digit": "{{check}} ({{checksum.status}})"
-      },
       "linkRules": [
         {
           "targetEntityKey": "air-carrier:{{prefix}}",
@@ -192,8 +176,8 @@
           "alias": "ocean",
           "targetEntityKey": "ocean-carrier:{{lookup.bic_scac}}",
           "extractFields": {
-            "name": "data.shortName",
-            "scac": "data.scac"
+            "name": "fact.Short Name",
+            "scac": "fact.SCAC"
           },
           "fallbackValues": {
             "name": "BIC {{bic}}",
@@ -210,7 +194,7 @@
         { "value": "{{check}}", "role": "MOD-11", "meaning": "{{checksum.status}}", "tone": "green" }
       ],
       "collection": "ocean-freight",
-      "template": "pattern-breakdown",
+      "layout": "segments",
       "icon": "🚢",
       "defaultExpanded": true,
       "chips": [
@@ -218,14 +202,6 @@
         { "label": "Mod-11 {{checksum.symbol}}", "tone": "green" },
         { "label": "BIC {{bic}}", "tone": "neutral" }
       ],
-      "fields": {
-        "reference_type": "ISO 6346 Container",
-        "container_number": "{{bic}}{{serial}}{{check}}",
-        "bic_prefix": "{{bic}}",
-        "carrier": "{{ocean.name}}",
-        "category": "{{lookup.category}}",
-        "check_digit": "{{check}} ({{checksum.status}})"
-      },
       "linkRules": [
         {
           "targetEntityKey": "ocean-carrier:{{lookup.bic_scac}}",

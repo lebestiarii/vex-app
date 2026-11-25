@@ -179,9 +179,9 @@ func SaveCustomModule(modulesDir string, mod models.ModuleManifest) (models.Modu
 	}
 	for i := range mod.Cards {
 		mod.Cards[i].ModuleID = mod.ID
-		if err := models.ValidateAndNormalizeCard(&mod.Cards[i], mod.ID); err != nil {
-			return mod, fmt.Errorf("card %d: %w", i, err)
-		}
+	}
+	if res := models.ValidateModuleManifest(&mod); !res.Valid {
+		return mod, res.Err()
 	}
 	if err := os.MkdirAll(modulesDir, 0o755); err != nil {
 		return mod, err
@@ -349,6 +349,30 @@ func CompileActiveModules(all []models.ModuleManifest, enabledIDs []string) []mo
 				if hasSection {
 					secs = []models.CardSection{sec}
 				}
+				factsData := map[string]any{}
+				if len(sec.Fields) > 0 {
+					keys := make([]string, 0, len(sec.Fields))
+					for k := range sec.Fields {
+						keys = append(keys, k)
+					}
+					sort.Strings(keys)
+					items := make([]map[string]any, 0, len(keys))
+					for _, k := range keys {
+						val := strings.TrimSpace(fmt.Sprintf("%v", sec.Fields[k]))
+						if val != "" {
+							items = append(items, map[string]any{"label": k, "value": val})
+						}
+					}
+					if len(items) > 0 {
+						factsData["facts"] = items
+					}
+				}
+				if strings.TrimSpace(sec.Notes) != "" {
+					factsData["summary"] = strings.TrimSpace(sec.Notes)
+				}
+				if len(factsData) == 0 {
+					factsData["summary"] = fallbackTitle
+				}
 				synth := models.SearchCard{
 					ID:          synthID,
 					EntityKey:   ov.TargetEntityKey,
@@ -357,11 +381,12 @@ func CompileActiveModules(all []models.ModuleManifest, enabledIDs []string) []mo
 					Subtitle:    sec.Title + " • " + mod.Name,
 					Description: sec.Notes,
 					Collection:  fallbackCol,
-					Template:    models.TemplateKeyValue,
+					Layout:      models.LayoutFacts,
 					Icon:        mod.Icon,
 					Tags:        appendUniqueStrings(nil, ov.AddTags...),
 					Modifiers:   appendUniqueStrings(nil, ov.AddModifiers...),
 					RelatedKeys: appendUniqueStrings(nil, ov.AddRelatedKeys...),
+					Data:        factsData,
 					Sections:    secs,
 					Children:    ov.ChildCards,
 					Actions:     sec.Actions,
@@ -443,9 +468,6 @@ func cloneCard(c models.SearchCard) models.SearchCard {
 	}
 	if len(c.Modifiers) > 0 {
 		out.Modifiers = append([]string(nil), c.Modifiers...)
-	}
-	if len(c.GlancePills) > 0 {
-		out.GlancePills = append([]string(nil), c.GlancePills...)
 	}
 	if len(c.Chips) > 0 {
 		out.Chips = append([]models.GlanceChip(nil), c.Chips...)

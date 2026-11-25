@@ -3,7 +3,7 @@
 **Vex** is a desktop-first, platform-agnostic, local-first knowledge Rolodex, configurable pattern decoder, and MCP hub built with **Go + Wails v3** and **Angular 22** (Standalone Components + Signals + Zoneless).
 
 ## Core Architecture & Guardrails
-- **Acyclic Go Packages**: `internal/models` → `internal/indexer` → `internal/search` → `internal/plugins` → (`internal/ai`, `internal/mcp`) → `main`.
+- **Acyclic Go Packages**: `internal/models` → `internal/indexer` → `internal/search` → `internal/plugins` → `internal/mcp` → `main`.
 - **UI & Feel Stability**: Preserve Light/Dark CSS tokens (`frontend/src/styles.css`), full-width stacked card geometry (no vertical accordion tree lines, L0→L1→L2 alternating inset surfaces), and interaction feel unless UI changes are explicitly requested.
 - **Platform-Agnostic UI**: Never render OS-specific window chrome (traffic lights, Windows buttons) or OS-specific key glyphs (`⌘`, `⌥`) in UI components.
 - **Zero Hardcoded Sample Data**: Never hardcode demo/sample cards in Go or `frontend/src/`. Optional starter packs live in `internal/indexer/starter_modules/*.json`.

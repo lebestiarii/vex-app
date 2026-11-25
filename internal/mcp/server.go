@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -78,15 +77,13 @@ func NewHubServer(deps ServerDeps) (*HubServer, error) {
 		deps.Version,
 		server.WithToolCapabilities(true),
 		server.WithResourceCapabilities(false, true),
-		server.WithPromptCapabilities(true),
 		server.WithRecovery(),
-		server.WithInstructions("Vex local knowledge launcher, hybrid RAG search engine, and CSV/JSON SearchCard ETL hub. Use schema://search-card or get_card_schema before generating cards or ETLMappingRule objects."),
+		server.WithInstructions("Vex local knowledge Rolodex, configurable pattern decoder, and CSV/JSON SearchCard ETL hub. Use schema://search-card or get_card_schema first, validate manifests with validate_module, then publish with upsert_module."),
 	)
 	s.mcpServer = mcpSrv
 
 	s.registerResources()
 	s.registerTools()
-	s.registerPrompts()
 
 	return s, nil
 }
@@ -410,12 +407,12 @@ func (s *HubServer) registerTools() {
 	// 1. search_knowledge
 	s.mcpServer.AddTool(
 		mcplib.NewTool("search_knowledge",
-			mcplib.WithDescription("Execute hybrid BM25 + semantic vector search across all Vex JSON card collections and dynamic plugins."),
+			mcplib.WithDescription("Execute 4-tier exact/contextual/FTS5/guarded-fuzzy search across all Vex JSON card collections and dynamic plugins."),
 			mcplib.WithReadOnlyHintAnnotation(true),
-			mcplib.WithString("query", mcplib.Required(), mcplib.Description("Search query (supports Raycast modifiers like /cmd, @collection, #tag, type:shortcut).")),
-			mcplib.WithString("collection", mcplib.Description("Optional collection name filter (e.g. devops, shortcuts, knowledge).")),
+			mcplib.WithString("query", mcplib.Required(), mcplib.Description("Search query (supports Raycast modifiers like /cmd, @collection, #tag, layout:facts).")),
+			mcplib.WithString("collection", mcplib.Description("Optional collection name filter (e.g. devops, air-carriers, containers).")),
 			mcplib.WithArray("tags", mcplib.Description("Optional tag filters."), mcplib.WithStringItems()),
-			mcplib.WithString("template", mcplib.Description("Optional template filter (shortcut, knowledge, command, kv-grid, metric-card).")),
+			mcplib.WithString("layout", mcplib.Description("Optional layout filter (group, link, action-list, facts, segments, steps, convert, table, snippet).")),
 			mcplib.WithNumber("limit", mcplib.Description("Maximum results to return (default 10).")),
 		),
 		s.handleSearchKnowledge,
@@ -555,18 +552,29 @@ func (s *HubServer) registerTools() {
 		s.handleGetModule,
 	)
 
-	// 15. upsert_module
+	// 15. validate_module
+	s.mcpServer.AddTool(
+		mcplib.NewTool("validate_module",
+			mcplib.WithDescription("Strictly validate a ModuleManifest JSON object or string against Vex's zero-alias 9-layout schema, chip/echo invariants, and depth <= 2 nesting rules without writing to disk."),
+			mcplib.WithReadOnlyHintAnnotation(true),
+			mcplib.WithObject("module", mcplib.Description("ModuleManifest JSON object to validate.")),
+			mcplib.WithString("module_json", mcplib.Description("Optional raw JSON string representation of a ModuleManifest.")),
+		),
+		s.handleValidateModule,
+	)
+
+	// 16. upsert_module
 	s.mcpServer.AddTool(
 		mcplib.NewTool("upsert_module",
-			mcplib.WithDescription("Create or update a ModuleManifest JSON file in ~/.vex/modules/<id>.json (cards, nested children, templates, overlays, and pattern rules) and immediately re-index Vex."),
+			mcplib.WithDescription("Strictly validate and save a ModuleManifest JSON file in ~/.vex/modules/<id>.json (flat-on-disk cards, overlays, and pattern rules) and immediately re-index Vex."),
 			mcplib.WithIdempotentHintAnnotation(true),
-			mcplib.WithObject("module", mcplib.Description("ModuleManifest JSON object conforming to schema://search-card#/definitions/ModuleManifest.")),
+			mcplib.WithObject("module", mcplib.Description("ModuleManifest JSON object conforming to schema://search-card#/$defs/ModuleManifest.")),
 			mcplib.WithString("module_json", mcplib.Description("Optional raw JSON string representation of a ModuleManifest.")),
 		),
 		s.handleUpsertModule,
 	)
 
-	// 16. delete_module
+	// 17. delete_module
 	s.mcpServer.AddTool(
 		mcplib.NewTool("delete_module",
 			mcplib.WithDescription("Permanently remove an installed module JSON file from ~/.vex/modules/<id>.json and re-sync the index."),
@@ -575,10 +583,10 @@ func (s *HubServer) registerTools() {
 		s.handleDeleteModule,
 	)
 
-	// 17. install_starter_module
+	// 18. install_starter_module
 	s.mcpServer.AddTool(
 		mcplib.NewTool("install_starter_module",
-			mcplib.WithDescription("Install an optional packaged starter module (e.g. gateways-starter, air-carriers, ocean-carriers, containers, logistics-dictionary, reference-patterns, team-templates) into ~/.vex/modules/."),
+			mcplib.WithDescription("Install an optional packaged starter module (air-carriers, ocean-carriers, containers, logistics-dictionary, reference-patterns) into ~/.vex/modules/."),
 			mcplib.WithString("module_id", mcplib.Required(), mcplib.Description("Starter module ID to install.")),
 		),
 		s.handleInstallStarterModule,
@@ -608,7 +616,7 @@ func (s *HubServer) handleSearchKnowledge(ctx context.Context, req mcplib.CallTo
 	query := strings.TrimSpace(req.GetString("query", ""))
 	collection := strings.TrimSpace(req.GetString("collection", ""))
 	tags := req.GetStringSlice("tags", nil)
-	template := strings.TrimSpace(req.GetString("template", ""))
+	layout := strings.TrimSpace(req.GetString("layout", ""))
 	limit := req.GetInt("limit", 10)
 	if limit <= 0 {
 		limit = 10
@@ -624,8 +632,8 @@ func (s *HubServer) handleSearchKnowledge(ctx context.Context, req mcplib.CallTo
 			queryParts = append(queryParts, "#"+t)
 		}
 	}
-	if template != "" && !strings.Contains(query, "type:") {
-		queryParts = append(queryParts, "type:"+template)
+	if layout != "" && !strings.Contains(query, "layout:") && !strings.Contains(query, "type:") {
+		queryParts = append(queryParts, "layout:"+layout)
 	}
 	if query != "" {
 		queryParts = append(queryParts, query)
@@ -669,7 +677,7 @@ func (s *HubServer) handleGetCardSchema(ctx context.Context, req mcplib.CallTool
 		Name:             "CSV Bookmarks Import",
 		SourceFormat:     "csv",
 		TargetCollection: "bookmarks",
-		DefaultTemplate:  models.TemplateAppShortcut,
+		DefaultLayout:    models.LayoutLink,
 		TitleField:       "{{Name}}",
 		SubtitleField:    "{{Category}}",
 		TagsField:        "Tags",
@@ -680,8 +688,8 @@ func (s *HubServer) handleGetCardSchema(ctx context.Context, req mcplib.CallTool
 	return jsonToolResult(map[string]any{
 		"schema":         schemaObj,
 		"exampleETLRule": exampleRule,
-		"templates":      []string{"shortcut", "knowledge", "command", "kv-grid", "metric-card"},
-		"actionTypes":    []string{"open_url", "open_pwa", "launch_app", "copy", "http", "ai_prompt"},
+		"layouts":        models.LayoutNames(),
+		"actionTypes":    []string{"open_url", "open_pwa", "launch_app", "copy", "http"},
 	})
 }
 
@@ -1029,23 +1037,56 @@ func (s *HubServer) handleGetModule(_ context.Context, req mcplib.CallToolReques
 	return mcplib.NewToolResultError(fmt.Sprintf("module %q is not installed", moduleID)), nil
 }
 
+func extractRawModuleJSON(req mcplib.CallToolRequest) ([]byte, error) {
+	if rawStr := strings.TrimSpace(req.GetString("module_json", "")); rawStr != "" {
+		return []byte(rawStr), nil
+	}
+	if args := req.GetArguments(); args != nil {
+		if rawObj, ok := args["module"]; ok && rawObj != nil {
+			if str, isStr := rawObj.(string); isStr {
+				return []byte(str), nil
+			}
+			b, err := json.Marshal(rawObj)
+			if err != nil {
+				return nil, fmt.Errorf("marshal module object: %w", err)
+			}
+			return b, nil
+		}
+	}
+	return nil, errors.New("either module or module_json is required")
+}
+
+func (s *HubServer) handleValidateModule(_ context.Context, req mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
+	raw, err := extractRawModuleJSON(req)
+	if err != nil {
+		return mcplib.NewToolResultError(err.Error()), nil
+	}
+	mod, res := models.ValidateModuleJSON(raw)
+	payload := map[string]any{
+		"valid":  res.Valid,
+		"errors": res.Errors,
+	}
+	if mod != nil {
+		payload["moduleId"] = mod.ID
+		payload["cardCount"] = len(mod.Cards)
+		payload["patternCount"] = len(mod.Patterns)
+	}
+	return jsonToolResult(payload)
+}
+
 func (s *HubServer) handleUpsertModule(_ context.Context, req mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
 	if strings.TrimSpace(s.deps.ModulesDir) == "" {
 		return mcplib.NewToolResultError("modules directory is not configured on this MCP server"), nil
 	}
-	var mod models.ModuleManifest
-	if rawStr := strings.TrimSpace(req.GetString("module_json", "")); rawStr != "" {
-		if err := json.Unmarshal([]byte(rawStr), &mod); err != nil {
-			return mcplib.NewToolResultErrorFromErr("invalid module_json", err), nil
-		}
-	} else if args := req.GetArguments(); args != nil {
-		if rawObj, ok := args["module"]; ok && rawObj != nil {
-			if err := decodeArg(rawObj, &mod); err != nil {
-				return mcplib.NewToolResultErrorFromErr("decode ModuleManifest", err), nil
-			}
-		}
+	raw, err := extractRawModuleJSON(req)
+	if err != nil {
+		return mcplib.NewToolResultError(err.Error()), nil
 	}
-	saved, err := indexer.SaveCustomModule(s.deps.ModulesDir, mod)
+	mod, valRes := models.ValidateModuleJSON(raw)
+	if !valRes.Valid || mod == nil {
+		return mcplib.NewToolResultError("module validation failed: " + valRes.Err().Error()), nil
+	}
+	saved, err := indexer.SaveCustomModule(s.deps.ModulesDir, *mod)
 	if err != nil {
 		return mcplib.NewToolResultErrorFromErr("save module", err), nil
 	}
@@ -1195,66 +1236,6 @@ func (s *HubServer) handleGetSkill(_ context.Context, req mcplib.CallToolRequest
 		return mcplib.NewToolResultErrorFromErr("read skill", err), nil
 	}
 	return mcplib.NewToolResultText(md), nil
-}
-
-// --- Prompts ---
-
-func (s *HubServer) registerPrompts() {
-	s.mcpServer.AddPrompt(
-		mcplib.NewPrompt(
-			"rag_context_prompt",
-			mcplib.WithPromptDescription("Retrieves top matching Vex SearchCards for a topic and formats a grounded RAG context prompt."),
-			mcplib.WithArgument("topic", mcplib.RequiredArgument(), mcplib.ArgumentDescription("Question or topic to search in the local knowledge base.")),
-			mcplib.WithArgument("collection", mcplib.ArgumentDescription("Optional collection filter (e.g. devops, knowledge).")),
-			mcplib.WithArgument("limit", mcplib.ArgumentDescription("Maximum number of cards to include (default 6).")),
-		),
-		func(ctx context.Context, req mcplib.GetPromptRequest) (*mcplib.GetPromptResult, error) {
-			topic := strings.TrimSpace(req.Params.Arguments["topic"])
-			if topic == "" {
-				return nil, errors.New("topic argument is required")
-			}
-			collection := strings.TrimSpace(req.Params.Arguments["collection"])
-			limit := 6
-			if rawLim := strings.TrimSpace(req.Params.Arguments["limit"]); rawLim != "" {
-				if n, err := strconv.Atoi(rawLim); err == nil && n > 0 {
-					limit = n
-				}
-			}
-
-			query := topic
-			if collection != "" {
-				query = "@" + strings.TrimPrefix(collection, "@") + " " + query
-			}
-			resp, err := s.deps.Search.Search(ctx, query, limit)
-			if err != nil {
-				return nil, err
-			}
-
-			var b strings.Builder
-			fmt.Fprintf(&b, "Answer the user's question about %q using the following Vex knowledge cards:\n\n", topic)
-			if len(resp.Results) == 0 {
-				b.WriteString("(No matching cards found.)\n")
-			} else {
-				for i, r := range resp.Results {
-					fmt.Fprintf(&b, "[%d] %s (@%s | %s)\n", i+1, r.Card.Title, r.Card.Collection, r.Card.Template)
-					if r.Card.Subtitle != "" {
-						fmt.Fprintf(&b, "Subtitle: %s\n", r.Card.Subtitle)
-					}
-					if body := r.Card.SearchableBody(); body != "" {
-						fmt.Fprintf(&b, "%s\n", body)
-					}
-					b.WriteByte('\n')
-				}
-			}
-
-			return mcplib.NewGetPromptResult(
-				fmt.Sprintf("Vex RAG context for %q", topic),
-				[]mcplib.PromptMessage{
-					mcplib.NewPromptMessage(mcplib.RoleUser, mcplib.NewTextContent(b.String())),
-				},
-			), nil
-		},
-	)
 }
 
 // --- Helpers ---

@@ -310,14 +310,58 @@ func extractCardField(c models.SearchCard, expr string) string {
 	case "collection":
 		return c.Collection
 	}
+	if strings.HasPrefix(expr, "fact.") {
+		label := strings.TrimSpace(strings.TrimPrefix(expr, "fact."))
+		if val := extractFactByLabel(c.Data, label); val != "" {
+			return val
+		}
+	}
+	if strings.HasPrefix(expr, "meta.") {
+		key := strings.TrimSpace(strings.TrimPrefix(expr, "meta."))
+		if meta, ok := c.Data["meta"].(map[string]any); ok {
+			if v, exists := meta[key]; exists && v != nil {
+				return strings.TrimSpace(fmt.Sprintf("%v", v))
+			}
+		}
+	}
 	if strings.HasPrefix(expr, "data.") {
 		key := strings.TrimPrefix(expr, "data.")
 		if v, ok := c.Data[key]; ok && v != nil {
 			return strings.TrimSpace(fmt.Sprintf("%v", v))
 		}
+		if val := extractFactByLabel(c.Data, key); val != "" {
+			return val
+		}
 	}
 	if v, ok := c.Data[expr]; ok && v != nil {
 		return strings.TrimSpace(fmt.Sprintf("%v", v))
+	}
+	return ""
+}
+
+func extractFactByLabel(data map[string]any, label string) string {
+	if len(data) == 0 || label == "" {
+		return ""
+	}
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return ""
+	}
+	var payload models.FactsLayoutData
+	if json.Unmarshal(raw, &payload) != nil {
+		return ""
+	}
+	for _, f := range payload.Facts {
+		if strings.EqualFold(strings.TrimSpace(f.Label), label) {
+			return strings.TrimSpace(f.Value)
+		}
+	}
+	for _, v := range payload.Views {
+		for _, f := range v.Facts {
+			if strings.EqualFold(strings.TrimSpace(f.Label), label) {
+				return strings.TrimSpace(f.Value)
+			}
+		}
 	}
 	return ""
 }
@@ -447,27 +491,24 @@ func buildPatternCard(rule models.PatternRule, captures map[string]string) model
 	if col == "" {
 		col = "patterns"
 	}
-	tpl := rule.Template
-	if tpl == "" {
-		tpl = models.TemplatePatternBreakdown
+	layout := rule.Layout
+	if layout == "" {
+		layout = models.LayoutSegments
 	}
 	icon := rule.Icon
 	if icon == "" {
 		icon = "🧩"
 	}
 
-	data := make(map[string]any, len(rule.Fields)+4)
-	data["patternId"] = rule.ID
-	data["matchedInput"] = captures["match"]
-	for k, tmpl := range rule.Fields {
-		v := strings.TrimSpace(interpolatePattern(tmpl, rule, captures))
-		if v != "" {
-			data[k] = v
-		}
-	}
-	if len(rule.Segments) > 0 {
+	title := strings.TrimSpace(interpolatePattern(rule.TitleTemplate, rule, captures))
+	subtitle := strings.TrimSpace(interpolatePattern(rule.SubtitleTemplate, rule, captures))
+	description := strings.TrimSpace(interpolatePattern(rule.DescriptionTemplate, rule, captures))
+
+	data := make(map[string]any)
+	switch layout {
+	case models.LayoutSegments:
 		defaultTones := []string{"blue", "amber", "green"}
-		segs := make([]map[string]string, 0, len(rule.Segments))
+		segs := make([]map[string]string, 0, max(1, len(rule.Segments)))
 		for i, seg := range rule.Segments {
 			tone := strings.TrimSpace(seg.Tone)
 			if tone == "" {
@@ -480,12 +521,43 @@ func buildPatternCard(rule models.PatternRule, captures map[string]string) model
 				"tone":    tone,
 			})
 		}
+		if len(segs) == 0 {
+			segs = append(segs, map[string]string{
+				"value":   captures["match"],
+				"role":    "MATCH",
+				"meaning": firstNonEmptyPattern(rule.Name, rule.ID),
+				"tone":    "blue",
+			})
+		}
 		data["segments"] = segs
-	}
-	if strings.TrimSpace(rule.ExplanationTemplate) != "" {
-		data["explanation"] = strings.TrimSpace(interpolatePattern(rule.ExplanationTemplate, rule, captures))
-	} else if strings.TrimSpace(rule.DescriptionTemplate) != "" {
-		data["explanation"] = strings.TrimSpace(interpolatePattern(rule.DescriptionTemplate, rule, captures))
+		explanation := strings.TrimSpace(interpolatePattern(rule.ExplanationTemplate, rule, captures))
+		if explanation == "" {
+			explanation = firstNonEmptyPattern(description, subtitle, rule.Description, rule.Name)
+		}
+		data["explanation"] = explanation
+
+	case models.LayoutFacts:
+		if len(rule.Fields) > 0 {
+			keys := make([]string, 0, len(rule.Fields))
+			for k := range rule.Fields {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			items := make([]map[string]any, 0, len(keys))
+			for _, k := range keys {
+				if v := strings.TrimSpace(interpolatePattern(rule.Fields[k], rule, captures)); v != "" {
+					items = append(items, map[string]any{"label": k, "value": v})
+				}
+			}
+			if len(items) > 0 {
+				data["facts"] = items
+			}
+		}
+		if summary := firstNonEmptyPattern(strings.TrimSpace(interpolatePattern(rule.ExplanationTemplate, rule, captures)), description, subtitle); summary != "" {
+			data["summary"] = summary
+		} else if len(data) == 0 {
+			data["summary"] = firstNonEmptyPattern(rule.Name, captures["match"])
+		}
 	}
 
 	var chips []models.GlanceChip
@@ -509,22 +581,6 @@ func buildPatternCard(rule models.PatternRule, captures map[string]string) model
 		})
 		if len(chips) == 4 {
 			break
-		}
-	}
-
-	pills := make([]string, 0, len(rule.GlancePills))
-	for _, tmpl := range rule.GlancePills {
-		v := strings.TrimSpace(interpolatePattern(tmpl, rule, captures))
-		if v != "" {
-			pills = append(pills, v)
-		}
-		if len(pills) == 3 {
-			break
-		}
-	}
-	if len(pills) == 0 && len(chips) > 0 {
-		for i := 0; i < len(chips) && i < 3; i++ {
-			pills = append(pills, chips[i].Label)
 		}
 	}
 
@@ -562,15 +618,14 @@ func buildPatternCard(rule models.PatternRule, captures map[string]string) model
 
 	return models.SearchCard{
 		ID:              "pattern-" + models.Slugify(rule.ID) + "-" + models.Slugify(captures["match"]),
-		Title:           strings.TrimSpace(interpolatePattern(rule.TitleTemplate, rule, captures)),
-		Subtitle:        strings.TrimSpace(interpolatePattern(rule.SubtitleTemplate, rule, captures)),
-		Description:     strings.TrimSpace(interpolatePattern(rule.DescriptionTemplate, rule, captures)),
+		Title:           title,
+		Subtitle:        subtitle,
+		Description:     description,
 		Collection:      col,
-		Template:        tpl,
+		Layout:          layout,
 		Icon:            icon,
 		Tags:            []string{"pattern", rule.ID},
 		Chips:           chips,
-		GlancePills:     pills,
 		Data:            data,
 		DefaultExpanded: rule.DefaultExpanded,
 		Actions:         actions,
@@ -580,8 +635,30 @@ func buildPatternCard(rule models.PatternRule, captures map[string]string) model
 }
 
 func enrichCardFromLiveMCP(ctx context.Context, card *models.SearchCard, rule models.PatternRule, captures map[string]string, liveExec LivePatternExecutor) {
+	attachLiveFacts := func(title, summary string, facts []map[string]any) {
+		payload := map[string]any{}
+		if strings.TrimSpace(summary) != "" {
+			payload["summary"] = strings.TrimSpace(summary)
+		}
+		if len(facts) > 0 {
+			payload["facts"] = facts
+		}
+		if len(payload) == 0 {
+			return
+		}
+		card.Children = append(card.Children, models.SearchCard{
+			ID:         card.ID + "-live-mcp",
+			Title:      title,
+			Collection: card.Collection,
+			Layout:     models.LayoutFacts,
+			Icon:       "⚡",
+			Data:       payload,
+			LocalOnly:  card.LocalOnly,
+		})
+	}
+
 	if liveExec == nil {
-		card.Data["live_status"] = fmt.Sprintf("Connect %q MCP server in Settings to fetch live details", rule.LiveMCP.ServerID)
+		attachLiveFacts("Live MCP Lookup", fmt.Sprintf("Connect %q MCP server to fetch live details", rule.LiveMCP.ServerID), nil)
 		return
 	}
 
@@ -595,7 +672,7 @@ func enrichCardFromLiveMCP(ctx context.Context, card *models.SearchCard, rule mo
 
 	text, serverLocalOnly, err := liveExec.ExecutePatternMCP(liveCtx, rule.LiveMCP.ServerID, rule.LiveMCP.ToolName, args)
 	if err != nil {
-		card.Data["live_status"] = fmt.Sprintf("MCP %q offline (%s)", rule.LiveMCP.ServerID, err.Error())
+		attachLiveFacts("Live MCP Lookup", fmt.Sprintf("MCP %q offline (%s)", rule.LiveMCP.ServerID, err.Error()), nil)
 		return
 	}
 	if serverLocalOnly || rule.LocalOnly {
@@ -618,11 +695,6 @@ func enrichCardFromLiveMCP(ctx context.Context, card *models.SearchCard, rule mo
 		if desc, ok := obj["description"].(string); ok && strings.TrimSpace(desc) != "" {
 			card.Description = strings.TrimSpace(desc)
 		}
-		if state, ok := obj["state"].(string); ok && strings.TrimSpace(state) != "" {
-			if len(card.GlancePills) < 3 {
-				card.GlancePills = append(card.GlancePills, strings.TrimSpace(state))
-			}
-		}
 		if rawURL, ok := obj["url"].(string); ok && (strings.HasPrefix(rawURL, "https://") || strings.HasPrefix(rawURL, "http://")) {
 			card.Actions = append([]models.CardAction{
 				{ID: "open-live-url", Label: "Open in Browser", Shortcut: "Enter", Type: "open_url", Target: rawURL},
@@ -633,21 +705,27 @@ func enrichCardFromLiveMCP(ctx context.Context, card *models.SearchCard, rule mo
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
+		var facts []map[string]any
 		for _, k := range keys {
+			if k == "description" || k == "url" {
+				continue
+			}
 			v := obj[k]
 			switch tv := v.(type) {
 			case string:
-				if strings.TrimSpace(tv) != "" && k != "description" {
-					card.Data[k] = strings.TrimSpace(tv)
+				if strings.TrimSpace(tv) != "" {
+					facts = append(facts, map[string]any{"label": k, "value": strings.TrimSpace(tv)})
 				}
 			case float64, bool:
-				card.Data[k] = tv
+				facts = append(facts, map[string]any{"label": k, "value": fmt.Sprintf("%v", tv)})
 			}
 		}
+		attachLiveFacts("Live MCP Details", "", facts)
 		return
 	}
 
 	card.Description = text
+	attachLiveFacts("Live MCP Details", text, nil)
 }
 
 var patternPlaceholderRe = regexp.MustCompile(`\{\{\s*([^}]+?)\s*\}\}`)

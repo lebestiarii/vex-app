@@ -30,7 +30,7 @@ func TestOpenURLSecurityValidation(t *testing.T) {
 			ID:         "sec-test",
 			Title:      "Test",
 			Collection: "test",
-			Template:   models.TemplateAppShortcut,
+			Layout:     models.LayoutLink,
 			Actions:    []models.CardAction{{ID: "open", Label: "Open", Type: "open_url", Target: target}},
 		}
 		res := runner.Execute(context.Background(), card, "open", search.ParsedQuery{}, nil)
@@ -45,7 +45,8 @@ func TestOpenURLSecurityValidation(t *testing.T) {
 		ID:         "sec-ok",
 		Title:      "Valid",
 		Collection: "test",
-		Template:   models.TemplateAppShortcut,
+		Layout:     models.LayoutLink,
+		Data:       map[string]any{"url": "https://hts.usitc.gov/search?query=8471"},
 		Actions:    []models.CardAction{{ID: "open", Label: "Open", Type: "open_url", Target: "https://hts.usitc.gov/search?query=8471"}},
 	}
 	res := runner.Execute(context.Background(), validCard, "open", search.ParsedQuery{}, nil)

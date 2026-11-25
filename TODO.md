@@ -1,6 +1,6 @@
 # Vex — Phased Implementation Roadmap & TODOs
 
-> **Design North Star**: *Less is more.* Desktop-first, platform-agnostic, local-first knowledge Rolodex with optional deletable modules, configurable pattern matching, full-width stacked nestable templates (Light/Dark mode), and live MCP authoring + agent skill sharing. Keep the Go package graph acyclic (`internal/models` → `internal/indexer` → `internal/search` → `internal/plugins` → `internal/ai` / `internal/mcp` → `main`), keep `stdout` 100% clean in `--mcp-stdio` mode, and wrap all macOS Wails window/tray/menu mutations in `application.InvokeAsync`.
+> **Design North Star**: *Less is more.* Desktop-first, platform-agnostic, local-first knowledge Rolodex with optional deletable modules, configurable pattern matching, 9 pure generic full-width stacked nestable layouts (Light/Dark mode), and live MCP authoring + agent skill sharing. Keep the Go package graph acyclic (`internal/models` → `internal/indexer` → `internal/search` → `internal/plugins` → `internal/mcp` → `main`), keep `stdout` 100% clean in `--mcp-stdio` mode, and wrap all macOS Wails window/tray/menu mutations in `application.InvokeAsync`.
 
 ---
 
@@ -48,6 +48,12 @@
   - [x] Rewrote `SearchCard.SearchableBody()` to extract human-readable leaf values only (excluding structural JSON keys, URLs, and Go map dumps) and added `ChipsText()`.
   - [x] Implemented 4-tier `SearchHybrid` (`exact` → whole-token FTS5 & 1-hop `contextual` neighbors → prefix FTS5 → guarded metadata-only `fuzzy`), dynamic relevance cliff, converter/pattern score precedence, and `limit = 10` active query cap in `AppComponent` (UI/CSS untouched).
   - [x] Added Go v0→v2 migration, `AMS` precision/anti-sprawl, and `AppComponent` Vitest specs (**21 passing frontend tests**, 11 Go packages passing with `-race`), plus `.agent/skills/vex-search-ranking/SKILL.md`.
+- [x] **Phase 10A — Simplified Vex Core, 9 Pure Generic Layouts, Strict Validator & SQLite v3 Flat-on-Disk (`feat/phase-10`)**:
+  - [x] Removed embedded AI RAG & vector pipeline (`internal/ai/`, `internal/secrets/`, `card_embeddings`, `QueryEmbedding`, `ai_prompt`, `AskRAG`/`GetAIConfig`/`SetAIConfig`/`SyncEmbeddings`, `rag_context_prompt`), keeping `internal/mcp/server.go`, `internal/mcp/client.go`, and `internal/mcp/auth_probe.go` intact.
+  - [x] Replaced all 16 legacy templates/aliases with the 9 pure generic layouts (`CardLayoutType`, JSON field `"layout"`: `group`, `link`, `action-list`, `facts`, `segments`, `steps`, `convert`, `table`, `snippet`), strict `additionalProperties: false` compiler-as-referee validator (`ValidateAndNormalizeCard`, `ValidateModuleManifest`, `ValidateModuleJSON`), strict Draft 2020-12 `CardJSONSchema()`, MCP `validate_module` tool (20 tools total), and CLI `vex validate <path.json>`.
+  - [x] Upgraded SQLite atomically (`PRAGMA user_version = 3`) with `parent_entity_key`, `entity_links` (`child_of` / `related_to`) dynamic 2-level cross-module child hydration, `card_recents` (`RecordCardUsed` / `ListRecentCards` Wails RPCs), and a strict layout-aware `SearchableBody()` whitelist.
+  - [x] Migrated all 5 starter modules (`air-carriers.json`, `ocean-carriers.json`, `containers.json`, `logistics-dictionary.json`, `reference-patterns.json`) to strict flat-on-disk 9-layout schemas with zero echo chips and removed `team-templates.json`.
+  - [x] Verified all 9 Go packages with `go test -race -count=1 ./...` and built `bin/macos/vex`.
 
 ---
 

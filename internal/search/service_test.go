@@ -27,25 +27,29 @@ func TestSearchServiceModesAndPlugins(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.UpsertCard(ctx, models.SearchCard{
+	if err := store.UpsertCard(ctx, models.SearchCard{
 		ID:          "gh-card",
 		Title:       "GitHub Pull Requests",
 		Subtitle:    "Review open PRs",
 		Collection:  "shortcuts",
-		Template:    models.TemplateAppShortcut,
+		Layout:      models.LayoutLink,
 		Tags:        []string{"git", "work"},
 		Modifiers:   []string{"gh"},
 		Description: "Opens repository pull request dashboard",
-	}, "shortcuts.json")
+		Data:        map[string]any{"url": "https://github.com/pulls"},
+	}, "shortcuts.json"); err != nil {
+		t.Fatalf("UpsertCard: %v", err)
+	}
 
 	svc := NewService(store)
 	svc.SetPluginProvider(stubPluginProvider{
 		cards: []models.SearchCard{
 			{
 				ID:         "plugin-live-1",
-				Title:      "Dynamic Plugin Metric",
+				Title:      "Dynamic Plugin Status",
 				Collection: "plugin-live",
-				Template:   models.TemplateMetric,
+				Layout:     models.LayoutFacts,
+				Data:       map[string]any{"summary": "Cluster healthy"},
 			},
 		},
 	})
@@ -68,8 +72,8 @@ func TestSearchServiceModesAndPlugins(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Search URL fallback: %v", err)
 		}
-		if len(resp.Results) != 1 || resp.Results[0].Card.ID != "builtin-quick-url" {
-			t.Fatalf("expected quick URL fallback card, got %+v", resp.Results)
+		if len(resp.Results) != 1 || resp.Results[0].Card.ID != "builtin-quick-url" || resp.Results[0].Card.Layout != models.LayoutLink {
+			t.Fatalf("expected quick URL fallback link card, got %+v", resp.Results)
 		}
 	})
 }
@@ -89,7 +93,7 @@ func TestSearchServicePrecisionAndPrecedence(t *testing.T) {
 			Title:      "Amsterdam Gateway (AMS)",
 			Subtitle:   "Netherlands Hub",
 			Collection: "locations",
-			Template:   models.TemplateLocation,
+			Layout:     models.LayoutGroup,
 			Chips:      []models.GlanceChip{{Label: "NLAMS · AMS", Tone: "mono"}},
 		},
 		{
@@ -97,14 +101,16 @@ func TestSearchServicePrecisionAndPrecedence(t *testing.T) {
 			Title:       "Platform Teams",
 			Description: "On-call teams roster",
 			Collection:  "org",
-			Template:    models.TemplateKnowledge,
+			Layout:      models.LayoutFacts,
+			Data:        map[string]any{"summary": "On-call teams roster"},
 		},
 		{
 			ID:          "weight-guide",
 			Title:       "100 kg Cargo Limit",
 			Description: "Standard 100 kg pallet rule",
 			Collection:  "guides",
-			Template:    models.TemplateKnowledge,
+			Layout:      models.LayoutFacts,
+			Data:        map[string]any{"summary": "Standard 100 kg pallet rule"},
 		},
 	}
 	for _, c := range seed {
@@ -123,7 +129,7 @@ func TestSearchServicePrecisionAndPrecedence(t *testing.T) {
 			Priority:      10,
 			Regex:         `^REF-(?P<num>\d{4})$`,
 			TitleTemplate: "Reference {{num}}",
-			Template:      models.TemplatePatternBreakdown,
+			Layout:        models.LayoutSegments,
 		},
 	})
 
