@@ -35,11 +35,15 @@
   - [x] Replaced browse-all empty state in `AppComponent` with **Pinned** (max 3) + **Recent** (last 6 via `listRecentCards()`) + subtle total indexed count (`listCollections()`), and added full Level 0 keyboard navigation (`ArrowDown`/`ArrowUp`, `Enter` primary action, two-stage `Escape`).
   - [x] Polished `ModulesDialogComponent` (full-width 3-row cards, separated Starter Catalog with `[Install]` only and zero checkboxes, modal heading focus hygiene, live MCP `● Listening`/`○ Off` status pill + `[Copy Client JSON]`) and `PatternsDialogComponent` (top Live Test bar with rendered `segments` card preview, per-rule Enabled switch, example + linked entity pills + `Live GET`/`Live MCP` badges, collapsible `Edit JSON` disclosure with inline validator errors).
   - [x] Expanded offline Vitest suite to **33 passing tests across 7 spec files** (`deno task typecheck && deno task test && deno task build`).
+- [x] **Phase 10C — Declarative Pattern `liveHttp` GET Enrichment & GitHub/ADO MCP Query Flow (`feat/phase-10`)**:
+  - [x] Added `PatternLiveHTTP` & `PatternLiveResultSpec` to `models.PatternRule` with strict zero-secret validation (`ValidatePatternLiveHTTP`, rejecting inline tokens, auth headers, non-HTTP(S) schemes, and embedded userinfo) and updated Draft 2020-12 `CardJSONSchema()`.
+  - [x] Implemented injectable `search.LiveHTTPExecutor` + concrete `mcp.LiveHTTPClient` (`internal/mcp/live_http.go`): GET-only HTTP/HTTPS validation, safe `url.PathEscape`/`url.QueryEscape` capture interpolation, in-memory TTL response cache, cached hardcoded-arg `gh_cli`/`az_devops` & `env:VAR_NAME` auth, JSON dot-path projection (including dotted ADO keys and array indices) into nested `facts`/`table`/`steps`/`link` cards, manual `Fetch Live Data` hydration (`AppService.FetchPatternLiveHTTP`), and muted `Live lookup unavailable` fallback chip.
+  - [x] Wired `/gh <query>` and `/ado <query>` external MCP queries (`internal/mcp/query_bridge.go`, `search.LiveMCPQueryProvider`) mapping repos/PRs/issues and ADO work items strictly onto generic `link`, `facts`, `action-list`, and `table` layouts, added MCP connect/test/disconnect RPCs on `AppService`, surfaced `gh`/`az` CLI auth status + 1-click GitHub/ADO MCP presets in `ModulesDialogComponent`, and added disabled-by-default `ado-work-item` & `github-issue-pr` starter patterns to `reference-patterns.json`.
+  - [x] Expanded offline Vitest suite to **35 passing tests across 7 spec files** and verified full Go `-race` + macOS binary build gates.
 
 ---
 
 ## Upcoming Backlog
-- [ ] **Phase 10C — PatternRule `liveHttp` GET Enrichment**: Add read-only `liveHttp` (`urlTemplate`, `auth: none|gh_cli|az_devops|env:VAR`, 1500ms timeout, 60s cache, JSON path projection into nested `facts`/`table`/`steps`/`link` child cards) in Go `PatternEngine` + schema validation.
 - [ ] **Live Weather Chip Hydration on `group` Location Cards**: Wire optional client-side caching over `AppService.FetchWeather(lat, lon)` when `data.meta.lat`/`lon` is present.
 - [ ] **Persisting Light/Dark Theme Choice in `config.json` (`UserPrefs`)**: Add `theme: "system" | "light" | "dark"` to Go `UserPrefs` so Wails native window styling matches at startup.
 - [ ] **Distribution & Self-Update Flow**: Host `manifest.json` and wire automated binary download + SHA-256 verification (`updater.VerifyFileSHA256`).

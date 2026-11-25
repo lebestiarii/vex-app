@@ -202,7 +202,30 @@ Every card—regardless of layout—is rendered by `RolodexCardShellComponent` i
 │ └──────────────┘  └──────────────┘  └──────────────┘     │
 │ Forwarder-issued House Bill of Lading linking an         │
 │ ocean import shipment to a master consolidation.         │
+│ [ ⚡ Fetch Live Data ]                          gh_cli   │  ← Optional (manual liveHttp)
 └──────────────────────────────────────────────────────────┘
+```
+- When a `PatternRule` includes `liveHttp` (`trigger: "manual"` default), the shell renders a lightweight **`⚡ Fetch Live Data`** button below the explanation that invokes `AppService.FetchPatternLiveHTTP(ruleID, rawQuery)` and hydrates a nested `facts`, `table`, `steps`, or `link` child card (or appends a muted `Live lookup unavailable` chip on timeout/error without discarding the local decode).
+```json
+{
+  "liveHttp": {
+    "urlTemplate": "https://api.github.com/repos/{{owner}}/{{repo}}/issues/{{num}}",
+    "trigger": "manual",
+    "timeoutMs": 1500,
+    "cacheTtlSec": 60,
+    "auth": "gh_cli",
+    "headers": { "Accept": "application/vnd.github+json" },
+    "resultCard": {
+      "layout": "facts",
+      "title": "{{json.title}}",
+      "summary": "Opened by @{{json.user.login}}",
+      "facts": [
+        { "label": "State", "value": "{{json.state}}" },
+        { "label": "URL", "value": "{{json.html_url}}", "mono": true, "copyable": true }
+      ]
+    }
+  }
+}
 ```
 
 ### 2.6 `steps` — N-Step Lifecycle Timeline (`StepsCardComponent`)

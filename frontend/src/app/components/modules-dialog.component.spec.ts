@@ -58,6 +58,12 @@ describe('ModulesDialogComponent', () => {
     getUserPrefs: ReturnType<typeof vi.fn>;
     setUserPrefs: ReturnType<typeof vi.fn>;
     getLogInfo: ReturnType<typeof vi.fn>;
+    probeCLIAuth: ReturnType<typeof vi.fn>;
+    getConfiguredMCPServers: ReturnType<typeof vi.fn>;
+    listMCPServers: ReturnType<typeof vi.fn>;
+    connectMCPServer: ReturnType<typeof vi.fn>;
+    disconnectMCPServer: ReturnType<typeof vi.fn>;
+    testMCPServer: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -76,6 +82,54 @@ describe('ModulesDialogComponent', () => {
         level: 'info',
         sizeBytes: 120,
         metricsAddr: 'http://127.0.0.1:17380/metrics',
+      }),
+      probeCLIAuth: vi.fn().mockResolvedValue([
+        { tool: 'gh', installed: true, authenticated: true, account: 'octocat', hostOrTenant: 'github.com' },
+        { tool: 'az', installed: true, authenticated: false, detail: 'Not signed in' },
+      ]),
+      getConfiguredMCPServers: vi.fn().mockResolvedValue([
+        {
+          id: 'github',
+          name: 'GitHub MCP Server',
+          transport: 'stdio',
+          command: 'github-mcp-server',
+          args: ['stdio'],
+          enabled: false,
+          localOnly: true,
+        },
+        {
+          id: 'azure-devops',
+          name: 'Azure DevOps MCP Server',
+          transport: 'stdio',
+          command: 'npx',
+          args: ['-y', '@azure-devops/mcp', '<your-org-name>'],
+          enabled: false,
+          localOnly: true,
+        },
+      ]),
+      listMCPServers: vi.fn().mockResolvedValue([]),
+      connectMCPServer: vi.fn().mockResolvedValue({
+        config: {
+          id: 'github',
+          name: 'GitHub MCP Server',
+          transport: 'stdio',
+          command: 'github-mcp-server',
+          args: ['stdio'],
+          enabled: true,
+          localOnly: true,
+        },
+        connected: true,
+        toolCount: 12,
+        resourceCount: 2,
+        cardCount: 14,
+      }),
+      disconnectMCPServer: vi.fn().mockResolvedValue(undefined),
+      testMCPServer: vi.fn().mockResolvedValue({
+        config: { id: 'github', name: 'GitHub MCP Server', transport: 'stdio', enabled: true, localOnly: true },
+        connected: true,
+        toolCount: 12,
+        resourceCount: 2,
+        cardCount: 14,
       }),
     };
   });
@@ -169,5 +223,60 @@ describe('ModulesDialogComponent', () => {
     await fixture.componentInstance.refresh();
     await fixture.whenStable();
     expect(fixture.nativeElement.querySelector('.mcp-status-pill')?.textContent?.trim()).toBe('○ Off');
+  });
+
+  it('displays CLI auth status (gh/az) and allows 1-click connect, test, and disconnect for MCP presets', async () => {
+    TestBed.configureTestingModule({
+      imports: [ModulesDialogComponent],
+      providers: [{ provide: VexBridgeService, useValue: bridgeMock }],
+    });
+    const fixture = TestBed.createComponent(ModulesDialogComponent);
+    await fixture.componentInstance.refresh();
+    await fixture.whenStable();
+
+    const authPills = fixture.nativeElement.querySelectorAll('.cli-auth-pill') as NodeListOf<HTMLElement>;
+    expect(authPills.length).toBe(2);
+    expect(authPills[0].textContent).toContain('gh');
+    expect(authPills[0].textContent).toContain('octocat');
+    expect(authPills[0].classList.contains('authed')).toBe(true);
+    expect(authPills[1].textContent).toContain('az');
+    expect(authPills[1].textContent).toContain('Not signed in');
+
+    const presetCards = fixture.nativeElement.querySelectorAll('.preset-card') as NodeListOf<HTMLElement>;
+    expect(presetCards.length).toBe(2);
+
+    // Connect GitHub preset in 1 click
+    bridgeMock.listMCPServers.mockResolvedValueOnce([
+      {
+        config: {
+          id: 'github',
+          name: 'GitHub MCP Server',
+          transport: 'stdio',
+          command: 'github-mcp-server',
+          args: ['stdio'],
+          enabled: true,
+          localOnly: true,
+        },
+        connected: true,
+        toolCount: 12,
+        resourceCount: 2,
+        cardCount: 14,
+      },
+    ]);
+    const ghConnectBtn = presetCards[0].querySelector('button.primary-btn') as HTMLButtonElement;
+    ghConnectBtn.click();
+    await fixture.whenStable();
+
+    expect(bridgeMock.connectMCPServer).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'github', enabled: true, localOnly: true })
+    );
+
+    // Connected card now exposes Test & Disconnect buttons
+    const connectedButtons = fixture.nativeElement.querySelectorAll('.preset-card:first-child .mod-controls button');
+    expect(connectedButtons[0].textContent?.trim()).toBe('Test');
+    expect(connectedButtons[1].textContent?.trim()).toBe('Disconnect');
+    (connectedButtons[0] as HTMLButtonElement).click();
+    await fixture.whenStable();
+    expect(bridgeMock.testMCPServer).toHaveBeenCalledWith('github');
   });
 });

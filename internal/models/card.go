@@ -1003,6 +1003,7 @@ func CardJSONSchema() string {
         "name": { "type": "string", "minLength": 1 },
         "category": { "type": "string" },
         "description": { "type": "string" },
+        "example": { "type": "string" },
         "enabled": { "type": "boolean", "default": true },
         "priority": { "type": "integer", "default": 0 },
         "normalize": { "type": "array", "items": { "type": "string", "enum": ["trim", "uppercase", "lowercase", "strip-spaces", "strip-dashes"] } },
@@ -1069,6 +1070,7 @@ func CardJSONSchema() string {
           }
         },
         "actions": { "type": "array", "items": { "$ref": "#/$defs/CardAction" } },
+        "liveHttp": { "$ref": "#/$defs/PatternLiveHTTP" },
         "liveMcp": {
           "type": "object",
           "additionalProperties": false,
@@ -1079,6 +1081,69 @@ func CardJSONSchema() string {
           }
         },
         "localOnly": { "type": "boolean" }
+      }
+    },
+    "PatternLiveHTTP": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["urlTemplate", "resultCard"],
+      "description": "Strictly read-only HTTP GET enrichment for a matched PatternRule. Inline secrets and auth headers are forbidden.",
+      "properties": {
+        "urlTemplate": { "type": "string", "format": "uri", "pattern": "^https?://" },
+        "trigger": { "type": "string", "enum": ["auto", "manual"], "default": "manual" },
+        "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 5000, "default": 1500 },
+        "cacheTtlSec": { "type": "integer", "minimum": 1, "maximum": 86400, "default": 60 },
+        "auth": {
+          "type": "string",
+          "default": "none",
+          "description": "Allowed: none, gh_cli, az_devops, or env:VAR_NAME. Raw tokens are rejected."
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Optional non-auth headers (e.g. Accept). Authorization/Cookie/API-Key headers are rejected."
+        },
+        "resultCard": { "$ref": "#/$defs/PatternLiveResultSpec" }
+      }
+    },
+    "PatternLiveResultSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layout"],
+      "description": "Projects JSON response dot-paths ({{json.field.sub}}) into a nested facts, table, steps, or link child card.",
+      "properties": {
+        "layout": { "type": "string", "enum": ["facts", "table", "steps", "link"] },
+        "title": { "type": "string" },
+        "icon": { "type": "string" },
+        "defaultExpanded": { "type": "boolean" },
+        "chips": { "type": "array", "maxItems": 4, "items": { "$ref": "#/$defs/GlanceChip" } },
+        "summary": { "type": "string" },
+        "facts": { "type": "array", "items": { "$ref": "#/$defs/FactItem" } },
+        "url": { "type": "string" },
+        "columns": { "type": "array", "minItems": 2, "maxItems": 4, "items": { "type": "string" } },
+        "rowsPath": { "type": "string" },
+        "rowFields": { "type": "array", "items": { "type": "string" } },
+        "rows": { "type": "array", "items": { "type": "array", "items": { "type": "string" } } },
+        "monoColumns": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 3 } },
+        "sourceUrl": { "type": "string" },
+        "stepsPath": { "type": "string" },
+        "stepLabel": { "type": "string" },
+        "stepCaption": { "type": "string" },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label"],
+            "properties": {
+              "label": { "type": "string" },
+              "caption": { "type": "string" }
+            }
+          }
+        },
+        "activeStep": { "type": "integer", "minimum": 1 },
+        "activeStepPath": { "type": "string" },
+        "bullets": { "type": "array", "items": { "type": "string" } }
       }
     },
     "ETLMappingRule": {

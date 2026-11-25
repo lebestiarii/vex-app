@@ -776,6 +776,265 @@ func ValidatePatternRule(rule *PatternRule, prefix string) []FieldError {
 			add(fmt.Sprintf("actions[%d].type", i), fmt.Sprintf("invalid action type %q", act.Type))
 		}
 	}
+	if rule.LiveHTTP != nil {
+		livePrefix := "liveHttp"
+		if prefix != "" {
+			livePrefix = prefix + ".liveHttp"
+		}
+		errs = append(errs, ValidatePatternLiveHTTP(rule.LiveHTTP, livePrefix)...)
+	}
+
+	return errs
+}
+
+var (
+	liveHTTPPlaceholderRe = regexp.MustCompile(`\{\{\s*[^}]+?\s*\}\}`)
+	envVarNameRe          = regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,63}$`)
+	validLiveHTTPAuth     = map[string]bool{
+		"":          true,
+		"none":      true,
+		"gh_cli":    true,
+		"az_devops": true,
+	}
+	validLiveResultLayouts = map[CardLayoutType]bool{
+		LayoutFacts: true,
+		LayoutTable: true,
+		LayoutSteps: true,
+		LayoutLink:  true,
+	}
+	forbiddenLiveHTTPHeaders = map[string]bool{
+		"authorization":       true,
+		"proxy-authorization": true,
+		"cookie":              true,
+		"set-cookie":          true,
+		"x-api-key":           true,
+		"api-key":             true,
+		"x-auth-token":        true,
+		"x-access-token":      true,
+		"private-token":       true,
+		"x-github-token":      true,
+		"x-token":             true,
+	}
+	inlineSecretValuePrefixes = []string{
+		"bearer ",
+		"basic ",
+		"token ",
+		"ghp_",
+		"gho_",
+		"ghu_",
+		"ghs_",
+		"github_pat_",
+		"glpat-",
+		"sk-",
+		"pat-",
+	}
+)
+
+// ValidateHTTPURLStrict validates a resolved HTTP/HTTPS URL, rejecting control/shell
+// characters, non-http(s) schemes, missing hosts, and embedded userinfo credentials.
+func ValidateHTTPURLStrict(raw string) error {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return errors.New("url is required")
+	}
+	if strings.ContainsAny(trimmed, "\r\n\x00|&;^`$") {
+		return fmt.Errorf("unsafe characters in url %q", trimmed)
+	}
+	u, err := url.Parse(trimmed)
+	if err != nil {
+		return fmt.Errorf("invalid url %q: %w", trimmed, err)
+	}
+	scheme := strings.ToLower(u.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return fmt.Errorf("url %q must use http or https scheme", trimmed)
+	}
+	if strings.TrimSpace(u.Host) == "" {
+		return fmt.Errorf("url %q is missing a host", trimmed)
+	}
+	if u.User != nil {
+		return errors.New("embedded URL credentials (userinfo) are forbidden")
+	}
+	return nil
+}
+
+// ValidatePatternLiveHTTP validates a PatternLiveHTTP configuration, strictly enforcing
+// GET-only http/https URL templates, bounded timeouts, zero inline secrets, and strict
+// nested resultCard projection into facts, table, steps, or link layouts.
+func ValidatePatternLiveHTTP(live *PatternLiveHTTP, prefix string) []FieldError {
+	var errs []FieldError
+	add := func(subPath, msg string) {
+		p := prefix
+		if subPath != "" {
+			if p != "" {
+				p = p + "." + subPath
+			} else {
+				p = subPath
+			}
+		}
+		errs = append(errs, FieldError{Path: p, Message: msg})
+	}
+
+	if live == nil {
+		return nil
+	}
+
+	live.URLTemplate = strings.TrimSpace(live.URLTemplate)
+	if live.URLTemplate == "" {
+		add("urlTemplate", "liveHttp.urlTemplate is required")
+	} else {
+		sampleURL := liveHTTPPlaceholderRe.ReplaceAllString(live.URLTemplate, "sample")
+		if err := ValidateHTTPURLStrict(sampleURL); err != nil {
+			add("urlTemplate", err.Error())
+		}
+	}
+
+	trigger := strings.ToLower(strings.TrimSpace(live.Trigger))
+	if trigger == "" {
+		live.Trigger = "manual"
+	} else if trigger != "auto" && trigger != "manual" {
+		add("trigger", fmt.Sprintf("invalid trigger %q (expected \"auto\" or \"manual\")", live.Trigger))
+	} else {
+		live.Trigger = trigger
+	}
+
+	if live.TimeoutMs < 0 || live.TimeoutMs > 5000 {
+		add("timeoutMs", fmt.Sprintf("timeoutMs %d must be between 0 and 5000", live.TimeoutMs))
+	}
+	if live.CacheTTLSec < 0 || live.CacheTTLSec > 86400 {
+		add("cacheTtlSec", fmt.Sprintf("cacheTtlSec %d must be between 0 and 86400", live.CacheTTLSec))
+	}
+
+	auth := strings.TrimSpace(live.Auth)
+	if auth == "" {
+		live.Auth = "none"
+	} else if validLiveHTTPAuth[auth] {
+		live.Auth = auth
+	} else if strings.HasPrefix(auth, "env:") {
+		varName := strings.TrimPrefix(auth, "env:")
+		if !envVarNameRe.MatchString(varName) {
+			add("auth", fmt.Sprintf("invalid env auth %q (expected env:VAR_NAME with uppercase letters, digits, underscores)", auth))
+		} else {
+			live.Auth = auth
+		}
+	} else {
+		add("auth", fmt.Sprintf("invalid auth %q (allowed: none, gh_cli, az_devops, env:VAR_NAME; inline tokens/secrets are strictly forbidden)", auth))
+	}
+
+	for k, v := range live.Headers {
+		keyTrim := strings.TrimSpace(k)
+		if keyTrim == "" {
+			add("headers", "header name cannot be empty")
+			continue
+		}
+		lowerKey := strings.ToLower(keyTrim)
+		if forbiddenLiveHTTPHeaders[lowerKey] || strings.Contains(lowerKey, "secret") || strings.Contains(lowerKey, "token") || strings.Contains(lowerKey, "key") {
+			add("headers."+keyTrim, fmt.Sprintf("header %q is forbidden; configure authentication via liveHttp.auth instead of inline secrets", keyTrim))
+			continue
+		}
+		if strings.ContainsAny(keyTrim+v, "\r\n\x00") {
+			add("headers."+keyTrim, "header contains illegal control characters")
+			continue
+		}
+		lowerVal := strings.ToLower(strings.TrimSpace(v))
+		for _, badPrefix := range inlineSecretValuePrefixes {
+			if strings.HasPrefix(lowerVal, badPrefix) {
+				add("headers."+keyTrim, "inline tokens or credentials in headers are strictly forbidden")
+				break
+			}
+		}
+	}
+
+	rc := &live.ResultCard
+	if !validLiveResultLayouts[rc.Layout] {
+		add("resultCard.layout", fmt.Sprintf("invalid resultCard.layout %q (allowed: facts, table, steps, link)", rc.Layout))
+		return errs
+	}
+
+	if len(rc.Chips) > 4 {
+		add("resultCard.chips", fmt.Sprintf("max 4 chips allowed (got %d)", len(rc.Chips)))
+	}
+	for i, ch := range rc.Chips {
+		if strings.TrimSpace(ch.Label) == "" {
+			add(fmt.Sprintf("resultCard.chips[%d].label", i), "chip label cannot be empty")
+		}
+		if tone := strings.TrimSpace(ch.Tone); tone != "" && !ValidChipTones[tone] {
+			add(fmt.Sprintf("resultCard.chips[%d].tone", i), fmt.Sprintf("invalid chip tone %q", ch.Tone))
+		}
+		if !ValidChipDots[strings.TrimSpace(ch.Dot)] {
+			add(fmt.Sprintf("resultCard.chips[%d].dot", i), fmt.Sprintf("invalid chip dot %q", ch.Dot))
+		}
+	}
+
+	switch rc.Layout {
+	case LayoutFacts:
+		if strings.TrimSpace(rc.Summary) == "" && len(rc.Facts) == 0 {
+			add("resultCard", "facts resultCard requires summary or at least one fact mapping")
+		}
+		for i, f := range rc.Facts {
+			if strings.TrimSpace(f.Label) == "" {
+				add(fmt.Sprintf("resultCard.facts[%d].label", i), "fact label is required")
+			}
+			if strings.TrimSpace(f.Value) == "" {
+				add(fmt.Sprintf("resultCard.facts[%d].value", i), "fact value template is required")
+			}
+		}
+
+	case LayoutLink:
+		u := strings.TrimSpace(rc.URL)
+		if u == "" {
+			add("resultCard.url", "link resultCard requires url template")
+		} else if !strings.Contains(u, "{{") {
+			if err := ValidateHTTPURLStrict(u); err != nil {
+				add("resultCard.url", err.Error())
+			}
+		}
+
+	case LayoutTable:
+		if len(rc.Columns) < 2 || len(rc.Columns) > 4 {
+			add("resultCard.columns", fmt.Sprintf("table resultCard requires 2 to 4 columns (got %d)", len(rc.Columns)))
+		}
+		for i, col := range rc.Columns {
+			if strings.TrimSpace(col) == "" {
+				add(fmt.Sprintf("resultCard.columns[%d]", i), "column header cannot be empty")
+			}
+		}
+		if strings.TrimSpace(rc.RowsPath) != "" {
+			if len(rc.RowFields) != len(rc.Columns) {
+				add("resultCard.rowFields", fmt.Sprintf("rowFields length (%d) must match columns length (%d)", len(rc.RowFields), len(rc.Columns)))
+			}
+		} else if len(rc.Rows) == 0 {
+			add("resultCard.rows", "table resultCard requires rowsPath + rowFields or at least one row")
+		} else {
+			for i, row := range rc.Rows {
+				if len(rc.Columns) > 0 && len(row) != len(rc.Columns) {
+					add(fmt.Sprintf("resultCard.rows[%d]", i), fmt.Sprintf("row has %d cells, expected %d", len(row), len(rc.Columns)))
+				}
+			}
+		}
+		for i, idx := range rc.MonoColumns {
+			if idx < 0 || idx >= len(rc.Columns) {
+				add(fmt.Sprintf("resultCard.monoColumns[%d]", i), fmt.Sprintf("mono column index %d out of range", idx))
+			}
+		}
+
+	case LayoutSteps:
+		if strings.TrimSpace(rc.Summary) == "" {
+			add("resultCard.summary", "steps resultCard requires summary")
+		}
+		if strings.TrimSpace(rc.StepsPath) != "" {
+			if strings.TrimSpace(rc.StepLabel) == "" {
+				add("resultCard.stepLabel", "stepLabel is required when stepsPath is set")
+			}
+		} else if len(rc.Steps) == 0 {
+			add("resultCard.steps", "steps resultCard requires stepsPath + stepLabel or at least one step")
+		} else {
+			for i, st := range rc.Steps {
+				if strings.TrimSpace(st.Label) == "" {
+					add(fmt.Sprintf("resultCard.steps[%d].label", i), "step label is required")
+				}
+			}
+		}
+	}
 
 	return errs
 }

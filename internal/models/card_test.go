@@ -510,10 +510,173 @@ func TestContentHashDeterministicAndJSONSchemaValid(t *testing.T) {
 		"GroupLayoutData", "LinkLayoutData", "ActionListLayoutData",
 		"FactsLayoutData", "SegmentsLayoutData", "StepsLayoutData",
 		"ConvertLayoutData", "TableLayoutData", "SnippetLayoutData",
+		"PatternLiveHTTP", "PatternLiveResultSpec",
 		"parentEntityKey",
 	} {
 		if !strings.Contains(schema, def) {
 			t.Errorf("CardJSONSchema() missing %q", def)
 		}
 	}
+}
+
+func TestValidatePatternLiveHTTP(t *testing.T) {
+	baseRule := func(live *PatternLiveHTTP) PatternRule {
+		return PatternRule{
+			ID:            "gh-issue",
+			Name:          "GitHub Issue",
+			Regex:         `^(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)#(?P<num>\d+)$`,
+			TitleTemplate: "GitHub {{owner}}/{{repo}}#{{num}}",
+			Layout:        LayoutSegments,
+			LiveHTTP:      live,
+		}
+	}
+
+	t.Run("accepts valid facts, link, table, and steps resultCards with allowed auth modes", func(t *testing.T) {
+		cases := []PatternLiveHTTP{
+			{
+				URLTemplate: "https://api.github.com/repos/{{owner}}/{{repo}}/issues/{{num}}",
+				Trigger:     "manual",
+				TimeoutMs:   1500,
+				CacheTTLSec: 60,
+				Auth:        "gh_cli",
+				Headers:     map[string]string{"Accept": "application/vnd.github+json"},
+				ResultCard: PatternLiveResultSpec{
+					Layout:  LayoutFacts,
+					Title:   "Issue #{{num}}",
+					Summary: "{{json.title}}",
+					Facts: []FactItem{
+						{Label: "State", Value: "{{json.state}}"},
+						{Label: "Author", Value: "{{json.user.login}}"},
+					},
+				},
+			},
+			{
+				URLTemplate: "https://dev.azure.com/org/proj/_apis/wit/workitems/{{num}}?api-version=7.1",
+				Trigger:     "auto",
+				TimeoutMs:   3000,
+				CacheTTLSec: 120,
+				Auth:        "az_devops",
+				ResultCard: PatternLiveResultSpec{
+					Layout: LayoutLink,
+					Title:  "Open Work Item",
+					URL:    "{{json._links.html.href}}",
+				},
+			},
+			{
+				URLTemplate: "https://api.example.com/shipments/{{0}}",
+				Auth:        "env:TRACKING_API_TOKEN",
+				ResultCard: PatternLiveResultSpec{
+					Layout:    LayoutTable,
+					Title:     "Tracking Events",
+					Columns:   []string{"Time", "Location", "Status"},
+					RowsPath:  "events",
+					RowFields: []string{"timestamp", "port", "status"},
+				},
+			},
+			{
+				URLTemplate: "https://api.example.com/milestones/{{0}}",
+				Auth:        "none",
+				ResultCard: PatternLiveResultSpec{
+					Layout:     LayoutSteps,
+					Title:      "Shipment Milestones",
+					Summary:    "Status: {{json.status}}",
+					StepsPath:  "milestones",
+					StepLabel:  "name",
+					ActiveStep: 1,
+				},
+			},
+		}
+
+		for i := range cases {
+			r := baseRule(&cases[i])
+			if errs := ValidatePatternRule(&r, ""); len(errs) > 0 {
+				t.Errorf("case %d: expected valid liveHttp rule, got errors: %v", i, errs)
+			}
+		}
+	})
+
+	t.Run("rejects inline tokens, auth headers, non-http schemes, embedded userinfo, and out-of-range timeouts", func(t *testing.T) {
+		badCases := []struct {
+			name string
+			live PatternLiveHTTP
+		}{
+			{
+				name: "inline bearer token in auth",
+				live: PatternLiveHTTP{
+					URLTemplate: "https://api.github.com/repos/{{owner}}/{{repo}}/issues/{{num}}",
+					Auth:        "Bearer ghp_1234567890abcdef",
+					ResultCard:  PatternLiveResultSpec{Layout: LayoutFacts, Summary: "{{json.title}}"},
+				},
+			},
+			{
+				name: "lowercase env var name",
+				live: PatternLiveHTTP{
+					URLTemplate: "https://api.example.com/items/{{0}}",
+					Auth:        "env:bad_lower",
+					ResultCard:  PatternLiveResultSpec{Layout: LayoutFacts, Summary: "{{json.title}}"},
+				},
+			},
+			{
+				name: "authorization header with inline secret",
+				live: PatternLiveHTTP{
+					URLTemplate: "https://api.example.com/items/{{0}}",
+					Auth:        "none",
+					Headers:     map[string]string{"Authorization": "Bearer secret"},
+					ResultCard:  PatternLiveResultSpec{Layout: LayoutFacts, Summary: "{{json.title}}"},
+				},
+			},
+			{
+				name: "custom header with inline ghp token",
+				live: PatternLiveHTTP{
+					URLTemplate: "https://api.example.com/items/{{0}}",
+					Headers:     map[string]string{"X-Custom": "ghp_secret123"},
+					ResultCard:  PatternLiveResultSpec{Layout: LayoutFacts, Summary: "{{json.title}}"},
+				},
+			},
+			{
+				name: "file scheme urlTemplate",
+				live: PatternLiveHTTP{
+					URLTemplate: "file:///etc/passwd",
+					ResultCard:  PatternLiveResultSpec{Layout: LayoutFacts, Summary: "{{json.title}}"},
+				},
+			},
+			{
+				name: "embedded URL credentials",
+				live: PatternLiveHTTP{
+					URLTemplate: "https://user:pass@api.example.com/items/{{0}}",
+					ResultCard:  PatternLiveResultSpec{Layout: LayoutFacts, Summary: "{{json.title}}"},
+				},
+			},
+			{
+				name: "timeout above 5000ms",
+				live: PatternLiveHTTP{
+					URLTemplate: "https://api.example.com/items/{{0}}",
+					TimeoutMs:   8000,
+					ResultCard:  PatternLiveResultSpec{Layout: LayoutFacts, Summary: "{{json.title}}"},
+				},
+			},
+			{
+				name: "invalid trigger",
+				live: PatternLiveHTTP{
+					URLTemplate: "https://api.example.com/items/{{0}}",
+					Trigger:     "always",
+					ResultCard:  PatternLiveResultSpec{Layout: LayoutFacts, Summary: "{{json.title}}"},
+				},
+			},
+			{
+				name: "unsupported resultCard layout",
+				live: PatternLiveHTTP{
+					URLTemplate: "https://api.example.com/items/{{0}}",
+					ResultCard:  PatternLiveResultSpec{Layout: LayoutSnippet},
+				},
+			},
+		}
+
+		for _, tc := range badCases {
+			r := baseRule(&tc.live)
+			if errs := ValidatePatternRule(&r, ""); len(errs) == 0 {
+				t.Errorf("%s: expected validation error, got none", tc.name)
+			}
+		}
+	})
 }

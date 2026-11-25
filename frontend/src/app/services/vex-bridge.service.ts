@@ -2,7 +2,10 @@ import { Injectable, signal } from '@angular/core';
 import {
   AppInfo,
   CardNode,
+  CLIAuthStatus,
   CollectionStats,
+  ConnectedServerStatus,
+  ExternalServerConfig,
   LogDiagnostics,
   ModuleStatus,
   PatternRule,
@@ -144,6 +147,37 @@ export class VexBridgeService {
   async deletePatternRule(id: string): Promise<PatternRule[]> {
     const res = await this.call<PatternRule[]>('DeletePatternRule', id);
     return res ?? [];
+  }
+
+  async fetchPatternLiveHTTP(ruleID: string, rawQuery: string): Promise<CardNode | null> {
+    return this.call<CardNode>('FetchPatternLiveHTTP', ruleID, rawQuery);
+  }
+
+  async probeCLIAuth(): Promise<CLIAuthStatus[]> {
+    const res = await this.call<CLIAuthStatus[]>('ProbeCLIAuth');
+    return res ?? [];
+  }
+
+  async getConfiguredMCPServers(): Promise<ExternalServerConfig[]> {
+    const res = await this.call<ExternalServerConfig[]>('GetConfiguredMCPServers');
+    return res ?? [];
+  }
+
+  async listMCPServers(): Promise<ConnectedServerStatus[]> {
+    const res = await this.call<ConnectedServerStatus[]>('ListMCPServers');
+    return res ?? [];
+  }
+
+  async connectMCPServer(cfg: ExternalServerConfig): Promise<ConnectedServerStatus | null> {
+    return this.call<ConnectedServerStatus>('ConnectMCPServer', cfg);
+  }
+
+  async disconnectMCPServer(serverID: string): Promise<void> {
+    await this.call('DisconnectMCPServer', serverID);
+  }
+
+  async testMCPServer(serverID: string): Promise<ConnectedServerStatus | null> {
+    return this.call<ConnectedServerStatus>('TestMCPServer', serverID);
   }
 
   async testPatternRule(rule: PatternRule, sampleInput: string): Promise<CardNode | null> {

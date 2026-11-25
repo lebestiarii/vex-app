@@ -29,11 +29,13 @@ Press your global shortcut (`Ctrl+Shift+B` by default) or click the tray icon to
   - Every installed module lives as an editable JSON file in `~/.vex/modules/<id>.json` that can be toggled, exported, updated via MCP, or deleted permanently (with live `fsnotify` hot-reload).
 - **Loadable, Configurable Pattern Matching (`~/.vex/patterns/` & Module Patterns)**:
   - Zero hardcoded rules in Go. Supports input normalizers (`trim`, `uppercase`, `strip-spaces`, `strip-dashes`), checksum validators (`iata-mod7`, `iso6346`, `luhn`), 2–4 column `segments[]` + `explanationTemplate`, live SQLite `dataLookups` across modules, recursive cross-card `linkRules`, per-rule Enabled toggles, and top-of-modal live testing with rendered card previews in the **Patterns** dialog.
+  - **Declarative Read-Only `liveHttp` GET Enrichment**: Optional `liveHttp` config on any `PatternRule` (`urlTemplate` with safe `PathEscape`/`QueryEscape`, `trigger: "auto"|"manual"`, bounded `timeoutMs ≤ 5000`, in-memory `cacheTtlSec`, `auth: "none"|"gh_cli"|"az_devops"|"env:VAR_NAME"` with zero inline secrets, and `resultCard` JSON dot-path projection into nested `facts`, `table`, `steps`, or `link` cards). Manual rules render an on-demand **Fetch Live Data** button; offline/timeout errors preserve the local `segments` decode with a muted `Live lookup unavailable` chip.
+  - Includes optional disabled-by-default starter patterns in `reference-patterns.json` for Azure DevOps work items (`AB#12345` via `liveMcp`) and GitHub issues/PRs (`owner/repo#123` via `liveHttp` + `gh_cli`).
 - **High-Precision 4-Tier Search & Indexed SQLite v3 (`internal/indexer/store.go`)**:
   - Atomic v3 schema with `entity_links` dynamic 2-level cross-module nesting and `card_recents` usage tracking. Ranks exact entity/code/tag/chip matches decisively first, followed by 1-hop contextual neighbors and whole-token FTS5 BM25, then prefix FTS5 and guarded metadata-only fallback — with a strict layout-aware `SearchableBody()` whitelist, dynamic relevance cliff, and a focused `10`-card active query limit.
-- **Built-In MCP Hub & Agent Skill Sharing**:
+- **Built-In MCP Hub, GitHub/ADO Query Flow & Agent Skill Sharing**:
   - Runs as a **Domain MCP Server** (`--mcp-stdio` for Claude Desktop, Cursor, Copilot CLI; Streamable HTTP at `http://127.0.0.1:17380/mcp` for VS Code Copilot) exposing **20 tools** (including strict `validate_module`) and **7 resources/templates** (including shared agent skills: `list_skills`, `get_skill`, `search://skills`, `skill://{name}`).
-  - Also supports connecting to external MCP servers (`ClientManager`) and read-only `gh` / `az` CLI session checks.
+  - Connects to external MCP servers (`ClientManager`) with 1-click **GitHub MCP** and **Azure DevOps MCP** presets + live `gh`/`az` CLI auth status inside the **Modules & MCP** dialog, mapping `/gh <query>` and `/ado <query>` results directly onto Vex's generic `link`, `facts`, `action-list`, and `table` layouts.
 
 ---
 
@@ -106,7 +108,7 @@ go build -o bin\windows\vex.exe .
 ## Security Posture
 - **100% Local-First**: All cards, modules, patterns, logs, and SQLite FTS5 indexes live locally in `~/.vex` with zero embedded cloud AI calls.
 - **Loopback-Only MCP HTTP + CSRF/DNS-Rebinding Guard**: `127.0.0.1:17380` rejects non-loopback `Host` and cross-origin `Origin` headers.
-- **Safe Action Execution**: `open_url` / `open_pwa` strictly validate `http://` / `https://` URLs and reject shell metacharacters; arbitrary shell execution is disabled.
+- **Safe Action & Read-Only `liveHttp` Execution**: `open_url` / `open_pwa` and `liveHttp` strictly validate `http://` / `https://` URLs and reject shell metacharacters, embedded URL credentials, inline tokens, and auth headers in JSON; `liveHttp` is strictly GET-only with cached OS CLI (`gh`/`az`) or `env:VAR_NAME` auth; arbitrary shell execution is disabled.
 
 ---
 

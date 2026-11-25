@@ -80,6 +80,7 @@ type Backend struct {
 	Runner     *plugins.Runner
 	MCPHub     *mcp.HubServer
 	MCPClients *mcp.ClientManager
+	LiveHTTP   *mcp.LiveHTTPClient
 	Logger     *logging.Manager
 	Updater    *updater.Checker
 	Autostart  autostart.Manager
@@ -219,7 +220,10 @@ func InitBackend(baseDir string, startWatcher bool) (*Backend, error) {
 	}
 
 	mcpClients := mcp.NewClientManager(store)
+	liveHTTP := mcp.NewLiveHTTPClient()
 	searchSvc.SetLivePatternExecutor(mcpClients)
+	searchSvc.SetLiveHTTPExecutor(liveHTTP)
+	searchSvc.SetLiveMCPQueryProvider(mcpClients)
 	reloadPatterns()
 
 	var watcher *indexer.Watcher
@@ -244,6 +248,7 @@ func InitBackend(baseDir string, startWatcher bool) (*Backend, error) {
 		Runner:      runner,
 		MCPHub:      mcpHub,
 		MCPClients:  mcpClients,
+		LiveHTTP:    liveHTTP,
 		Logger:      logMgr,
 		Updater:     updater.NewChecker(),
 		Autostart:   autostart.NewDefaultManager(currentAppInfo().Name),
@@ -808,6 +813,117 @@ func (s *AppService) ListMCPServers() []mcp.ConnectedServerStatus {
 	return s.backend.MCPClients.ListServers()
 }
 
+// GetConfiguredMCPServers returns saved external MCP configs merged with built-in
+// recommended presets (GitHub MCP, Azure DevOps MCP) so the UI can connect/test in 1 click.
+func (s *AppService) GetConfiguredMCPServers() []mcp.ExternalServerConfig {
+	presets := mcp.RecommendedMCPPresets()
+	saved := s.backend.Config().MCPServers
+	byID := make(map[string]mcp.ExternalServerConfig, len(saved))
+	for _, c := range saved {
+		byID[models.Slugify(c.ID)] = c
+	}
+
+	out := make([]mcp.ExternalServerConfig, 0, len(presets)+len(saved))
+	seen := make(map[string]bool)
+	for _, p := range presets {
+		id := models.Slugify(p.ID)
+		seen[id] = true
+		if existing, ok := byID[id]; ok {
+			out = append(out, existing)
+		} else {
+			out = append(out, p)
+		}
+	}
+	for _, c := range saved {
+		id := models.Slugify(c.ID)
+		if !seen[id] {
+			seen[id] = true
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// ConnectMCPServer enables, connects, syncs, and persists an external MCP server config.
+func (s *AppService) ConnectMCPServer(cfg mcp.ExternalServerConfig) (*mcp.ConnectedServerStatus, error) {
+	cfg.Enabled = true
+	if cfg.ID == "github" || cfg.ID == "azure-devops" {
+		cfg.LocalOnly = true
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+
+	status, err := s.backend.MCPClients.Connect(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	s.persistMCPServerConfig(status.Config)
+	return status, nil
+}
+
+// DisconnectMCPServer disconnects a running external MCP server and marks it disabled in config.json.
+func (s *AppService) DisconnectMCPServer(serverID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := s.backend.MCPClients.Disconnect(ctx, serverID)
+	target := models.Slugify(serverID)
+
+	s.backend.mu.Lock()
+	for i := range s.backend.cfg.MCPServers {
+		if models.Slugify(s.backend.cfg.MCPServers[i].ID) == target {
+			s.backend.cfg.MCPServers[i].Enabled = false
+		}
+	}
+	snapshot := s.backend.cfg
+	s.backend.mu.Unlock()
+	_ = saveRuntimeConfig(s.backend.ConfigPath, snapshot)
+	return err
+}
+
+// TestMCPServer re-syncs tools and resources on a connected external MCP server to verify health.
+func (s *AppService) TestMCPServer(serverID string) (*mcp.ConnectedServerStatus, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return s.backend.MCPClients.SyncServer(ctx, serverID)
+}
+
+func (s *AppService) persistMCPServerConfig(cfg mcp.ExternalServerConfig) {
+	target := models.Slugify(cfg.ID)
+	s.backend.mu.Lock()
+	updated := false
+	for i := range s.backend.cfg.MCPServers {
+		if models.Slugify(s.backend.cfg.MCPServers[i].ID) == target {
+			s.backend.cfg.MCPServers[i] = cfg
+			updated = true
+			break
+		}
+	}
+	if !updated {
+		s.backend.cfg.MCPServers = append(s.backend.cfg.MCPServers, cfg)
+	}
+	snapshot := s.backend.cfg
+	s.backend.mu.Unlock()
+	_ = saveRuntimeConfig(s.backend.ConfigPath, snapshot)
+}
+
+// FetchPatternLiveHTTP triggers an on-demand read-only liveHttp GET lookup for a
+// matched PatternRule (trigger: "manual") and returns the hydrated Rolodex CardNode.
+func (s *AppService) FetchPatternLiveHTTP(ruleID, rawQuery string) (*models.CardNode, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	defer cancel()
+	res, err := s.backend.Search.FetchPatternLiveHTTP(ctx, ruleID, rawQuery)
+	if err != nil {
+		return nil, err
+	}
+	if res == nil {
+		return nil, nil
+	}
+	node := res.Card.ToCardNode(0)
+	return &node, nil
+}
+
 // ListPatternRules returns all active reference-decoding and live-lookup PatternRules.
 func (s *AppService) ListPatternRules() []models.PatternRule {
 	return s.backend.Search.PatternRules()
@@ -835,7 +951,7 @@ func (s *AppService) DeletePatternRule(ruleID string) ([]models.PatternRule, err
 
 // TestPatternRule evaluates a draft PatternRule against sampleInput and returns the resulting Rolodex CardNode.
 func (s *AppService) TestPatternRule(rule models.PatternRule, sampleInput string) (*models.CardNode, error) {
-	res, err := search.TestRule(context.Background(), rule, sampleInput, s.backend.Store, s.backend.MCPClients)
+	res, err := search.TestRuleWithLive(context.Background(), rule, sampleInput, s.backend.Store, s.backend.MCPClients, s.backend.LiveHTTP)
 	if err != nil {
 		return nil, err
 	}

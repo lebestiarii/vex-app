@@ -41,7 +41,7 @@ Keep imports strictly acyclic in this order:
 - Leaf stdlib/OS packages: `internal/logging` · `internal/updater` · `internal/autostart`
 - Core pipeline: `internal/models` → `internal/indexer` → `internal/search` → `internal/plugins` → `internal/mcp` → `main`
 
-`internal/search` exposes interfaces (`DynamicPluginProvider`, `LivePatternExecutor`) so `plugins` and `mcp` plug into `search.Service` without circular imports.
+`internal/search` exposes interfaces (`DynamicPluginProvider`, `LivePatternExecutor`, `LiveHTTPExecutor`, `LiveMCPQueryProvider`) so `plugins` and `mcp` plug into `search.Service` without circular imports.
 
 ## Build Identity (`buildinfo.go`)
 
@@ -83,19 +83,20 @@ Unified single-version application:
 - `TryConvertQuery(rawText)` (`converter.go`): Zero-latency unit converter and 3D cargo volume + IATA 1:167 air dimensional weight calculator emitting `layout: "convert"`.
 - `PatternEngine` (`patterns.go`, `models.PatternRule`, `indexer.LoadActivePatternRules`):
   - **Zero hardcoded pattern rules** — loads from enabled modules and `~/.vex/patterns/*.json`.
-  - Defaults to `layout: "segments"` with interpolated breakdown tiles and explanation, supports `fact.<Label>` / `meta.<key>` `dataLookups`, recursive `linkRules` (consuming `entity_links`-hydrated children), optional `liveMcp` (attached as a nested `facts` child card), and `TestRule`.
+  - Defaults to `layout: "segments"` with interpolated breakdown tiles and explanation, supports `fact.<Label>` / `meta.<key>` `dataLookups`, recursive `linkRules` (consuming `entity_links`-hydrated children), optional `liveHttp` GET enrichment (with `trigger: "auto"|"manual"`, `url.PathEscape`/`url.QueryEscape`, JSON dot-path projection into nested `facts`/`table`/`steps`/`link` cards, `FetchLiveHTTP` on-demand hydration, and muted `Live lookup unavailable` fallback), optional `liveMcp`, and `TestRuleWithLive`.
 
 ### 4. Declarative Plugins & Action Runner (`internal/plugins/`)
 - `plugins.Runner` executes safe actions (`open_url`, `open_pwa`, `launch_app`, `copy`, `http`) without arbitrary shell execution.
 
-### 5. Tri-Modal MCP Hub, External MCP Clients & Skill Sharing (`internal/mcp/`, `internal/logging/`)
+### 5. Tri-Modal MCP Hub, LiveHTTP Client, External MCP Clients & Skill Sharing (`internal/mcp/`, `internal/logging/`)
 - **Domain MCP Server (`server.go` — `HubServer`, `mcp-go v1.6.0`)**:
   - Transports: `--mcp-stdio` (`WithWorkerPoolSize(1)`) and Streamable HTTP (`127.0.0.1:17380/mcp`, `/health`, `/metrics`, protected by `loopbackGuardMiddleware`).
   - **Resources & Templates (7)**: `search://collections`, `schema://search-card`, `card://{collection}/{id}`, `search://modules`, `search://patterns`, `search://skills`, `skill://{name}`.
   - **Tools (20)**: `search_knowledge`, `get_card_schema`, `preview_raw_data_sample`, `transform_and_import_data`, `upsert_card`, `batch_upsert_cards`, `list_plugins`, `execute_card_action`, `get_related_cards`, `upsert_pattern_rule`, `list_pattern_rules`, `delete_pattern_rule`, `list_modules`, `get_module`, `validate_module`, `upsert_module`, `delete_module`, `install_starter_module`, `list_skills`, `get_skill`.
-- **External MCP Client (`client.go`)** & read-only CLI auth probe (`auth_probe.go`: `ProbeCLIAuth`, `RecommendedMCPPresets`).
+- **Read-Only `LiveHTTPClient` (`live_http.go`)**: Enforces GET-only HTTP/HTTPS (`ValidateHTTPURLStrict`), in-memory TTL response cache, and cached hardcoded-arg `gh_cli`/`az_devops` + `env:VAR_NAME` auth (zero inline secrets).
+- **External MCP Client (`client.go`), Query Bridge (`query_bridge.go`) & CLI Auth Probe (`auth_probe.go`)**: `QueryExternalMCP` maps `/gh <query>` and `/ado <query>` onto generic `link`, `facts`, `action-list`, and `table` layouts; `ProbeCLIAuth` runs strictly read-only `gh auth status` / `az account show` checks; `RecommendedMCPPresets` exposes opt-in `localOnly` GitHub & Azure DevOps MCP templates.
 
 ### 6. Wails v3 Desktop Shell & Angular 22 UI (`main.go`, `app_service.go`, `frontend/`)
 - **Default Widget Frame**: `480×680` (`MinWidth: 420, MinHeight: 480`) hosting a `420px–520px` (default `460px`, `max-height: 680px`) internal-scrolling Rolodex widget with Light & Dark modes.
-- **Wails Recents RPC**: `AppService.RecordCardUsed(cardID)` and `AppService.ListRecentCards(limit)`.
+- **Wails RPCs**: `SearchRolodex`, `RecordCardUsed`, `ListRecentCards`, `FetchPatternLiveHTTP`, `ProbeCLIAuth`, `GetConfiguredMCPServers`, `ListMCPServers`, `ConnectMCPServer`, `DisconnectMCPServer`, `TestMCPServer`.
 - **macOS Main-Thread Rule**: Every Wails UI/window/menu call inside `GlobalShortcut` or background callbacks MUST be wrapped in `application.InvokeAsync(func() { ... })`.

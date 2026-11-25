@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
@@ -19,6 +20,22 @@ import (
 // to connected external MCP servers without introducing circular package imports.
 type LivePatternExecutor interface {
 	ExecutePatternMCP(ctx context.Context, serverID, toolName string, args map[string]any) (text string, localOnly bool, err error)
+}
+
+// LiveHTTPRequest describes a strictly read-only HTTP GET enrichment request
+// issued for a matched PatternRule.
+type LiveHTTPRequest struct {
+	URL         string
+	Auth        string            // "none" | "gh_cli" | "az_devops" | "env:VAR_NAME"
+	Headers     map[string]string // Non-auth headers only (e.g. Accept)
+	TimeoutMs   int               // Default 1500, max 5000
+	CacheTTLSec int               // Default 60
+}
+
+// LiveHTTPExecutor performs strictly read-only GET lookups with TTL caching and
+// safe auth resolution (implemented in internal/mcp to keep package deps acyclic).
+type LiveHTTPExecutor interface {
+	ExecuteLiveHTTP(ctx context.Context, req LiveHTTPRequest) (body []byte, statusCode int, err error)
 }
 
 // PatternMatchResult bundles the synthesized decoded card (with nested Children populated)
@@ -41,6 +58,7 @@ type PatternEngine struct {
 	mu       sync.RWMutex
 	compiled []compiledPattern
 	allRules []models.PatternRule
+	liveHTTP LiveHTTPExecutor
 }
 
 // NewPatternEngine constructs a PatternEngine from the supplied user/module pattern rules.
@@ -48,6 +66,14 @@ func NewPatternEngine(rules []models.PatternRule) *PatternEngine {
 	e := &PatternEngine{}
 	e.SetCustomRules(rules)
 	return e
+}
+
+// SetLiveHTTPExecutor attaches a read-only LiveHTTPExecutor used for PatternRules
+// configured with liveHttp GET lookups.
+func (e *PatternEngine) SetLiveHTTPExecutor(exec LiveHTTPExecutor) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.liveHTTP = exec
 }
 
 // SetCustomRules replaces active pattern rules, deduplicating by ID and sorting by Priority DESC.
@@ -125,11 +151,12 @@ func (e *PatternEngine) MatchAll(ctx context.Context, rawText string, store *ind
 
 	e.mu.RLock()
 	compiled := e.compiled
+	liveHTTP := e.liveHTTP
 	e.mu.RUnlock()
 
 	var results []*PatternMatchResult
 	for _, cp := range compiled {
-		res := evaluateCompiledPattern(ctx, cp, input, store, liveExec)
+		res := evaluateCompiledPattern(ctx, cp, input, store, liveExec, liveHTTP, false)
 		if res != nil {
 			results = append(results, res)
 			if len(results) >= limit {
@@ -140,8 +167,73 @@ func (e *PatternEngine) MatchAll(ctx context.Context, rawText string, store *ind
 	return results
 }
 
+// FetchLiveHTTP forces execution of a rule's liveHttp GET lookup on demand (used when
+// trigger is "manual" and the user clicks "Fetch Live Data", or when retrying a lookup).
+func (e *PatternEngine) FetchLiveHTTP(
+	ctx context.Context,
+	ruleID, rawQuery string,
+	store *indexer.Store,
+	liveExec LivePatternExecutor,
+	overrideHTTP LiveHTTPExecutor,
+) (*PatternMatchResult, error) {
+	targetID := models.Slugify(strings.TrimSpace(ruleID))
+	input := strings.TrimSpace(rawQuery)
+	if targetID == "" || input == "" {
+		return nil, fmt.Errorf("ruleID and rawQuery are required")
+	}
+
+	e.mu.RLock()
+	liveHTTP := overrideHTTP
+	if liveHTTP == nil {
+		liveHTTP = e.liveHTTP
+	}
+	var targetRule *models.PatternRule
+	for i := range e.allRules {
+		if models.Slugify(e.allRules[i].ID) == targetID {
+			r := e.allRules[i]
+			targetRule = &r
+			break
+		}
+	}
+	e.mu.RUnlock()
+
+	if targetRule == nil {
+		return nil, fmt.Errorf("pattern rule %q not found", ruleID)
+	}
+	if targetRule.LiveHTTP == nil {
+		return nil, fmt.Errorf("pattern rule %q has no liveHttp configuration", ruleID)
+	}
+
+	expr := strings.TrimSpace(targetRule.Regex)
+	if targetRule.CaseInsensitive && !strings.HasPrefix(expr, "(?i)") {
+		expr = "(?i)" + expr
+	}
+	re, err := regexp.Compile(expr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid regex on rule %q: %w", ruleID, err)
+	}
+
+	res := evaluateCompiledPattern(ctx, compiledPattern{rule: *targetRule, re: re}, input, store, liveExec, liveHTTP, true)
+	if res == nil {
+		return nil, fmt.Errorf("query %q did not match rule %q", rawQuery, ruleID)
+	}
+	return res, nil
+}
+
 // TestRule compiles and evaluates a single PatternRule against sampleText without persisting it.
 func TestRule(ctx context.Context, rule models.PatternRule, sampleText string, store *indexer.Store, liveExec LivePatternExecutor) (*PatternMatchResult, error) {
+	return TestRuleWithLive(ctx, rule, sampleText, store, liveExec, nil)
+}
+
+// TestRuleWithLive compiles and evaluates a single PatternRule with optional MCP and LiveHTTP executors.
+func TestRuleWithLive(
+	ctx context.Context,
+	rule models.PatternRule,
+	sampleText string,
+	store *indexer.Store,
+	liveExec LivePatternExecutor,
+	liveHTTP LiveHTTPExecutor,
+) (*PatternMatchResult, error) {
 	expr := strings.TrimSpace(rule.Regex)
 	if expr == "" {
 		return nil, fmt.Errorf("pattern regex is required")
@@ -153,29 +245,38 @@ func TestRule(ctx context.Context, rule models.PatternRule, sampleText string, s
 	if err != nil {
 		return nil, fmt.Errorf("invalid regex: %w", err)
 	}
-	return evaluateCompiledPattern(ctx, compiledPattern{rule: rule, re: re}, strings.TrimSpace(sampleText), store, liveExec), nil
+	return evaluateCompiledPattern(ctx, compiledPattern{rule: rule, re: re}, strings.TrimSpace(sampleText), store, liveExec, liveHTTP, false), nil
 }
 
-func evaluateCompiledPattern(ctx context.Context, cp compiledPattern, rawInput string, store *indexer.Store, liveExec LivePatternExecutor) *PatternMatchResult {
+func evaluateCompiledPattern(
+	ctx context.Context,
+	cp compiledPattern,
+	rawInput string,
+	store *indexer.Store,
+	liveExec LivePatternExecutor,
+	liveHTTP LiveHTTPExecutor,
+	forceLiveHTTP bool,
+) *PatternMatchResult {
 	normalized := applyPatternNormalizers(rawInput, cp.rule.Normalize)
 	sub := cp.re.FindStringSubmatch(normalized)
 	if sub == nil {
 		return nil
 	}
 
-	captures := make(map[string]string, len(sub)+8)
+	captures := make(map[string]string, len(sub)*2+8)
 	captures["raw"] = rawInput
 	captures["match"] = normalized
+	captures["0"] = sub[0]
 	names := cp.re.SubexpNames()
-	for i, name := range names {
-		if i == 0 || name == "" || i >= len(sub) {
-			continue
-		}
+	for i := 1; i < len(sub); i++ {
 		val := sub[i]
 		if cp.rule.CaseInsensitive {
 			val = strings.ToUpper(val)
 		}
-		captures[name] = val
+		captures[strconv.Itoa(i)] = val
+		if i < len(names) && names[i] != "" {
+			captures[names[i]] = val
+		}
 	}
 
 	// Optional standard checksum verification
@@ -201,6 +302,19 @@ func evaluateCompiledPattern(ctx context.Context, cp compiledPattern, rawInput s
 	}
 
 	card := buildPatternCard(cp.rule, captures)
+
+	// Optional declarative read-only liveHttp GET enrichment
+	if cp.rule.LiveHTTP != nil {
+		if forceLiveHTTP || cp.rule.LiveHTTP.EffectiveTrigger() == "auto" {
+			ok := enrichCardFromLiveHTTP(ctx, &card, cp.rule, captures, liveHTTP)
+			if !ok && cp.rule.LiveHTTP.EffectiveTrigger() == "manual" {
+				// Keep retry button available on manual lookup failure
+				attachManualLiveHTTPAction(&card, cp.rule, rawInput, captures)
+			}
+		} else {
+			attachManualLiveHTTPAction(&card, cp.rule, rawInput, captures)
+		}
+	}
 
 	// Optional live MCP lookup
 	if cp.rule.LiveMCP != nil {
@@ -632,6 +746,490 @@ func buildPatternCard(rule models.PatternRule, captures map[string]string) model
 		Provenance:      prov,
 		LocalOnly:       rule.LocalOnly,
 	}
+}
+
+const (
+	LiveHTTPActionID          = "fetch-live-http"
+	LiveLookupUnavailableChip = "Live lookup unavailable"
+)
+
+func attachManualLiveHTTPAction(card *models.SearchCard, rule models.PatternRule, rawInput string, captures map[string]string) {
+	if rule.LiveHTTP == nil {
+		return
+	}
+	resolvedURL := interpolatePatternURL(rule.LiveHTTP.URLTemplate, rule, captures)
+	for _, a := range card.Actions {
+		if a.ID == LiveHTTPActionID {
+			return
+		}
+	}
+	card.Actions = append(card.Actions, models.CardAction{
+		ID:     LiveHTTPActionID,
+		Label:  "Fetch Live Data",
+		Type:   "http",
+		Target: resolvedURL,
+		Env: map[string]string{
+			"liveHttpRuleId":   rule.ID,
+			"liveHttpRawQuery": rawInput,
+			"liveHttpAuth":     rule.LiveHTTP.EffectiveAuth(),
+		},
+	})
+}
+
+func appendLiveUnavailableChip(card *models.SearchCard) {
+	for _, ch := range card.Chips {
+		if strings.EqualFold(ch.Label, LiveLookupUnavailableChip) {
+			return
+		}
+	}
+	chip := models.GlanceChip{
+		Label: LiveLookupUnavailableChip,
+		Tone:  "neutral",
+	}
+	if len(card.Chips) >= 4 {
+		card.Chips[3] = chip
+	} else {
+		card.Chips = append(card.Chips, chip)
+	}
+}
+
+func enrichCardFromLiveHTTP(
+	ctx context.Context,
+	card *models.SearchCard,
+	rule models.PatternRule,
+	captures map[string]string,
+	liveHTTP LiveHTTPExecutor,
+) bool {
+	if rule.LiveHTTP == nil {
+		return false
+	}
+	if liveHTTP == nil {
+		appendLiveUnavailableChip(card)
+		return false
+	}
+
+	resolvedURL := interpolatePatternURL(rule.LiveHTTP.URLTemplate, rule, captures)
+	if err := models.ValidateHTTPURLStrict(resolvedURL); err != nil {
+		appendLiveUnavailableChip(card)
+		return false
+	}
+
+	timeoutMs := rule.LiveHTTP.EffectiveTimeoutMs()
+	reqCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutMs)*time.Millisecond)
+	defer cancel()
+
+	body, _, err := liveHTTP.ExecuteLiveHTTP(reqCtx, LiveHTTPRequest{
+		URL:         resolvedURL,
+		Auth:        rule.LiveHTTP.EffectiveAuth(),
+		Headers:     rule.LiveHTTP.Headers,
+		TimeoutMs:   timeoutMs,
+		CacheTTLSec: rule.LiveHTTP.EffectiveCacheTTLSec(),
+	})
+	if err != nil {
+		appendLiveUnavailableChip(card)
+		return false
+	}
+
+	var parsedJSON any
+	if err := json.Unmarshal(body, &parsedJSON); err != nil {
+		appendLiveUnavailableChip(card)
+		return false
+	}
+
+	if rule.LiveHTTP.EffectiveAuth() != "none" || rule.LocalOnly {
+		card.LocalOnly = true
+		if card.Provenance != nil {
+			card.Provenance.LocalOnly = true
+		}
+	}
+
+	child, ok := projectLiveHTTPResultCard(card, rule, captures, parsedJSON)
+	if !ok {
+		appendLiveUnavailableChip(card)
+		return false
+	}
+	card.Children = append(card.Children, child)
+	return true
+}
+
+// interpolatePatternURL safely escapes capture values using url.PathEscape for the
+// URL path portion and url.QueryEscape for the query string portion.
+func interpolatePatternURL(tmpl string, rule models.PatternRule, captures map[string]string) string {
+	trimmed := strings.TrimSpace(tmpl)
+	if !strings.Contains(trimmed, "{{") {
+		return trimmed
+	}
+
+	escapeWith := func(part string, esc func(string) string) string {
+		return patternPlaceholderRe.ReplaceAllStringFunc(part, func(m string) string {
+			sub := patternPlaceholderRe.FindStringSubmatch(m)
+			if len(sub) < 2 {
+				return ""
+			}
+			key := strings.TrimSpace(sub[1])
+			var val string
+			if strings.HasPrefix(key, "lookup.") {
+				val = resolvePatternLookup(rule, strings.TrimPrefix(key, "lookup."), captures)
+			} else {
+				val = captures[key]
+			}
+			return esc(val)
+		})
+	}
+
+	if qIdx := strings.IndexByte(trimmed, '?'); qIdx >= 0 {
+		basePart := trimmed[:qIdx]
+		queryPart := trimmed[qIdx+1:]
+		return escapeWith(basePart, url.PathEscape) + "?" + escapeWith(queryPart, url.QueryEscape)
+	}
+	return escapeWith(trimmed, url.PathEscape)
+}
+
+func interpolatePatternWithJSON(tmpl string, rule models.PatternRule, captures map[string]string, root any, item any) string {
+	if !strings.Contains(tmpl, "{{") {
+		return tmpl
+	}
+	return patternPlaceholderRe.ReplaceAllStringFunc(tmpl, func(m string) string {
+		sub := patternPlaceholderRe.FindStringSubmatch(m)
+		if len(sub) < 2 {
+			return ""
+		}
+		key := strings.TrimSpace(sub[1])
+		if strings.HasPrefix(key, "json.") {
+			if val, ok := resolveJSONDotPath(root, strings.TrimPrefix(key, "json.")); ok {
+				return formatJSONScalar(val)
+			}
+			return ""
+		}
+		if strings.HasPrefix(key, "item.") && item != nil {
+			if val, ok := resolveJSONDotPath(item, strings.TrimPrefix(key, "item.")); ok {
+				return formatJSONScalar(val)
+			}
+			return ""
+		}
+		if strings.HasPrefix(key, "lookup.") {
+			return resolvePatternLookup(rule, strings.TrimPrefix(key, "lookup."), captures)
+		}
+		if v, ok := captures[key]; ok {
+			return v
+		}
+		return ""
+	})
+}
+
+func resolveJSONDotPath(root any, dotPath string) (any, bool) {
+	path := strings.TrimSpace(dotPath)
+	path = strings.TrimPrefix(path, "json.")
+	if path == "" || root == nil {
+		return root, root != nil
+	}
+
+	// Normalize bracket indices like items[0].name -> items.0.name
+	normalized := strings.ReplaceAll(path, "[", ".")
+	normalized = strings.ReplaceAll(normalized, "]", "")
+	rawParts := strings.Split(normalized, ".")
+	parts := make([]string, 0, len(rawParts))
+	for _, p := range rawParts {
+		if p != "" {
+			parts = append(parts, p)
+		}
+	}
+
+	return walkJSONPath(root, parts)
+}
+
+func walkJSONPath(cur any, parts []string) (any, bool) {
+	if len(parts) == 0 {
+		return cur, cur != nil
+	}
+	switch node := cur.(type) {
+	case map[string]any:
+		// First try exact segment match
+		if next, ok := node[parts[0]]; ok {
+			return walkJSONPath(next, parts[1:])
+		}
+		// Support dotted map keys (e.g. Azure DevOps "System.Title" inside "fields")
+		for end := len(parts); end >= 2; end-- {
+			joined := strings.Join(parts[:end], ".")
+			if next, ok := node[joined]; ok {
+				return walkJSONPath(next, parts[end:])
+			}
+		}
+		return nil, false
+	case []any:
+		idx, err := strconv.Atoi(parts[0])
+		if err != nil || idx < 0 || idx >= len(node) {
+			return nil, false
+		}
+		return walkJSONPath(node[idx], parts[1:])
+	default:
+		return nil, false
+	}
+}
+
+func formatJSONScalar(v any) string {
+	switch tv := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return strings.TrimSpace(tv)
+	case float64:
+		if tv == float64(int64(tv)) {
+			return strconv.FormatInt(int64(tv), 10)
+		}
+		return strconv.FormatFloat(tv, 'f', -1, 64)
+	case bool:
+		return strconv.FormatBool(tv)
+	case []any:
+		parts := make([]string, 0, len(tv))
+		for _, elem := range tv {
+			if s := formatJSONScalar(elem); s != "" {
+				parts = append(parts, s)
+			}
+		}
+		return strings.Join(parts, ", ")
+	default:
+		raw, err := json.Marshal(tv)
+		if err != nil {
+			return fmt.Sprintf("%v", tv)
+		}
+		return string(raw)
+	}
+}
+
+func resolveItemField(rule models.PatternRule, captures map[string]string, root any, item any, expr string) string {
+	trimmed := strings.TrimSpace(expr)
+	if trimmed == "" {
+		return ""
+	}
+	if strings.Contains(trimmed, "{{") {
+		return strings.TrimSpace(interpolatePatternWithJSON(trimmed, rule, captures, root, item))
+	}
+	if val, ok := resolveJSONDotPath(item, trimmed); ok {
+		return formatJSONScalar(val)
+	}
+	return ""
+}
+
+func projectLiveHTTPResultCard(
+	parent *models.SearchCard,
+	rule models.PatternRule,
+	captures map[string]string,
+	parsedJSON any,
+) (models.SearchCard, bool) {
+	spec := rule.LiveHTTP.ResultCard
+	title := strings.TrimSpace(interpolatePatternWithJSON(spec.Title, rule, captures, parsedJSON, nil))
+	if title == "" {
+		title = "Live Details"
+	}
+	icon := strings.TrimSpace(spec.Icon)
+	if icon == "" {
+		icon = "⚡"
+	}
+
+	var chips []models.GlanceChip
+	for _, ch := range spec.Chips {
+		lbl := strings.TrimSpace(interpolatePatternWithJSON(ch.Label, rule, captures, parsedJSON, nil))
+		if lbl == "" {
+			continue
+		}
+		tone := ch.Tone
+		if tone == "" {
+			tone = "neutral"
+		}
+		chips = append(chips, models.GlanceChip{Label: lbl, Tone: tone, Dot: ch.Dot})
+		if len(chips) == 4 {
+			break
+		}
+	}
+
+	data := make(map[string]any)
+	var actions []models.CardAction
+
+	switch spec.Layout {
+	case models.LayoutFacts:
+		if summary := strings.TrimSpace(interpolatePatternWithJSON(spec.Summary, rule, captures, parsedJSON, nil)); summary != "" {
+			data["summary"] = summary
+		}
+		facts := make([]map[string]any, 0, len(spec.Facts))
+		for _, f := range spec.Facts {
+			lbl := strings.TrimSpace(interpolatePatternWithJSON(f.Label, rule, captures, parsedJSON, nil))
+			val := strings.TrimSpace(interpolatePatternWithJSON(f.Value, rule, captures, parsedJSON, nil))
+			if lbl == "" || val == "" {
+				continue
+			}
+			item := map[string]any{"label": lbl, "value": val}
+			if f.Mono {
+				item["mono"] = true
+			}
+			if f.Copyable {
+				item["copyable"] = true
+			}
+			facts = append(facts, item)
+		}
+		if len(facts) > 0 {
+			data["facts"] = facts
+		}
+		if len(data) == 0 {
+			return models.SearchCard{}, false
+		}
+
+	case models.LayoutLink:
+		resolvedURL := strings.TrimSpace(interpolatePatternWithJSON(spec.URL, rule, captures, parsedJSON, nil))
+		if err := models.ValidateHTTPURLStrict(resolvedURL); err != nil {
+			return models.SearchCard{}, false
+		}
+		data["url"] = resolvedURL
+		actions = append(actions, models.CardAction{
+			ID:       "open-live-link",
+			Label:    "Open in Browser",
+			Shortcut: "Enter",
+			Type:     "open_url",
+			Target:   resolvedURL,
+		})
+
+	case models.LayoutTable:
+		if len(spec.Columns) < 2 || len(spec.Columns) > 4 {
+			return models.SearchCard{}, false
+		}
+		var rows [][]string
+		if strings.TrimSpace(spec.RowsPath) != "" {
+			arrVal, ok := resolveJSONDotPath(parsedJSON, spec.RowsPath)
+			if !ok {
+				return models.SearchCard{}, false
+			}
+			arr, ok := arrVal.([]any)
+			if !ok || len(arr) == 0 {
+				return models.SearchCard{}, false
+			}
+			maxRows := len(arr)
+			if maxRows > 8 {
+				maxRows = 8
+			}
+			rows = make([][]string, 0, maxRows)
+			for i := 0; i < maxRows; i++ {
+				row := make([]string, len(spec.Columns))
+				for cIdx := range spec.Columns {
+					if cIdx < len(spec.RowFields) {
+						row[cIdx] = resolveItemField(rule, captures, parsedJSON, arr[i], spec.RowFields[cIdx])
+					}
+				}
+				rows = append(rows, row)
+			}
+		} else {
+			rows = make([][]string, 0, len(spec.Rows))
+			for _, rawRow := range spec.Rows {
+				if len(rawRow) != len(spec.Columns) {
+					continue
+				}
+				row := make([]string, len(rawRow))
+				for cIdx, cell := range rawRow {
+					row[cIdx] = strings.TrimSpace(interpolatePatternWithJSON(cell, rule, captures, parsedJSON, nil))
+				}
+				rows = append(rows, row)
+				if len(rows) >= 8 {
+					break
+				}
+			}
+		}
+		if len(rows) == 0 {
+			return models.SearchCard{}, false
+		}
+		data["columns"] = spec.Columns
+		data["rows"] = rows
+		if len(spec.MonoColumns) > 0 {
+			data["monoColumns"] = spec.MonoColumns
+		}
+		if srcURL := strings.TrimSpace(interpolatePatternWithJSON(spec.SourceURL, rule, captures, parsedJSON, nil)); srcURL != "" {
+			if models.ValidateHTTPURLStrict(srcURL) == nil {
+				data["sourceUrl"] = srcURL
+			}
+		}
+
+	case models.LayoutSteps:
+		summary := strings.TrimSpace(interpolatePatternWithJSON(spec.Summary, rule, captures, parsedJSON, nil))
+		if summary == "" {
+			summary = title
+		}
+		var steps []map[string]any
+		if strings.TrimSpace(spec.StepsPath) != "" {
+			arrVal, ok := resolveJSONDotPath(parsedJSON, spec.StepsPath)
+			if !ok {
+				return models.SearchCard{}, false
+			}
+			arr, ok := arrVal.([]any)
+			if !ok || len(arr) == 0 {
+				return models.SearchCard{}, false
+			}
+			for _, elem := range arr {
+				lbl := resolveItemField(rule, captures, parsedJSON, elem, spec.StepLabel)
+				if lbl == "" {
+					continue
+				}
+				st := map[string]any{"label": lbl}
+				if capStr := resolveItemField(rule, captures, parsedJSON, elem, spec.StepCaption); capStr != "" {
+					st["caption"] = capStr
+				}
+				steps = append(steps, st)
+			}
+		} else {
+			for _, s := range spec.Steps {
+				lbl := strings.TrimSpace(interpolatePatternWithJSON(s.Label, rule, captures, parsedJSON, nil))
+				if lbl == "" {
+					continue
+				}
+				st := map[string]any{"label": lbl}
+				if capStr := strings.TrimSpace(interpolatePatternWithJSON(s.Caption, rule, captures, parsedJSON, nil)); capStr != "" {
+					st["caption"] = capStr
+				}
+				steps = append(steps, st)
+			}
+		}
+		if len(steps) == 0 {
+			return models.SearchCard{}, false
+		}
+		data["steps"] = steps
+		data["summary"] = summary
+		activeStep := spec.ActiveStep
+		if strings.TrimSpace(spec.ActiveStepPath) != "" {
+			rawActive := resolveItemField(rule, captures, parsedJSON, parsedJSON, spec.ActiveStepPath)
+			if n, err := strconv.Atoi(strings.TrimSpace(rawActive)); err == nil && n >= 1 && n <= len(steps) {
+				activeStep = n
+			}
+		}
+		if activeStep >= 1 && activeStep <= len(steps) {
+			data["activeStep"] = activeStep
+		}
+		if len(spec.Bullets) > 0 {
+			bullets := make([]string, 0, len(spec.Bullets))
+			for _, b := range spec.Bullets {
+				if resolved := strings.TrimSpace(interpolatePatternWithJSON(b, rule, captures, parsedJSON, nil)); resolved != "" {
+					bullets = append(bullets, resolved)
+				}
+			}
+			if len(bullets) > 0 {
+				data["bullets"] = bullets
+			}
+		}
+
+	default:
+		return models.SearchCard{}, false
+	}
+
+	child := models.SearchCard{
+		ID:              parent.ID + "-live-http",
+		Title:           title,
+		Collection:      parent.Collection,
+		Layout:          spec.Layout,
+		Icon:            icon,
+		Chips:           chips,
+		Data:            data,
+		Actions:         actions,
+		DefaultExpanded: spec.DefaultExpanded,
+		LocalOnly:       parent.LocalOnly || rule.LocalOnly || rule.LiveHTTP.EffectiveAuth() != "none",
+		UpdatedAt:       time.Now().UTC(),
+	}
+	return child, true
 }
 
 func enrichCardFromLiveMCP(ctx context.Context, card *models.SearchCard, rule models.PatternRule, captures map[string]string, liveExec LivePatternExecutor) {

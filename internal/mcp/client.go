@@ -46,6 +46,7 @@ type managedClient struct {
 	cfg           ExternalServerConfig
 	client        *client.Client
 	toolCount     int
+	toolNames     []string
 	resourceCount int
 	cardCount     int
 	lastSynced    time.Time
@@ -202,9 +203,15 @@ func (m *ClientManager) SyncServer(ctx context.Context, serverID string) (*Conne
 		}
 	}
 
+	toolNames := make([]string, 0, len(tools))
+	for _, t := range tools {
+		toolNames = append(toolNames, t.Name)
+	}
+
 	now := time.Now().UTC()
 	m.mu.Lock()
 	mc.toolCount = len(tools)
+	mc.toolNames = toolNames
 	mc.resourceCount = len(resources)
 	mc.cardCount = len(cards)
 	mc.lastSynced = now

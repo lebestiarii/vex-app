@@ -687,6 +687,41 @@ export class PatternsDialogComponent {
         `Invalid layout "${r.layout}". Must be one of: ${ALL_CARD_LAYOUTS.join(', ')}.`
       );
     }
+    if (r.liveHttp) {
+      const lh = r.liveHttp;
+      const urlT = lh.urlTemplate?.trim() ?? '';
+      if (!urlT) {
+        errors.push('liveHttp.urlTemplate is required.');
+      } else if (!/^https?:\/\//i.test(urlT)) {
+        errors.push('liveHttp.urlTemplate must use http:// or https://.');
+      }
+      if (lh.trigger && lh.trigger !== 'auto' && lh.trigger !== 'manual') {
+        errors.push(`Invalid liveHttp.trigger "${lh.trigger}" (expected "auto" or "manual").`);
+      }
+      if (typeof lh.timeoutMs === 'number' && (lh.timeoutMs < 0 || lh.timeoutMs > 5000)) {
+        errors.push('liveHttp.timeoutMs must be between 0 and 5000.');
+      }
+      const auth = lh.auth?.trim() ?? '';
+      if (auth && !['none', 'gh_cli', 'az_devops'].includes(auth) && !/^env:[A-Z][A-Z0-9_]{0,63}$/.test(auth)) {
+        errors.push(
+          `Invalid liveHttp.auth "${auth}" (allowed: none, gh_cli, az_devops, env:VAR_NAME; inline secrets forbidden).`
+        );
+      }
+      if (lh.headers) {
+        for (const [hk, hv] of Object.entries(lh.headers)) {
+          const lk = hk.toLowerCase();
+          if (['authorization', 'proxy-authorization', 'cookie', 'x-api-key'].includes(lk) || lk.includes('token') || lk.includes('secret')) {
+            errors.push(`Forbidden auth header "${hk}" in liveHttp.headers.`);
+          } else if (/^(bearer |basic |ghp_|github_pat_|sk-)/i.test(String(hv).trim())) {
+            errors.push(`Inline credential detected in liveHttp.headers["${hk}"].`);
+          }
+        }
+      }
+      const rcLayout = lh.resultCard?.layout;
+      if (!rcLayout || !['facts', 'table', 'steps', 'link'].includes(rcLayout)) {
+        errors.push('liveHttp.resultCard.layout must be one of: facts, table, steps, link.');
+      }
+    }
     return { rule: errors.length === 0 ? (r as PatternRule) : null, errors };
   });
 

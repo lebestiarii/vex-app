@@ -43,7 +43,7 @@ All cards are stored **flat** in `ModuleManifest.cards[]`. Use `"parentEntityKey
 ## 3. Pattern Rules (`PatternRule`) & Live GET Enrichment (`liveHttp`)
 - Store in `~/.vex/patterns/<id>.json` or `ModuleManifest.patterns[]`.
 - Emits `layout: "segments"` by default with named regex capture groups, optional `checksum` (`iata-mod7`, `iso6346`, `luhn`), local SQLite `dataLookups`, and `linkRules`.
-- Optional **`liveHttp`** (read-only `GET`, 1500ms timeout, optional 60s cache, `trigger: "auto"|"manual"`): interpolates `{{0}}` / `{{group}}` into `urlTemplate`, authenticates via `"none" | "gh_cli" | "az_devops" | "env:VAR_NAME"` (never inline secrets), and projects JSON fields (`{{json.path}}`) into a nested `facts`, `table`, `steps`, or `link` child card.
+- Optional **`liveHttp`** (strictly read-only `GET`, `trigger: "auto"|"manual"` default `"manual"`, `timeoutMs` default `1500` / max `5000`, `cacheTtlSec` default `60`, optional non-auth `headers`): safely URL-escapes `{{0}}` / `{{match}}` / named captures (`PathEscape`/`QueryEscape`) into `urlTemplate`, authenticates strictly via `"none" | "gh_cli" | "az_devops" | "env:VAR_NAME"` (inline tokens and auth headers are rejected), and projects JSON dot-paths (`{{json.path}}`, supporting dotted keys and array indices) via `resultCard` into a nested `facts`, `table`, `steps`, or `link` child card. On timeout/error, local `segments` stay intact with a muted `Live lookup unavailable` chip.
 - Optional **`liveMcp`**: delegates live lookup to a configured external MCP server (e.g., GitHub or Azure DevOps).
 
 ## 4. Deterministic Authoring Workflow (MCP)

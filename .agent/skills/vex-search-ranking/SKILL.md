@@ -46,6 +46,7 @@ description: Reference guide for Vex's v3 SQLite search schema (entity_links + c
 | :--- | :--- | :--- | :--- |
 | `150.0` | Service: Converter | `calculator` | Instant unit conversions & 3D cargo dim-weight (`TryConvertQuery`, `layout: "convert"`) |
 | `145.0` / `140.0` | Service: Pattern Engine | `pattern` / `pattern-enrichment` | Regex + checksum pattern decode (`layout: "segments"`) & linked entity enrichment |
+| `135.0` | Service: External MCP | `mcp-live` | Explicit `/gh` or `/ado` external MCP queries mapped onto generic `link`/`facts`/`action-list`/`table` layouts |
 | `120.0` / `40.0` | Service: Plugins | `plugin` | Explicit `/modifier` plugin (`120.0`) or ambient plugin (`40.0`) |
 | `88.0 – 100.0` | Store Tier 1: Exact | `exact` | B-tree match on `id`/`entity_key`/`entity_code`/`title`, plus exact `modifier`/`tag`/chip segment/`(CODE)` verified unstemmed |
 | `52.0 – 78.0` | Store Tier 2b: Neighbors | `contextual` | Up to **4** 1-hop `related_to` neighbors of Tier 1 entity hits (direct `child_of` children hydrate inside the parent instead of duplicating as siblings) |

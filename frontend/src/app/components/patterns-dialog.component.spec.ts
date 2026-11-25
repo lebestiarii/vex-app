@@ -16,7 +16,16 @@ describe('PatternsDialogComponent', () => {
     titleTemplate: 'Container · {{match}}',
     layout: 'segments',
     linkRules: [{ targetEntityKey: 'ocean-carrier:{{bic}}' }],
-    liveHttp: { urlTemplate: 'https://api.example.test/track/{{match}}', auth: 'none', trigger: 'manual' },
+    liveHttp: {
+      urlTemplate: 'https://api.example.test/track/{{match}}',
+      auth: 'none',
+      trigger: 'manual',
+      resultCard: {
+        layout: 'facts',
+        title: 'Live Tracking',
+        summary: '{{json.status}}',
+      },
+    },
     liveMcp: { serverId: 'github', toolName: 'get_issue' },
   };
 
@@ -152,6 +161,21 @@ describe('PatternsDialogComponent', () => {
     await fixture.whenStable();
     expect(fixture.nativeElement.querySelector('.validation-errors')?.textContent).toContain(
       'Invalid layout'
+    );
+
+    // Inline secret in liveHttp.auth triggers inline validator error
+    fixture.componentInstance.onDraftChange(
+      JSON.stringify({
+        ...sampleRule,
+        liveHttp: {
+          ...sampleRule.liveHttp,
+          auth: 'Bearer ghp_secret123',
+        },
+      })
+    );
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.validation-errors')?.textContent).toContain(
+      'inline secrets forbidden'
     );
 
     // Valid draft saves cleanly and emits patternsChanged

@@ -22,7 +22,7 @@ All extend `BaseCardTemplate<T>` and render inside `RolodexCardShellComponent` v
 2. `LinkCardComponent` (`link`): Handled as Single-Button card by shell (`↗`).
 3. `ActionListCardComponent` (`action-list`): Stacked full-width rows. Place `badge` + `primary`/`subtitle` cleanly without crowding; actions (`copy`/`open_url`) stay `flex-shrink: 0` on a right or second row so titles never wrap awkwardly.
 4. `FactsCardComponent` (`facts`): Optional segmented view-switcher pills (`views[]`, e.g. Metric / Imperial) + read-only 2-col fact grid. Render `[Copy]` button ONLY on facts where `copyable === true`.
-5. `SegmentsCardComponent` (`segments`): Equal-width Blue/Amber/Green token tiles + 1–2 sentence explanation + nested children.
+5. `SegmentsCardComponent` (`segments`): Equal-width Blue/Amber/Green token tiles + 1–2 sentence explanation + optional manual `⚡ Fetch Live Data` hydration bar (rendered by `RolodexCardShellComponent` via `linkedSignal` `activeNode` calling `fetchPatternLiveHTTP`) + nested children.
 6. `StepsCardComponent` (`steps`): N-column visual timeline + summary + bullets.
 7. `ConvertCardComponent` (`convert`): `Input ⇄ Output` strip + `[Copy]` + clickable equivalent pills.
 8. `TableCardComponent` (`table`): Sticky header (2–4 cols, max 8 visible rows), optional mono columns, `[Copy CSV]` + `[Copy MD]` footer.
@@ -34,7 +34,7 @@ All extend `BaseCardTemplate<T>` and render inside `RolodexCardShellComponent` v
 - **Keyboard Navigation:** `ArrowDown` / `ArrowUp` selects Level 0 cards; `Enter` opens `link`, toggles expand, or copies primary output; `Escape` clears query first, then hides window on second press.
 - **Dialogs (`<dialog>` + `.showModal()`):**
   - Set initial focus on modal heading (`tabindex="-1"`) or search/test input—never leave an aggressive focus ring on `Close`.
-  - **Modules Dialog:** Separate **Installed Modules** (full-width title row 1, description row 2, metadata + `[Enabled] [Copy JSON] [Delete]` footer row 3) from **Starter Catalog** (`[Install]` button; zero ambiguous checkboxes). Bottom MCP box shows live status badge + `[Copy Client JSON]`.
+  - **Modules Dialog:** Separate **Installed Modules** (full-width title row 1, description row 2, metadata + `[Enabled] [Copy JSON] [Delete]` footer row 3) from **Starter Catalog** (`[Install]` button; zero ambiguous checkboxes). Bottom MCP sections show live server status + `[Copy Client JSON]`, read-only `gh`/`az` CLI auth status pills, and 1-click GitHub/Azure DevOps external MCP preset connect/test/disconnect cards.
   - **Patterns Dialog:** Place **Live Test** bar at top with non-truncated placeholder; show per-rule Enabled toggle, example input, linked entity chips, and `Live GET` / `Live MCP` badge; keep raw regex + JSON editor inside a collapsible `Edit JSON` disclosure.
 
 ## 4. Angular 22 Zoneless & Verification Commands

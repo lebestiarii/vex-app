@@ -7,9 +7,11 @@ import {
   inject,
   input,
   linkedSignal,
+  signal,
 } from '@angular/core';
 import {
   ActionListLayoutData,
+  CardAction,
   CardNode,
   ConvertLayoutData,
   FactsLayoutData,
@@ -90,13 +92,13 @@ function hasRenderableLayoutBody(node: CardNode<any>): boolean {
         [attr.data-depth]="depthClamped()"
         [class.selected]="selected()"
         (click)="openSingleLink(directUrl)"
-        [attr.aria-label]="'Open ' + node().title"
+        [attr.aria-label]="'Open ' + activeNode().title"
       >
         <div class="header-row-1">
           <div class="identity">
-            <span class="card-icon" aria-hidden="true">{{ node().icon || '🌐' }}</span>
+            <span class="card-icon" aria-hidden="true">{{ activeNode().icon || '🌐' }}</span>
             <span class="title-text" [class.title-l0]="depth() === 0" [class.title-nested]="depth() > 0">
-              {{ node().title }}
+              {{ activeNode().title }}
             </span>
           </div>
           <div class="right-controls">
@@ -108,7 +110,7 @@ function hasRenderableLayoutBody(node: CardNode<any>): boolean {
                 [class.pinned]="isPinned()"
                 [class.pin-shake]="isShaking()"
                 [attr.aria-pressed]="isPinned()"
-                [attr.aria-label]="isPinned() ? 'Unpin ' + node().title : 'Pin ' + node().title"
+                [attr.aria-label]="isPinned() ? 'Unpin ' + activeNode().title : 'Pin ' + activeNode().title"
                 (click)="onPinClick($event)"
                 (keydown.enter)="onPinClick($event)"
                 (keyup.space)="onPinClick($event)"
@@ -152,7 +154,7 @@ function hasRenderableLayoutBody(node: CardNode<any>): boolean {
         >
           <div class="header-row-1">
             <div class="identity">
-              <span class="card-icon" aria-hidden="true">{{ node().icon || '📄' }}</span>
+              <span class="card-icon" aria-hidden="true">{{ activeNode().icon || '📄' }}</span>
               @if (isExpandable()) {
                 <button
                   type="button"
@@ -162,7 +164,7 @@ function hasRenderableLayoutBody(node: CardNode<any>): boolean {
                   [attr.aria-expanded]="isExpanded()"
                   (click)="onTitleClick($event)"
                 >
-                  {{ node().title }}
+                  {{ activeNode().title }}
                 </button>
               } @else {
                 <span
@@ -170,7 +172,7 @@ function hasRenderableLayoutBody(node: CardNode<any>): boolean {
                   [class.title-l0]="depth() === 0"
                   [class.title-nested]="depth() > 0"
                 >
-                  {{ node().title }}
+                  {{ activeNode().title }}
                 </span>
               }
             </div>
@@ -183,7 +185,7 @@ function hasRenderableLayoutBody(node: CardNode<any>): boolean {
                   [class.pinned]="isPinned()"
                   [class.pin-shake]="isShaking()"
                   [attr.aria-pressed]="isPinned()"
-                  [attr.aria-label]="isPinned() ? 'Unpin ' + node().title : 'Pin ' + node().title"
+                  [attr.aria-label]="isPinned() ? 'Unpin ' + activeNode().title : 'Pin ' + activeNode().title"
                   (click)="onPinClick($event)"
                 >
                   <span class="pin-glyph" [class.muted]="!isPinned()" aria-hidden="true">📌</span>
@@ -228,8 +230,25 @@ function hasRenderableLayoutBody(node: CardNode<any>): boolean {
               </div>
             }
 
+            @if (manualLiveHttpAction(); as liveAct) {
+              <div class="live-fetch-bar">
+                <button
+                  type="button"
+                  class="live-fetch-btn"
+                  [disabled]="fetchingLive()"
+                  (click)="fetchLiveHttp(liveAct)"
+                >
+                  <span aria-hidden="true">⚡</span>
+                  {{ fetchingLive() ? 'Fetching…' : (liveAct.label || 'Fetch Live Data') }}
+                </button>
+                @if (liveAct.env?.['liveHttpAuth'] && liveAct.env?.['liveHttpAuth'] !== 'none') {
+                  <span class="live-auth-tag font-mono">{{ liveAct.env?.['liveHttpAuth'] }}</span>
+                }
+              </div>
+            }
+
             @if (nestedChildren().length > 0) {
-              <div class="nested-stack" role="group" [attr.aria-label]="node().title + ' items'">
+              <div class="nested-stack" role="group" [attr.aria-label]="activeNode().title + ' items'">
                 @for (child of nestedChildren(); track child.id) {
                   <app-rolodex-card-shell [node]="child" [depth]="depth() + 1" />
                 }
@@ -524,6 +543,43 @@ function hasRenderableLayoutBody(node: CardNode<any>): boolean {
         gap: 8px;
         width: 100%;
       }
+
+      .live-fetch-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .live-fetch-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        min-block-size: 28px;
+        padding: 4px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--chip-blue-border);
+        background: var(--chip-blue-bg);
+        color: var(--chip-blue-text);
+        font-size: 11.5px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: filter 0.14s ease;
+      }
+
+      .live-fetch-btn:hover:not(:disabled) {
+        filter: brightness(0.97);
+      }
+
+      .live-fetch-btn:disabled {
+        opacity: 0.6;
+        cursor: progress;
+      }
+
+      .live-auth-tag {
+        font-size: 10.5px;
+        color: var(--text-muted);
+      }
     `,
   ],
 })
@@ -538,25 +594,37 @@ export class RolodexCardShellComponent {
   private readonly state = inject(RolodexStateService);
   private readonly bridge = inject(VexBridgeService);
 
+  readonly activeNode = linkedSignal<CardNode<any>>(() => this.node());
+  readonly fetchingLive = signal<boolean>(false);
+
   readonly isExpanded = linkedSignal<boolean>(() =>
     Boolean(this.node().defaultExpanded || this.autoExpand())
   );
 
   readonly depthClamped = computed(() => Math.min(2, Math.max(0, this.depth())));
-  readonly canPin = computed(() => this.depth() === 0 && this.node().pinnable !== false);
-  readonly isPinned = computed(() => this.state.isPinned(this.node().id));
-  readonly isShaking = computed(() => this.state.shakingPinId() === this.node().id);
+  readonly canPin = computed(() => this.depth() === 0 && this.activeNode().pinnable !== false);
+  readonly isPinned = computed(() => this.state.isPinned(this.activeNode().id));
+  readonly isShaking = computed(() => this.state.shakingPinId() === this.activeNode().id);
 
-  readonly templateComponent = computed(() => this.registry.resolve(this.node().layout));
+  readonly templateComponent = computed(() => this.registry.resolve(this.activeNode().layout));
 
   readonly outletInputs = computed(() => ({
-    node: this.node(),
+    node: this.activeNode(),
     depth: this.depth(),
   }));
 
   readonly nestedChildren = computed(() => {
     if (this.depth() >= 2) return [];
-    return this.node().children ?? [];
+    return this.activeNode().children ?? [];
+  });
+
+  readonly manualLiveHttpAction = computed<CardAction | null>(() => {
+    const n = this.activeNode();
+    if (n.layout !== 'segments') return null;
+    const act = (n.actions ?? []).find(
+      (a) => a.id === 'fetch-live-http' && Boolean(a.env?.['liveHttpRuleId']) && Boolean(a.env?.['liveHttpRawQuery'])
+    );
+    return act ?? null;
   });
 
   /**
@@ -565,14 +633,14 @@ export class RolodexCardShellComponent {
    * with top-right ↗ and no chevron.
    */
   readonly singleLinkUrl = computed<string | null>(() => {
-    const n = this.node();
+    const n = this.activeNode();
     if (n.layout !== 'link') return null;
     if (this.nestedChildren().length > 0) return null;
     const url = ((n.data ?? {}) as LinkLayoutData).url?.trim();
     return url ? url : null;
   });
 
-  readonly showLeafBody = computed(() => hasRenderableLayoutBody(this.node()));
+  readonly showLeafBody = computed(() => hasRenderableLayoutBody(this.activeNode()));
 
   readonly isExpandable = computed(
     () => !this.singleLinkUrl() && (this.showLeafBody() || this.nestedChildren().length > 0)
@@ -580,7 +648,7 @@ export class RolodexCardShellComponent {
 
   readonly displayChips = computed(() => {
     this.state.clockNow();
-    const raw = (this.node().chips ?? []).slice(0, 4);
+    const raw = (this.activeNode().chips ?? []).slice(0, 4);
     return raw.map((chip) => {
       const isClock = this.state.isClockChip(chip.label);
       return {
@@ -603,12 +671,49 @@ export class RolodexCardShellComponent {
     );
   }
 
+  async fetchLiveHttp(action: CardAction): Promise<void> {
+    const ruleID = action.env?.['liveHttpRuleId']?.trim();
+    const rawQuery = action.env?.['liveHttpRawQuery']?.trim();
+    if (!ruleID || !rawQuery || this.fetchingLive()) return;
+
+    this.fetchingLive.set(true);
+    try {
+      const hydrated = await this.bridge.fetchPatternLiveHTTP(ruleID, rawQuery);
+      if (hydrated) {
+        this.activeNode.set(hydrated);
+        this.isExpanded.set(true);
+      } else {
+        this.markLiveUnavailable();
+      }
+    } catch {
+      this.markLiveUnavailable();
+    } finally {
+      this.fetchingLive.set(false);
+    }
+  }
+
+  private markLiveUnavailable(): void {
+    this.activeNode.update((prev) => {
+      const chips = [...(prev.chips ?? [])];
+      const already = chips.some((c) => c.label.toLowerCase() === 'live lookup unavailable');
+      if (!already) {
+        const muted: GlanceChip = { label: 'Live lookup unavailable', tone: 'neutral' };
+        if (chips.length >= 4) {
+          chips[3] = muted;
+        } else {
+          chips.push(muted);
+        }
+      }
+      return { ...prev, chips };
+    });
+  }
+
   toggleExpanded(): void {
     if (!this.isExpandable()) return;
     const next = !this.isExpanded();
     this.isExpanded.set(next);
     if (next) {
-      void this.bridge.recordCardUsed(this.node().id);
+      void this.bridge.recordCardUsed(this.activeNode().id);
     }
   }
 
@@ -619,7 +724,7 @@ export class RolodexCardShellComponent {
       return;
     }
 
-    const n = this.node();
+    const n = this.activeNode();
     if (n.layout === 'convert') {
       const output = ((n.data ?? {}) as ConvertLayoutData).output?.trim();
       if (output) {
@@ -649,11 +754,11 @@ export class RolodexCardShellComponent {
   onPinClick(event: Event): void {
     event.stopPropagation();
     event.preventDefault();
-    this.state.togglePin(this.node());
+    this.state.togglePin(this.activeNode());
   }
 
   openSingleLink(url: string): void {
     this.state.openExternalUrl(url);
-    void this.bridge.recordCardUsed(this.node().id);
+    void this.bridge.recordCardUsed(this.activeNode().id);
   }
 }

@@ -10,13 +10,21 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { ModuleStatus, StarterModuleInfo } from '../models/card-node.model';
+import { FormsModule } from '@angular/forms';
+import {
+  CLIAuthStatus,
+  ConnectedServerStatus,
+  ExternalServerConfig,
+  ModuleStatus,
+  StarterModuleInfo,
+} from '../models/card-node.model';
 import { RolodexStateService } from '../services/rolodex-state.service';
 import { VexBridgeService } from '../services/vex-bridge.service';
 
 @Component({
   selector: 'app-modules-dialog',
   standalone: true,
+  imports: [FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <dialog
@@ -188,6 +196,132 @@ import { VexBridgeService } from '../services/vex-bridge.service';
               </div>
             </div>
           </section>
+
+          @if (!onboardingMode()) {
+            <section class="section-block mcp-box" aria-label="External MCP & CLI Auth">
+              <div class="mcp-header-row">
+                <h3 class="section-heading">External MCP Presets &amp; CLI Auth</h3>
+                <button
+                  type="button"
+                  class="mini-btn"
+                  (click)="refreshExternalMCP()"
+                >
+                  Refresh Auth
+                </button>
+              </div>
+
+              <p class="mod-desc">
+                Query GitHub (<code>/gh</code>) and Azure DevOps (<code>/ado</code>) live using local OS CLI sessions — zero tokens stored in Vex.
+              </p>
+
+              @if (cliAuth().length > 0) {
+                <div class="cli-auth-row" role="list" aria-label="Local CLI Auth Status">
+                  @for (auth of cliAuth(); track auth.tool) {
+                    <span
+                      role="listitem"
+                      class="cli-auth-pill"
+                      [class.authed]="auth.authenticated"
+                      [attr.title]="auth.detail || ''"
+                    >
+                      <span class="font-mono">{{ auth.tool }}</span>:
+                      @if (auth.authenticated) {
+                        ● {{ auth.account || 'Signed in' }}
+                      } @else if (auth.installed) {
+                        ○ Not signed in
+                      } @else {
+                        ○ Not installed
+                      }
+                    </span>
+                  }
+                </div>
+              }
+
+              @if (externalMcpPresets().length > 0) {
+                <div class="module-list">
+                  @for (srv of externalMcpPresets(); track srv.id) {
+                    @let status = connectedServerMap()[srv.id];
+                    <article class="module-card preset-card">
+                      <div class="mod-row-1">
+                        <span class="mod-icon" aria-hidden="true">{{ srv.id === 'github' ? '🐙' : '🔷' }}</span>
+                        <span class="mod-name">{{ srv.name }}</span>
+                        <span
+                          class="mcp-status-pill"
+                          [class.listening]="status?.connected"
+                          [class.off]="!status?.connected"
+                        >
+                          {{ status?.connected ? '● Connected' : '○ Off' }}
+                        </span>
+                        @if (srv.localOnly) {
+                          <span class="mod-cat">Local Only</span>
+                        }
+                      </div>
+
+                      <div class="preset-cmd font-mono">
+                        {{ formatServerCommand(srv) }}
+                      </div>
+
+                      @if (srv.id === 'azure-devops' && !status?.connected) {
+                        <div class="preset-org-row">
+                          <label for="ado-org-input" class="mcp-lbl">Org</label>
+                          <input
+                            id="ado-org-input"
+                            type="text"
+                            class="org-input font-mono"
+                            placeholder="your-ado-org"
+                            [ngModel]="adoOrg()"
+                            (ngModelChange)="adoOrg.set($event)"
+                          />
+                        </div>
+                      }
+
+                      @if (presetError()[srv.id]; as errMsg) {
+                        <p class="preset-error" role="alert">{{ errMsg }}</p>
+                      }
+
+                      <div class="mod-row-3">
+                        <span class="mod-stats font-mono">
+                          @if (status?.connected) {
+                            {{ status.toolCount }} tools · {{ status.resourceCount }} resources
+                          } @else {
+                            {{ presetQueryHint(srv.id) }}
+                          }
+                        </span>
+                        <div class="mod-controls">
+                          @if (status?.connected) {
+                            <button
+                              type="button"
+                              class="mini-btn accent"
+                              [disabled]="busyServerId() === srv.id"
+                              (click)="testServer(srv.id)"
+                            >
+                              Test
+                            </button>
+                            <button
+                              type="button"
+                              class="mini-btn danger"
+                              [disabled]="busyServerId() === srv.id"
+                              (click)="disconnectServer(srv.id)"
+                            >
+                              Disconnect
+                            </button>
+                          } @else {
+                            <button
+                              type="button"
+                              class="primary-btn compact"
+                              [disabled]="busyServerId() === srv.id"
+                              (click)="connectServer(srv)"
+                            >
+                              {{ busyServerId() === srv.id ? 'Connecting…' : 'Enable & Connect' }}
+                            </button>
+                          }
+                        </div>
+                      </div>
+                    </article>
+                  }
+                </div>
+              }
+            </section>
+          }
         </div>
       </div>
     </dialog>
@@ -472,6 +606,54 @@ import { VexBridgeService } from '../services/vex-bridge.service';
         font-size: 11.5px;
         color: var(--text-primary);
       }
+      .cli-auth-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .cli-auth-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2.5px 9px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 600;
+        border: 1px solid var(--chip-neutral-border);
+        background: var(--chip-neutral-bg);
+        color: var(--text-secondary);
+      }
+      .cli-auth-pill.authed {
+        background: var(--chip-green-bg);
+        border-color: var(--chip-green-border);
+        color: var(--chip-green-text);
+      }
+      .preset-cmd {
+        font-size: 11px;
+        color: var(--text-secondary);
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+      .preset-org-row {
+        display: grid;
+        grid-template-columns: 36px minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+      }
+      .org-input {
+        min-block-size: 28px;
+        padding: 3px 8px;
+        border-radius: 7px;
+        border: 1px solid var(--border-nested);
+        background: var(--bg-input);
+        color: var(--text-primary);
+        font-size: 11.5px;
+      }
+      .preset-error {
+        margin: 0;
+        font-size: 11.5px;
+        color: var(--chip-red-text);
+      }
     `,
   ],
 })
@@ -488,6 +670,20 @@ export class ModulesDialogComponent {
   readonly starters = signal<StarterModuleInfo[]>([]);
   readonly mcpListening = signal<boolean>(false);
   readonly mcpHttpUrl = signal<string>('http://127.0.0.1:17380/mcp');
+  readonly cliAuth = signal<CLIAuthStatus[]>([]);
+  readonly externalMcpPresets = signal<ExternalServerConfig[]>([]);
+  readonly connectedServers = signal<ConnectedServerStatus[]>([]);
+  readonly busyServerId = signal<string | null>(null);
+  readonly adoOrg = signal<string>('');
+  readonly presetError = signal<Record<string, string>>({});
+
+  readonly connectedServerMap = computed<Record<string, ConnectedServerStatus>>(() => {
+    const map: Record<string, ConnectedServerStatus> = {};
+    for (const st of this.connectedServers()) {
+      map[st.config.id] = st;
+    }
+    return map;
+  });
 
   readonly availableStarters = computed<StarterModuleInfo[]>(() =>
     this.starters().filter((s) => !s.installed)
@@ -528,6 +724,119 @@ export class ModulesDialogComponent {
     } else {
       this.mcpListening.set(false);
       this.mcpHttpUrl.set('http://127.0.0.1:17380/mcp');
+    }
+
+    await this.refreshExternalMCP();
+  }
+
+  async refreshExternalMCP(): Promise<void> {
+    const [auth, presets, connected] = await Promise.all([
+      typeof this.bridge.probeCLIAuth === 'function' ? this.bridge.probeCLIAuth() : Promise.resolve([]),
+      typeof this.bridge.getConfiguredMCPServers === 'function'
+        ? this.bridge.getConfiguredMCPServers()
+        : Promise.resolve([]),
+      typeof this.bridge.listMCPServers === 'function' ? this.bridge.listMCPServers() : Promise.resolve([]),
+    ]);
+    this.cliAuth.set(auth);
+    this.externalMcpPresets.set(presets);
+    this.connectedServers.set(connected);
+
+    const ado = presets.find((p) => p.id === 'azure-devops');
+    if (ado?.args?.length) {
+      const lastArg = ado.args[ado.args.length - 1] ?? '';
+      if (lastArg && lastArg !== '<your-org-name>' && !this.adoOrg()) {
+        this.adoOrg.set(lastArg);
+      }
+    }
+  }
+
+  formatServerCommand(srv: ExternalServerConfig): string {
+    if (srv.transport === 'http' || srv.transport === 'sse') {
+      return srv.url || srv.transport;
+    }
+    return [srv.command, ...(srv.args ?? [])].filter(Boolean).join(' ');
+  }
+
+  presetQueryHint(serverID: string): string {
+    if (serverID === 'github') return '/gh <query>';
+    if (serverID === 'azure-devops') return '/ado <query>';
+    return `@mcp:${serverID}`;
+  }
+
+  async connectServer(srv: ExternalServerConfig): Promise<void> {
+    this.busyServerId.set(srv.id);
+    this.presetError.update((prev) => ({ ...prev, [srv.id]: '' }));
+    try {
+      const cfg: ExternalServerConfig = {
+        ...srv,
+        args: [...(srv.args ?? [])],
+        enabled: true,
+        localOnly: true,
+      };
+      if (cfg.id === 'azure-devops' && cfg.args) {
+        const org = this.adoOrg().trim();
+        const idx = cfg.args.findIndex((a) => a === '<your-org-name>');
+        if (idx >= 0) {
+          if (!org) {
+            this.presetError.update((prev) => ({
+              ...prev,
+              [srv.id]: 'Enter your Azure DevOps organization name first.',
+            }));
+            return;
+          }
+          cfg.args[idx] = org;
+        }
+      }
+      const status = await this.bridge.connectMCPServer(cfg);
+      if (status?.connected) {
+        this.state.showToast(`Connected ${srv.name} (${status.toolCount} tools)`, 'info');
+      } else {
+        this.presetError.update((prev) => ({
+          ...prev,
+          [srv.id]: `Could not connect ${srv.name}. Verify the server binary is installed.`,
+        }));
+      }
+      await this.refreshExternalMCP();
+      this.modulesChanged.emit();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Connection failed';
+      this.presetError.update((prev) => ({ ...prev, [srv.id]: msg }));
+    } finally {
+      this.busyServerId.set(null);
+    }
+  }
+
+  async testServer(serverID: string): Promise<void> {
+    this.busyServerId.set(serverID);
+    this.presetError.update((prev) => ({ ...prev, [serverID]: '' }));
+    try {
+      const status = await this.bridge.testMCPServer(serverID);
+      if (status?.connected) {
+        this.state.showToast(
+          `${status.config.name} OK · ${status.toolCount} tools, ${status.resourceCount} resources`,
+          'info'
+        );
+      } else {
+        this.presetError.update((prev) => ({ ...prev, [serverID]: 'Server health check failed.' }));
+      }
+      await this.refreshExternalMCP();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Health check failed';
+      this.presetError.update((prev) => ({ ...prev, [serverID]: msg }));
+    } finally {
+      this.busyServerId.set(null);
+    }
+  }
+
+  async disconnectServer(serverID: string): Promise<void> {
+    this.busyServerId.set(serverID);
+    try {
+      await this.bridge.disconnectMCPServer(serverID);
+      this.state.showToast(`Disconnected ${serverID} MCP server`, 'info');
+      await this.refreshExternalMCP();
+      this.modulesChanged.emit();
+    } finally {
+      this.busyServerId.set(null);
     }
   }
 

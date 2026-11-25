@@ -6,12 +6,16 @@ import { VexBridgeService } from '../services/vex-bridge.service';
 import { RolodexCardShellComponent } from './rolodex-card-shell.component';
 
 describe('RolodexCardShellComponent', () => {
-  let bridgeMock: { recordCardUsed: ReturnType<typeof vi.fn> };
+  let bridgeMock: {
+    recordCardUsed: ReturnType<typeof vi.fn>;
+    fetchPatternLiveHTTP: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     localStorage.clear();
     bridgeMock = {
       recordCardUsed: vi.fn().mockResolvedValue(undefined),
+      fetchPatternLiveHTTP: vi.fn().mockResolvedValue(null),
     };
   });
 
@@ -234,5 +238,80 @@ describe('RolodexCardShellComponent', () => {
     fixture.componentRef.setInput('node', { ...convertNode, id: 'conv-2', defaultExpanded: true });
     await fixture.whenStable();
     expect(fixture.componentInstance.isExpanded()).toBe(true);
+  });
+
+  it('hydrates manual liveHttp child card on click and degrades gracefully with muted unavailable chip on error', async () => {
+    const segNode: CardNode = {
+      id: 'pattern-github-issue-pr-1',
+      layout: 'segments',
+      icon: '🐙',
+      title: 'GitHub · octo/vex#42',
+      defaultExpanded: true,
+      chips: [{ label: 'Issue / PR', tone: 'blue' }],
+      data: {
+        segments: [
+          { value: 'octo', role: 'OWNER', meaning: 'Org', tone: 'blue' },
+          { value: 'vex', role: 'REPO', meaning: 'Repo', tone: 'amber' },
+          { value: '#42', role: 'NUMBER', meaning: 'Issue', tone: 'green' },
+        ],
+        explanation: 'GitHub issue reference.',
+      },
+      actions: [
+        {
+          id: 'fetch-live-http',
+          label: 'Fetch Live Data',
+          type: 'http',
+          target: 'https://api.github.com/repos/octo/vex/issues/42',
+          env: {
+            liveHttpRuleId: 'github-issue-pr',
+            liveHttpRawQuery: 'octo/vex#42',
+            liveHttpAuth: 'gh_cli',
+          },
+        },
+      ],
+    };
+
+    const hydratedNode: CardNode = {
+      ...segNode,
+      actions: [],
+      children: [
+        {
+          id: 'pattern-github-issue-pr-1-live-http',
+          layout: 'facts',
+          icon: '⚡',
+          title: 'Add liveHttp GET support',
+          defaultExpanded: true,
+          chips: [{ label: 'open', tone: 'green' }],
+          data: {
+            summary: 'Opened by @octocat',
+            facts: [{ label: 'State', value: 'open' }],
+          },
+        },
+      ],
+    };
+    bridgeMock.fetchPatternLiveHTTP.mockResolvedValueOnce(hydratedNode);
+
+    const fixture = await renderShell(segNode, 0);
+    const fetchBtn = fixture.nativeElement.querySelector('.live-fetch-btn') as HTMLButtonElement | null;
+    expect(fetchBtn).not.toBeNull();
+    expect(fetchBtn!.textContent).toContain('Fetch Live Data');
+
+    fetchBtn!.click();
+    await fixture.whenStable();
+
+    expect(bridgeMock.fetchPatternLiveHTTP).toHaveBeenCalledWith('github-issue-pr', 'octo/vex#42');
+    expect(fixture.nativeElement.textContent).toContain('Add liveHttp GET support');
+    expect(fixture.nativeElement.querySelector('.live-fetch-btn')).toBeNull();
+
+    // Failure case keeps local segments intact and appends muted Live lookup unavailable chip
+    TestBed.resetTestingModule();
+    bridgeMock.fetchPatternLiveHTTP.mockRejectedValueOnce(new Error('offline'));
+    const failFix = await renderShell(segNode, 0);
+    const failBtn = failFix.nativeElement.querySelector('.live-fetch-btn') as HTMLButtonElement;
+    failBtn.click();
+    await failFix.whenStable();
+
+    expect(failFix.nativeElement.textContent).toContain('GitHub issue reference.');
+    expect(failFix.nativeElement.textContent).toContain('Live lookup unavailable');
   });
 });

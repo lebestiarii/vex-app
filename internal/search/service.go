@@ -2,6 +2,7 @@ package search
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -13,6 +14,12 @@ import (
 // DynamicPluginProvider supplies on-the-fly cards from declarative plugins matching a ParsedQuery.
 type DynamicPluginProvider interface {
 	QueryPlugins(ctx context.Context, q ParsedQuery) ([]models.SearchCard, error)
+}
+
+// LiveMCPQueryProvider routes slash-modifier queries (/gh, /ado) to connected external
+// MCP servers and maps responses onto Vex's generic SearchCard layouts.
+type LiveMCPQueryProvider interface {
+	QueryExternalMCP(ctx context.Context, modifier, query string, limit int) ([]models.SearchCard, error)
 }
 
 // SearchResponse is returned to the Wails frontend and MCP tools for every query.
@@ -30,6 +37,8 @@ type Service struct {
 	mu             sync.RWMutex
 	pluginProvider DynamicPluginProvider
 	livePatterns   LivePatternExecutor
+	liveHTTP       LiveHTTPExecutor
+	liveMCPQuery   LiveMCPQueryProvider
 }
 
 // NewService creates a SearchService backed by the SQLite Store.
@@ -62,6 +71,33 @@ func (s *Service) SetLivePatternExecutor(exec LivePatternExecutor) {
 	s.livePatterns = exec
 }
 
+// SetLiveHTTPExecutor attaches a read-only GET HTTP client for PatternRules with liveHttp lookups.
+func (s *Service) SetLiveHTTPExecutor(exec LiveHTTPExecutor) {
+	s.mu.Lock()
+	s.liveHTTP = exec
+	s.mu.Unlock()
+	if s.patterns != nil {
+		s.patterns.SetLiveHTTPExecutor(exec)
+	}
+}
+
+// SetLiveMCPQueryProvider attaches an external MCP query bridge for /gh and /ado modifiers.
+func (s *Service) SetLiveMCPQueryProvider(p LiveMCPQueryProvider) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.liveMCPQuery = p
+}
+
+// FetchPatternLiveHTTP executes a pattern rule's liveHttp GET lookup on demand
+// and returns the hydrated PatternMatchResult.
+func (s *Service) FetchPatternLiveHTTP(ctx context.Context, ruleID, rawQuery string) (*PatternMatchResult, error) {
+	s.mu.RLock()
+	livePatterns := s.livePatterns
+	liveHTTP := s.liveHTTP
+	s.mu.RUnlock()
+	return s.patterns.FetchLiveHTTP(ctx, ruleID, rawQuery, s.store, livePatterns, liveHTTP)
+}
+
 // SetPluginProvider attaches a dynamic plugin manager to the search pipeline.
 func (s *Service) SetPluginProvider(p DynamicPluginProvider) {
 	s.mu.Lock()
@@ -84,6 +120,7 @@ func (s *Service) Search(ctx context.Context, rawQuery string, limit int) (*Sear
 	s.mu.RLock()
 	pluginProvider := s.pluginProvider
 	livePatterns := s.livePatterns
+	liveMCPQuery := s.liveMCPQuery
 	s.mu.RUnlock()
 
 	opts := indexer.SearchOptions{
@@ -140,6 +177,36 @@ func (s *Service) Search(ctx context.Context, rawQuery string, limit int) (*Sear
 				if len(results) > limit {
 					results = results[:limit]
 				}
+			}
+		}
+	}
+
+	// Route /gh and /ado slash modifiers to connected external MCP servers (GitHub / Azure DevOps).
+	if liveMCPQuery != nil && pq.Mode == ModeSearch && isExternalMCPModifier(pq.Modifier) {
+		mcpCards, mcpErr := liveMCPQuery.QueryExternalMCP(ctx, pq.Modifier, externalMCPQueryText(pq), limit)
+		if mcpErr == nil && len(mcpCards) > 0 {
+			seen := make(map[string]struct{}, len(results)+len(mcpCards))
+			prepended := make([]indexer.SearchResult, 0, len(mcpCards)+len(results))
+			for i, mc := range mcpCards {
+				if _, exists := seen[mc.ID]; exists {
+					continue
+				}
+				seen[mc.ID] = struct{}{}
+				prepended = append(prepended, indexer.SearchResult{
+					Card:        mc,
+					Score:       135.0 - float64(i)*0.5,
+					MatchSource: "mcp-live",
+				})
+			}
+			for _, r := range results {
+				if _, exists := seen[r.Card.ID]; exists {
+					continue
+				}
+				prepended = append(prepended, r)
+			}
+			results = prepended
+			if len(results) > limit {
+				results = results[:limit]
 			}
 		}
 	}
@@ -210,4 +277,31 @@ func (s *Service) Search(ctx context.Context, rawQuery string, limit int) (*Sear
 		Results: results,
 		Total:   len(results),
 	}, nil
+}
+
+func isExternalMCPModifier(mod string) bool {
+	switch strings.ToLower(strings.TrimSpace(mod)) {
+	case "gh", "github", "ado", "azure-devops":
+		return true
+	default:
+		return false
+	}
+}
+
+func externalMCPQueryText(pq ParsedQuery) string {
+	parts := make([]string, 0, len(pq.Params)+1)
+	if len(pq.Params) > 0 {
+		keys := make([]string, 0, len(pq.Params))
+		for k := range pq.Params {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			parts = append(parts, k+":"+pq.Params[k])
+		}
+	}
+	if strings.TrimSpace(pq.Text) != "" {
+		parts = append(parts, strings.TrimSpace(pq.Text))
+	}
+	return strings.TrimSpace(strings.Join(parts, " "))
 }

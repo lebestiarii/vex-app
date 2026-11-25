@@ -22,14 +22,19 @@ flowchart TD
         RPC --> Log["Structured JSONL Logger + Metrics\n(internal/logging)\nvex.jsonl + Prometheus"]
     end
 
-    subgraph External["External AI & MCP Ecosystem"]
-        MCP["Domain MCP Hub + Skill Sharing\n(internal/mcp)\n--mcp-stdio & 127.0.0.1:17380/mcp\n20 Tools · 7 Resources"]
+    subgraph External["External AI, MCP & Live GET Ecosystem"]
+        MCP["Domain MCP Hub + Skill Sharing\n(internal/mcp/server.go)\n--mcp-stdio & 127.0.0.1:17380/mcp\n20 Tools · 7 Resources"]
+        ExtMCP["External MCP Client & Query Bridge\n(internal/mcp/client.go + query_bridge.go + auth_probe.go)\nGitHub /gh & Azure DevOps /ado Presets"]
+        LiveHTTP["Read-Only LiveHTTP Client\n(internal/mcp/live_http.go)\nGET-only · TTL Cache · gh/az/env Auth"]
         Skills["Shared Agent Skills\n~/.vex/skills/ & .agent/skills/"] --> MCP
         Clients["Claude Desktop / Cursor /\nVS Code / GitHub Copilot"] <--> MCP
     end
 
     Store <--> MCP
     Search <--> MCP
+    Search -->|"LivePatternExecutor &\nLiveMCPQueryProvider"| ExtMCP
+    Search -->|"LiveHTTPExecutor"| LiveHTTP
+    RPC --> ExtMCP
     Runner <--> MCP
     Modules <--> MCP
 ```
@@ -67,14 +72,15 @@ flowchart TD
 ### D. SQLite v3 Precision Search, Flat-on-Disk Nesting & Pattern Engine (`internal/indexer/store.go`, `internal/search/`)
 - **SQLite Schema v3 (`PRAGMA user_version = 3`)**: Automatic idempotent in-place migration maintains `cards` (with `entity_key`, `entity_code`, `parent_entity_key`, `chips_text`, `related_keys_json`), 9-column `cards_fts`, `entity_links` (`child_of` / `related_to`) for dynamic 2-level cross-module child hydration, and `card_recents` for usage-ordered empty-state recents. `SearchCard.SearchableBody()` uses a strict layout-aware whitelist (never indexing URLs, tones, or structural JSON keys).
 - **4-Tier Ranking & Anti-Sprawl Cutoff (`SearchHybrid`)**: Ranks exact entity/code/tag/chip matches (`exact`, `88–100`) first, followed by 1-hop contextual neighbors (`contextual`, `52–78`) and whole-token FTS5 BM25 (`45–75`), then prefix FTS5 (`16–38`), and guarded metadata-only substring fallback (`fuzzy`, `5–14`), with a dynamic relevance cliff and a `10`-card active search limit.
-- **Loadable, Configurable `PatternEngine`**: Zero hardcoded rules in Go — active rules come solely from enabled modules (`ModuleManifest.Patterns`) and `~/.vex/patterns/*.json`. Emits `layout: "segments"` by default with `normalize`, checksums (`iata-mod7`, `iso6346`, `luhn`), live SQLite `dataLookups` (`fact.<Label>`), recursive `linkRules`, optional `liveMcp`, and `TestRule` dry runs.
+- **Loadable, Configurable `PatternEngine`**: Zero hardcoded rules in Go — active rules come solely from enabled modules (`ModuleManifest.Patterns`) and `~/.vex/patterns/*.json`. Emits `layout: "segments"` by default with `normalize`, checksums (`iata-mod7`, `iso6346`, `luhn`), live SQLite `dataLookups` (`fact.<Label>`), recursive `linkRules`, optional read-only `liveHttp` GET enrichment (with `trigger: "auto"|"manual"`, safe `url.PathEscape`/`url.QueryEscape`, TTL caching, JSON dot-path projection into nested `facts`/`table`/`steps`/`link` child cards, on-demand `FetchPatternLiveHTTP` hydration, and muted `Live lookup unavailable` fallback), optional `liveMcp`, and `TestRuleWithLive` dry runs.
+- **GitHub & Azure DevOps External MCP Query Flow (`internal/mcp/client.go`, `query_bridge.go`, `auth_probe.go`)**: `search.Service` routes `/gh <query>` and `/ado <query>` via `LiveMCPQueryProvider` (`mcp.ClientManager.QueryExternalMCP`), mapping repo/PR/issue and work-item responses strictly onto generic `link`, `facts`, `action-list`, and `table` layouts. `ModulesDialogComponent` exposes live `gh`/`az` CLI auth status (`ProbeCLIAuth`) and 1-click **Enable & Connect / Test / Disconnect** preset controls (`GetConfiguredMCPServers`, `ConnectMCPServer`, `TestMCPServer`, `DisconnectMCPServer`).
 
 ### E. Strict Schema Validation, MCP Hub & Security (`internal/models/layouts.go`, `internal/mcp/`, `internal/plugins/runner.go`)
-- **Compiler-as-Referee Validation**: `ValidateAndNormalizeCard`, `ValidateModuleManifest`, `ValidateModuleJSON`, CLI `vex validate <path.json>`, and MCP `validate_module` enforce strict `additionalProperties: false` payload decoding, zero header-to-body chip echoes, max nesting depth 2, and zero legacy aliases.
+- **Compiler-as-Referee Validation**: `ValidateAndNormalizeCard`, `ValidatePatternRule`, `ValidatePatternLiveHTTP`, `ValidateModuleManifest`, `ValidateModuleJSON`, CLI `vex validate <path.json>`, and MCP `validate_module` enforce strict `additionalProperties: false` payload decoding, zero header-to-body chip echoes, max nesting depth 2, zero legacy aliases, and zero inline tokens/auth headers in `liveHttp`.
 - **MCP Server (`HubServer`)**:
   - **7 Resources & Templates**: `search://collections`, `schema://search-card`, `card://{collection}/{id}`, `search://modules`, `search://patterns`, `search://skills`, `skill://{name}`.
   - **20 Tools**: `search_knowledge`, `get_card_schema`, `validate_module`, `preview_raw_data_sample`, `transform_and_import_data`, `upsert_card`, `batch_upsert_cards`, `list_plugins`, `execute_card_action`, `get_related_cards`, `list_modules`, `get_module`, `upsert_module`, `delete_module`, `install_starter_module`, `list_pattern_rules`, `upsert_pattern_rule`, `delete_pattern_rule`, `list_skills`, `get_skill`.
-- **Security Controls**: 100% local-first data in `~/.vex`, loopback-only MCP HTTP with Host/Origin CSRF & DNS-rebinding guard (`loopbackGuardMiddleware`), strict HTTP/HTTPS URL validation, and zero arbitrary shell execution.
+- **Security Controls**: 100% local-first data in `~/.vex`, loopback-only MCP HTTP with Host/Origin CSRF & DNS-rebinding guard (`loopbackGuardMiddleware`), strict HTTP/HTTPS URL validation (`ValidateHTTPURLStrict`), GET-only `liveHttp` with hardcoded CLI token broker args (zero user input in shell, zero inline secrets in JSON), and zero arbitrary shell execution.
 
 ### F. Local Observability, Autostart & Viewport Anchoring
 - `internal/logging`: Rotating `slog` JSONL logs (`~/.vex/logs/vex.jsonl`, `0o600`, never writes to `stdout`) + Prometheus `/metrics`.

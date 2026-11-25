@@ -231,12 +231,70 @@ export interface PatternMCPLookup {
   arguments?: Record<string, string>;
 }
 
+export interface PatternLiveResultSpec {
+  layout: 'facts' | 'table' | 'steps' | 'link';
+  title?: string;
+  icon?: string;
+  defaultExpanded?: boolean;
+  chips?: GlanceChip[];
+  summary?: string;
+  facts?: FactItem[];
+  url?: string;
+  columns?: string[];
+  rowsPath?: string;
+  rowFields?: string[];
+  rows?: string[][];
+  monoColumns?: number[];
+  sourceUrl?: string;
+  stepsPath?: string;
+  stepLabel?: string;
+  stepCaption?: string;
+  steps?: StepItem[];
+  activeStep?: number;
+  activeStepPath?: string;
+  bullets?: string[];
+}
+
 export interface PatternLiveHttpSpec {
   urlTemplate: string;
-  auth?: string;
   trigger?: 'auto' | 'manual';
-  cacheSeconds?: number;
-  layout?: CardLayoutType;
+  timeoutMs?: number;
+  cacheTtlSec?: number;
+  auth?: string;
+  headers?: Record<string, string>;
+  resultCard: PatternLiveResultSpec;
+}
+
+export interface CLIAuthStatus {
+  tool: 'gh' | 'az' | string;
+  installed: boolean;
+  authenticated: boolean;
+  account?: string;
+  hostOrTenant?: string;
+  detail?: string;
+}
+
+export interface ExternalServerConfig {
+  id: string;
+  name: string;
+  transport: string;
+  command?: string;
+  args?: string[];
+  env?: string[];
+  url?: string;
+  headers?: Record<string, string>;
+  enabled: boolean;
+  localOnly?: boolean;
+}
+
+export interface ConnectedServerStatus {
+  config: ExternalServerConfig;
+  connected: boolean;
+  toolCount: number;
+  resourceCount: number;
+  cardCount: number;
+  lastSynced?: string;
+  lastError?: string;
 }
 
 export interface PatternRule {

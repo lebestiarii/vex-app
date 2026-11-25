@@ -2,12 +2,16 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"vex/internal/autostart"
+	"vex/internal/mcp"
 	"vex/internal/models"
 )
 
@@ -248,5 +252,78 @@ func TestBuildInfoUnified(t *testing.T) {
 	cfg := defaultRuntimeConfig()
 	if cfg.UpdateFeedURL != "https://updates.example.com/vex/manifest.json" {
 		t.Fatalf("expected UpdateFeedURL fallback in defaultRuntimeConfig, got %q", cfg.UpdateFeedURL)
+	}
+}
+
+type testRoundTripper func(*http.Request) (*http.Response, error)
+
+func (f testRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+func TestAppService_FetchPatternLiveHTTPAndMCPPresets(t *testing.T) {
+	baseDir := t.TempDir()
+	backend, err := InitBackend(baseDir, false)
+	if err != nil {
+		t.Fatalf("InitBackend: %v", err)
+	}
+	defer backend.Close()
+
+	// Replace default LiveHTTP client with mocked RoundTripper + mocked gh CLI token runner
+	mockLive := mcp.NewLiveHTTPClient(
+		mcp.WithCommandRunner(func(_ context.Context, name string, args ...string) (string, string, error) {
+			return "mock-gh-token", "", nil
+		}),
+		mcp.WithHTTPTransport(testRoundTripper(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(strings.NewReader(`{"title":"Hydrated Issue","state":"open","comments":3,"user":{"login":"octocat"},"html_url":"https://github.com/octocat/vex/issues/99"}`)),
+			}, nil
+		})),
+	)
+	backend.LiveHTTP = mockLive
+	backend.Search.SetLiveHTTPExecutor(mockLive)
+
+	svc := backend.AppService
+
+	// 1. Recommended MCP presets exposed cleanly via GetConfiguredMCPServers
+	presets := svc.GetConfiguredMCPServers()
+	if len(presets) < 2 {
+		t.Fatalf("expected >=2 configured/preset MCP servers, got %d", len(presets))
+	}
+
+	// 2. Install reference-patterns starter pack (includes disabled-by-default github-issue-pr & ado-work-item)
+	if _, err := svc.InstallStarterModules([]string{"reference-patterns"}); err != nil {
+		t.Fatalf("InstallStarterModules: %v", err)
+	}
+	rules := svc.ListPatternRules()
+	foundGH := false
+	foundADO := false
+	for _, r := range rules {
+		if r.ID == "github-issue-pr" {
+			foundGH = true
+			if r.IsEnabled() {
+				t.Fatal("expected github-issue-pr starter pattern to be disabled by default")
+			}
+		}
+		if r.ID == "ado-work-item" {
+			foundADO = true
+			if r.IsEnabled() {
+				t.Fatal("expected ado-work-item starter pattern to be disabled by default")
+			}
+		}
+	}
+	if !foundGH || !foundADO {
+		t.Fatalf("expected github-issue-pr and ado-work-item starter patterns, foundGH=%v foundADO=%v", foundGH, foundADO)
+	}
+
+	// 3. On-demand FetchPatternLiveHTTP hydrates github-issue-pr child card
+	node, err := svc.FetchPatternLiveHTTP("github-issue-pr", "octocat/vex#99")
+	if err != nil {
+		t.Fatalf("FetchPatternLiveHTTP: %v", err)
+	}
+	if node == nil || len(node.Children) != 1 || node.Children[0].Title != "Hydrated Issue" {
+		t.Fatalf("expected hydrated child card 'Hydrated Issue', got %+v", node)
 	}
 }

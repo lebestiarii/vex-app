@@ -218,6 +218,100 @@
       "actions": [
         { "id": "copy-container", "label": "Copy Container ID", "shortcut": "Enter", "type": "copy", "target": "{{bic}}{{serial}}{{check}}" }
       ]
+    },
+    {
+      "id": "ado-work-item",
+      "name": "Azure DevOps Work Item (AB#)",
+      "category": "engineering",
+      "description": "Decodes Azure DevOps work item references (e.g. AB#12345) and enriches them via the connected Azure DevOps MCP server (disabled by default).",
+      "example": "AB#12345",
+      "enabled": false,
+      "priority": 70,
+      "normalize": ["trim", "uppercase"],
+      "regex": "^AB#(?P<id>\\d{1,8})$",
+      "caseInsensitive": true,
+      "titleTemplate": "Work Item · AB#{{id}}",
+      "subtitleTemplate": "Azure DevOps Tracker",
+      "explanationTemplate": "Azure DevOps work item reference. Enable the Azure DevOps MCP preset in Modules & MCP to fetch live state, owner, and link.",
+      "segments": [
+        { "value": "AB#", "role": "SYSTEM", "meaning": "Azure Boards", "tone": "blue" },
+        { "value": "{{id}}", "role": "ITEM ID", "meaning": "Work Item #", "tone": "amber" }
+      ],
+      "collection": "engineering",
+      "layout": "segments",
+      "icon": "🔷",
+      "defaultExpanded": true,
+      "chips": [
+        { "label": "Azure Boards", "tone": "blue" },
+        { "label": "Live MCP", "tone": "amber" }
+      ],
+      "liveMcp": {
+        "serverId": "azure-devops",
+        "toolName": "wit_get_work_item",
+        "arguments": {
+          "id": "{{id}}"
+        }
+      },
+      "actions": [
+        { "id": "copy-ado-id", "label": "Copy AB# Reference", "shortcut": "Enter", "type": "copy", "target": "AB#{{id}}" }
+      ],
+      "localOnly": true
+    },
+    {
+      "id": "github-issue-pr",
+      "name": "GitHub Issue / Pull Request",
+      "category": "engineering",
+      "description": "Decodes GitHub issue or pull request references (e.g. owner/repo#123) with on-demand read-only GET enrichment via local gh CLI auth (disabled by default).",
+      "example": "octocat/hello-world#42",
+      "enabled": false,
+      "priority": 65,
+      "normalize": ["trim"],
+      "regex": "^(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)#(?P<num>\\d+)$",
+      "titleTemplate": "GitHub · {{owner}}/{{repo}}#{{num}}",
+      "subtitleTemplate": "Issue or Pull Request Reference",
+      "explanationTemplate": "Structured GitHub issue or PR pointer. Click Fetch Live Data to query the GitHub REST API using your local gh CLI session.",
+      "segments": [
+        { "value": "{{owner}}", "role": "OWNER", "meaning": "Org / User", "tone": "blue" },
+        { "value": "{{repo}}", "role": "REPO", "meaning": "Repository", "tone": "amber" },
+        { "value": "#{{num}}", "role": "NUMBER", "meaning": "Issue / PR", "tone": "green" }
+      ],
+      "collection": "engineering",
+      "layout": "segments",
+      "icon": "🐙",
+      "defaultExpanded": true,
+      "chips": [
+        { "label": "Issue / PR", "tone": "blue" },
+        { "label": "gh_cli GET", "tone": "neutral" }
+      ],
+      "liveHttp": {
+        "urlTemplate": "https://api.github.com/repos/{{owner}}/{{repo}}/issues/{{num}}",
+        "trigger": "manual",
+        "timeoutMs": 1500,
+        "cacheTtlSec": 60,
+        "auth": "gh_cli",
+        "headers": {
+          "Accept": "application/vnd.github+json"
+        },
+        "resultCard": {
+          "layout": "facts",
+          "title": "{{json.title}}",
+          "icon": "⚡",
+          "defaultExpanded": true,
+          "chips": [
+            { "label": "{{json.state}}", "tone": "green" }
+          ],
+          "summary": "Opened by @{{json.user.login}} · {{json.comments}} comments",
+          "facts": [
+            { "label": "State", "value": "{{json.state}}" },
+            { "label": "Author", "value": "@{{json.user.login}}", "mono": true },
+            { "label": "URL", "value": "{{json.html_url}}", "mono": true, "copyable": true }
+          ]
+        }
+      },
+      "actions": [
+        { "id": "open-gh-issue", "label": "Open on GitHub", "shortcut": "Enter", "type": "open_url", "target": "https://github.com/{{owner}}/{{repo}}/issues/{{num}}" }
+      ],
+      "localOnly": true
     }
   ]
 }
