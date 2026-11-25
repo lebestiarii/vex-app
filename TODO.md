@@ -44,6 +44,7 @@
 ---
 
 ## Upcoming Backlog
+- [ ] **Refine 9 Card Template Layouts UI & Interaction Behavior**: Keep the locked-down 9 canonical layout interfaces/contracts (`group`, `link`, `action-list`, `facts`, `segments`, `steps`, `convert`, `table`, `snippet`) intact while polishing visual presentation, spacing/density, micro-interactions, and keyboard/click behavior across all 9 Angular template components (`frontend/src/app/templates/`) and `RolodexCardShellComponent`.
 - [ ] **Live Weather Chip Hydration on `group` Location Cards**: Wire optional client-side caching over `AppService.FetchWeather(lat, lon)` when `data.meta.lat`/`lon` is present.
 - [ ] **Persisting Light/Dark Theme Choice in `config.json` (`UserPrefs`)**: Add `theme: "system" | "light" | "dark"` to Go `UserPrefs` so Wails native window styling matches at startup.
 - [ ] **Distribution & Self-Update Flow**: Host `manifest.json` and wire automated binary download + SHA-256 verification (`updater.VerifyFileSHA256`).
