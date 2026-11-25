@@ -9,15 +9,17 @@
 - [TODO.md](TODO.md): Phased roadmap, open clarifications, and upcoming backlog.
 
 ## Agent Instructions & Skills (Gemini + GitHub Copilot)
-- [AGENTS.md](AGENTS.md): Shared cross-agent instructions, Phase→Story AAR workflow, and macOS/Windows verification commands.
+- [AGENTS.md](AGENTS.md): Shared cross-agent instructions, Phase→Story planning & AAR rhythm, and macOS/Windows verification commands.
 - [.github/copilot-instructions.md](.github/copilot-instructions.md): GitHub Copilot entry point aligned with `AGENTS.md` and workspace skills.
-- [.agent/rules/vex-workflow.md](.agent/rules/vex-workflow.md): Build toolchains, branching discipline, architecture guardrails, and phase-end verification gates.
+- [.agent/rules/vex-workflow.md](.agent/rules/vex-workflow.md): Build toolchains, branching/worktree discipline, architecture guardrails, and phase-end verification gates.
+- [.agent/skills/after-action-review/SKILL.md](.agent/skills/after-action-review/SKILL.md): Standardized Pre-Phase Planning, Model/Reasoning Sizing, User Verification Walkthrough, After-Action Review (AAR), Context Handoff, and Git Merge/Prune rhythm.
+- [.agent/skills/git-branch-and-worktree-flow/SKILL.md](.agent/skills/git-branch-and-worktree-flow/SKILL.md): Standardized Git isolation, worktree management, post-approval merge ordering, and branch/worktree pruning discipline.
+- [.agent/skills/doc-drift-sweep/SKILL.md](.agent/skills/doc-drift-sweep/SKILL.md): 7-point post-phase audit for diagrams, architecture intent, full-repo folder structure, skill usefulness, schemas, and docs.
 - [.agent/skills/vex-architecture/SKILL.md](.agent/skills/vex-architecture/SKILL.md): Backend/frontend architecture, strict 9-layout schema, SQLite v3, and MCP tool/resource inventory (20 tools, 7 resources/templates).
 - [.agent/skills/vex-rolodex-ui/SKILL.md](.agent/skills/vex-rolodex-ui/SKILL.md): Full-width stacked nested card design system, Light/Dark CSS tokens, and Angular 22 (Zoneless + Signals) component rules.
 - [.agent/skills/vex-frontend-testing/SKILL.md](.agent/skills/vex-frontend-testing/SKILL.md): Offline Vitest 5 + `happy-dom` + Angular 22 Ivy Linker testing guide (`deno task test` / `ng test`).
 - [.agent/skills/vex-search-ranking/SKILL.md](.agent/skills/vex-search-ranking/SKILL.md): SQLite v3 schema (`entity_links`, `card_recents`), layout-aware `SearchableBody()` whitelist, 4-tier exact/contextual/prefix/guarded-fuzzy ranking, and dynamic relevance cliff.
 - [.agent/skills/vex-template-authoring/SKILL.md](.agent/skills/vex-template-authoring/SKILL.md): Guide for authoring strict zero-alias 9-layout cards, flat-on-disk JSON modules (`~/.vex/modules/`), and `PatternRule` decoders.
-- [.agent/skills/doc-drift-sweep/SKILL.md](.agent/skills/doc-drift-sweep/SKILL.md): 6-point post-phase documentation drift checklist.
 
 ## Angular 22 UI Shell (`frontend/src/app/`)
 - [frontend/src/styles.css](frontend/src/styles.css): Light (`[data-theme="light"]`) and Dark (`[data-theme="dark"]`) CSS design tokens.
