@@ -31,6 +31,10 @@ export class VexBridgeService {
   private sessionPrefs: UserPrefs = {
     onboardingCompleted: false,
     powerUserMode: false,
+    uiSize: 480,
+    theme: 'system',
+    animationsEnabled: true,
+    stayAwake: false,
   };
 
   private async getRuntime(): Promise<WailsRuntimeModule | null> {
@@ -89,6 +93,10 @@ export class VexBridgeService {
     const clean = (id ?? '').trim();
     if (!clean) return;
     await this.call('RecordCardUsed', clean);
+  }
+
+  async clearRecentCards(): Promise<void> {
+    await this.call('ClearRecentCards');
   }
 
   async listCollections(): Promise<CollectionStats[]> {
@@ -251,7 +259,21 @@ export class VexBridgeService {
     };
   }
 
+  async getStayAwake(): Promise<boolean> {
+    const res = await this.call<boolean>('GetStayAwake');
+    return res ?? Boolean(this.sessionPrefs.stayAwake);
+  }
+
+  async setStayAwake(enabled: boolean): Promise<void> {
+    this.sessionPrefs = { ...this.sessionPrefs, stayAwake: enabled };
+    await this.call('SetStayAwake', enabled);
+  }
+
   async hideWindow(): Promise<void> {
     await this.call('HideWindow');
+  }
+
+  async resizeWindow(width: number, height: number): Promise<void> {
+    await this.call('ResizeWindow', Math.ceil(width), Math.ceil(height));
   }
 }

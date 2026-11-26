@@ -330,11 +330,18 @@ export interface PatternRule {
   localOnly?: boolean;
 }
 
+export type UISizePreset = 460 | 480 | 560 | 620;
+export type ThemePreference = 'light' | 'dark' | 'system';
+
 export interface UserPrefs {
   onboardingCompleted: boolean;
   powerUserMode: boolean;
   launchAtLogin?: boolean;
   layoutMode?: string;
+  uiSize?: UISizePreset;
+  theme?: ThemePreference;
+  animationsEnabled?: boolean;
+  stayAwake?: boolean;
   selectedGoals?: string[];
   enabledModules?: string[];
   pinnedCategories?: string[];

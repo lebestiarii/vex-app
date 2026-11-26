@@ -29,9 +29,35 @@ type UserPrefs struct {
 	PowerUserMode       bool     `json:"powerUserMode"`
 	LaunchAtLogin       bool     `json:"launchAtLogin,omitempty"`
 	LayoutMode          string   `json:"layoutMode,omitempty"` // "compact" (hero + runner-ups, default) or "split"
+	UISize              int      `json:"uiSize,omitempty"`     // 460 | 480 (default) | 560 | 620
+	Theme               string   `json:"theme,omitempty"`      // "light" | "dark" | "system" (default)
+	AnimationsEnabled   *bool    `json:"animationsEnabled,omitempty"`
+	StayAwake           bool     `json:"stayAwake,omitempty"`
 	SelectedGoals       []string `json:"selectedGoals,omitempty"`
 	EnabledModules      []string `json:"enabledModules,omitempty"`
 	PinnedCategories    []string `json:"pinnedCategories,omitempty"`
+}
+
+func boolPtr(v bool) *bool { return &v }
+
+func normalizeUserPrefs(p UserPrefs) UserPrefs {
+	switch p.UISize {
+	case 460, 480, 560, 620:
+	default:
+		p.UISize = 480
+	}
+	switch strings.ToLower(strings.TrimSpace(p.Theme)) {
+	case "light":
+		p.Theme = "light"
+	case "dark":
+		p.Theme = "dark"
+	default:
+		p.Theme = "system"
+	}
+	if p.AnimationsEnabled == nil {
+		p.AnimationsEnabled = boolPtr(true)
+	}
+	return p
 }
 
 // RuntimeConfig is persisted at <baseDir>/config.json.
@@ -369,6 +395,8 @@ type AppService struct {
 	backend               *Backend
 	mu                    sync.RWMutex
 	onHide                func()
+	onResize              func(width, height int)
+	onStayAwakeChange     func(enabled bool)
 	onHotkeyChange        func(oldKey, newKey string) error
 	onLaunchAtLoginChange func(enabled bool)
 	weatherCache          map[string]weatherCacheEntry
@@ -397,6 +425,20 @@ func (s *AppService) SetHideHandler(fn func()) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.onHide = fn
+}
+
+// SetResizeHandler registers the Wails window resize callback.
+func (s *AppService) SetResizeHandler(fn func(width, height int)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onResize = fn
+}
+
+// SetStayAwakeHandler registers the Wails window always-on-top / keep-open callback.
+func (s *AppService) SetStayAwakeHandler(fn func(enabled bool)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onStayAwakeChange = fn
 }
 
 // SetHotkeyChangeHandler registers a callback that live-rebinds the OS global shortcut.
@@ -597,19 +639,57 @@ func (s *AppService) ImportWithRule(rawContent string, rule models.ETLMappingRul
 }
 
 func (s *AppService) GetUserPrefs() UserPrefs {
-	return s.backend.Config().Prefs
+	return normalizeUserPrefs(s.backend.Config().Prefs)
 }
 
 func (s *AppService) SetUserPrefs(prefs UserPrefs) error {
+	normalized := normalizeUserPrefs(prefs)
 	s.backend.mu.Lock()
-	s.backend.cfg.Prefs = prefs
+	prevStayAwake := s.backend.cfg.Prefs.StayAwake
+	s.backend.cfg.Prefs = normalized
 	snapshot := s.backend.cfg
 	s.backend.mu.Unlock()
-	if _, err := indexer.SyncModules(context.Background(), s.backend.Store, s.backend.ModulesDir, prefs.EnabledModules); err != nil {
+	if _, err := indexer.SyncModules(context.Background(), s.backend.Store, s.backend.ModulesDir, normalized.EnabledModules); err != nil {
 		return err
 	}
-	s.backend.Search.SetPatternRules(indexer.LoadActivePatternRules(s.backend.PatternsDir, s.backend.ModulesDir, prefs.EnabledModules))
-	return saveRuntimeConfig(s.backend.ConfigPath, snapshot)
+	s.backend.Search.SetPatternRules(indexer.LoadActivePatternRules(s.backend.PatternsDir, s.backend.ModulesDir, normalized.EnabledModules))
+	if err := saveRuntimeConfig(s.backend.ConfigPath, snapshot); err != nil {
+		return err
+	}
+	if prevStayAwake != normalized.StayAwake {
+		s.mu.RLock()
+		fn := s.onStayAwakeChange
+		s.mu.RUnlock()
+		if fn != nil {
+			fn(normalized.StayAwake)
+		}
+	}
+	return nil
+}
+
+// GetStayAwake returns whether Stay Awake (keep window open on top) is currently enabled.
+func (s *AppService) GetStayAwake() bool {
+	return s.backend.Config().Prefs.StayAwake
+}
+
+// SetStayAwake persists the Stay Awake preference and updates the Wails window state.
+func (s *AppService) SetStayAwake(enabled bool) error {
+	s.backend.mu.Lock()
+	s.backend.cfg.Prefs = normalizeUserPrefs(s.backend.cfg.Prefs)
+	s.backend.cfg.Prefs.StayAwake = enabled
+	snapshot := s.backend.cfg
+	s.backend.mu.Unlock()
+
+	if err := saveRuntimeConfig(s.backend.ConfigPath, snapshot); err != nil {
+		return err
+	}
+	s.mu.RLock()
+	fn := s.onStayAwakeChange
+	s.mu.RUnlock()
+	if fn != nil {
+		fn(enabled)
+	}
+	return nil
 }
 
 func (s *AppService) ListModules() ([]models.ModuleStatus, error) {
@@ -794,6 +874,11 @@ func (s *AppService) ListCollections() ([]indexer.CollectionStats, error) {
 // RecordCardUsed records usage of cardID in SQLite card_recents for the empty-state recents list.
 func (s *AppService) RecordCardUsed(cardID string) error {
 	return s.backend.Store.RecordCardUsed(context.Background(), cardID)
+}
+
+// ClearRecentCards clears all entries from SQLite card_recents.
+func (s *AppService) ClearRecentCards() error {
+	return s.backend.Store.ClearRecentCards(context.Background())
 }
 
 // ListRecentCards returns up to limit recently used cards projected as Rolodex CardNodes.
@@ -1162,5 +1247,15 @@ func (s *AppService) HideWindow() {
 	s.mu.RUnlock()
 	if fn != nil {
 		fn()
+	}
+}
+
+// ResizeWindow resizes the launcher window width and height to fit its visible content.
+func (s *AppService) ResizeWindow(width, height int) {
+	s.mu.RLock()
+	fn := s.onResize
+	s.mu.RUnlock()
+	if fn != nil {
+		fn(width, height)
 	}
 }

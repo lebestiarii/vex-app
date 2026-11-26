@@ -220,40 +220,46 @@ function hasRenderableLayoutBody(node: CardNode<any>): boolean {
           }
         </div>
 
-        @if (isExpandable() && isExpanded()) {
-          <div class="expanded-body">
-            @if (showLeafBody()) {
-              <div class="leaf-slot">
-                <ng-container
-                  *ngComponentOutlet="templateComponent(); inputs: outletInputs()"
-                />
-              </div>
-            }
+        @if (isExpandable()) {
+          <div class="nested-wrapper" [class.is-expanded]="isExpanded()">
+            <div class="nested-wrapper-inner">
+              @if (isExpanded()) {
+                <div class="expanded-body">
+                  @if (showLeafBody()) {
+                    <div class="leaf-slot">
+                      <ng-container
+                        *ngComponentOutlet="templateComponent(); inputs: outletInputs()"
+                      />
+                    </div>
+                  }
 
-            @if (manualLiveHttpAction(); as liveAct) {
-              <div class="live-fetch-bar">
-                <button
-                  type="button"
-                  class="live-fetch-btn"
-                  [disabled]="fetchingLive()"
-                  (click)="fetchLiveHttp(liveAct)"
-                >
-                  <span aria-hidden="true">⚡</span>
-                  {{ fetchingLive() ? 'Fetching…' : (liveAct.label || 'Fetch Live Data') }}
-                </button>
-                @if (liveAct.env?.['liveHttpAuth'] && liveAct.env?.['liveHttpAuth'] !== 'none') {
-                  <span class="live-auth-tag font-mono">{{ liveAct.env?.['liveHttpAuth'] }}</span>
-                }
-              </div>
-            }
+                  @if (manualLiveHttpAction(); as liveAct) {
+                    <div class="live-fetch-bar">
+                      <button
+                        type="button"
+                        class="live-fetch-btn"
+                        [disabled]="fetchingLive()"
+                        (click)="fetchLiveHttp(liveAct)"
+                      >
+                        <span aria-hidden="true">⚡</span>
+                        {{ fetchingLive() ? 'Fetching…' : (liveAct.label || 'Fetch Live Data') }}
+                      </button>
+                      @if (liveAct.env?.['liveHttpAuth'] && liveAct.env?.['liveHttpAuth'] !== 'none') {
+                        <span class="live-auth-tag font-mono">{{ liveAct.env?.['liveHttpAuth'] }}</span>
+                      }
+                    </div>
+                  }
 
-            @if (nestedChildren().length > 0) {
-              <div class="nested-stack" role="group" [attr.aria-label]="activeNode().title + ' items'">
-                @for (child of nestedChildren(); track child.id) {
-                  <app-rolodex-card-shell [node]="child" [depth]="depth() + 1" />
-                }
-              </div>
-            }
+                  @if (nestedChildren().length > 0) {
+                    <div class="nested-stack" role="group" [attr.aria-label]="activeNode().title + ' items'">
+                      @for (child of nestedChildren(); track child.id) {
+                        <app-rolodex-card-shell [node]="child" [depth]="depth() + 1" />
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
           </div>
         }
       </article>
@@ -270,7 +276,10 @@ function hasRenderableLayoutBody(node: CardNode<any>): boolean {
         display: block;
         width: 100%;
         border: 1px solid var(--border-l0);
-        transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+        transition:
+          background-color 150ms ease,
+          border-color 150ms ease,
+          box-shadow 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
       }
 
       /* Depth-driven alternating inset surfaces (NO left-rail lines) */
@@ -280,6 +289,23 @@ function hasRenderableLayoutBody(node: CardNode<any>): boolean {
         border-radius: 12px;
         padding: 12px;
         box-shadow: var(--shadow-card);
+        transition:
+          transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1),
+          background-color 150ms ease,
+          border-color 150ms ease,
+          box-shadow 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+
+      .rolodex-card[data-depth='0']:hover {
+        transform: translateY(-1px);
+        border-color: var(--border-nested);
+        box-shadow: var(--shadow-card-hover);
+      }
+
+      .rolodex-card[data-depth='0']:active {
+        transform: scale(0.994);
+        transition-duration: 80ms;
+        transition-timing-function: ease-out;
       }
 
       .rolodex-card[data-depth='1'] {
@@ -527,6 +553,22 @@ function hasRenderableLayoutBody(node: CardNode<any>): boolean {
         background: var(--dot-red);
       }
 
+      /* Smooth nested L0 -> L1 -> L2 expansion (grid-template-rows: 0fr -> 1fr) */
+      .nested-wrapper {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 210ms cubic-bezier(0.2, 0.9, 0.3, 1);
+      }
+
+      .nested-wrapper.is-expanded {
+        grid-template-rows: 1fr;
+      }
+
+      .nested-wrapper-inner {
+        overflow: hidden;
+        min-height: 0;
+      }
+
       /* Expanded section separated by subtle 1px top border; full-width 8px vertical stack */
       .expanded-body {
         margin-block-start: 10px;
@@ -535,6 +577,18 @@ function hasRenderableLayoutBody(node: CardNode<any>): boolean {
         display: flex;
         flex-direction: column;
         gap: 10px;
+        opacity: 1;
+        transform: translateY(0);
+        transition:
+          opacity 180ms ease,
+          transform 210ms cubic-bezier(0.2, 0.9, 0.3, 1);
+      }
+
+      @starting-style {
+        .expanded-body {
+          opacity: 0;
+          transform: translateY(-4px);
+        }
       }
 
       .nested-stack {

@@ -231,7 +231,6 @@ import { RolodexCardShellComponent } from './rolodex-card-shell.component';
       }
       .vex-dialog::backdrop {
         background: rgba(9, 9, 11, 0.48);
-        backdrop-filter: blur(2px);
       }
       .dialog-inner {
         display: flex;

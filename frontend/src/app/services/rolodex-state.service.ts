@@ -1,5 +1,5 @@
 import { DestroyRef, inject, Injectable, signal } from '@angular/core';
-import { CardNode } from '../models/card-node.model';
+import { CardNode, ThemePreference, UISizePreset, UserPrefs } from '../models/card-node.model';
 
 export interface ToastMessage {
   id: number;
@@ -12,7 +12,10 @@ export type ThemeMode = 'light' | 'dark';
 const PIN_STORAGE_KEY = 'vex.rolodex.pinnedIds.v1';
 const PIN_NODES_STORAGE_KEY = 'vex.rolodex.pinnedNodes.v1';
 const THEME_STORAGE_KEY = 'vex.rolodex.theme.v1';
+const UI_SIZE_STORAGE_KEY = 'vex.rolodex.uiSize.v1';
+const MOTION_STORAGE_KEY = 'vex.rolodex.animations.v1';
 export const MAX_PINS = 3;
+export const UI_SIZE_PRESETS: readonly UISizePreset[] = [460, 480, 560, 620] as const;
 
 @Injectable({ providedIn: 'root' })
 export class RolodexStateService {
@@ -22,25 +25,29 @@ export class RolodexStateService {
   readonly toasts = signal<ToastMessage[]>([]);
   readonly liveAnnouncement = signal<string>('');
   readonly clockNow = signal<Date>(new Date());
-  readonly theme = signal<ThemeMode>(this.loadInitialTheme());
+  readonly themePreference = signal<ThemePreference>(this.loadInitialThemePreference());
+  readonly theme = signal<ThemeMode>(this.resolveTheme(this.themePreference()));
+  readonly animationsEnabled = signal<boolean>(this.loadInitialAnimations());
+  readonly uiSize = signal<UISizePreset>(this.loadInitialUISize());
+  readonly stayAwake = signal<boolean>(false);
 
   private readonly destroyRef = inject(DestroyRef);
   private nextToastId = 1;
   private shakeTimer: ReturnType<typeof setTimeout> | null = null;
-  private hasManualTheme = false;
 
   constructor() {
     this.applyThemeAttr(this.theme());
+    this.applyMotionAttr(this.animationsEnabled());
 
     if (typeof window !== 'undefined') {
       const clockTimer = setInterval(() => {
         this.clockNow.set(new Date());
       }, 30_000);
 
-      // Follow OS color scheme changes dynamically when user hasn't manually overridden
+      // Follow OS color scheme changes dynamically when themePreference === 'system'
       const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
       const onThemeMediaChange = (ev: MediaQueryListEvent) => {
-        if (!this.hasManualTheme) {
+        if (this.themePreference() === 'system') {
           const next: ThemeMode = ev.matches ? 'dark' : 'light';
           this.theme.set(next);
           this.applyThemeAttr(next);
@@ -58,16 +65,70 @@ export class RolodexStateService {
     }
   }
 
-  toggleTheme(): void {
-    const next: ThemeMode = this.theme() === 'light' ? 'dark' : 'light';
-    this.hasManualTheme = true;
-    this.theme.set(next);
-    this.applyThemeAttr(next);
+  hydrateFromPrefs(prefs: UserPrefs): void {
+    if (prefs.uiSize && UI_SIZE_PRESETS.includes(prefs.uiSize)) {
+      this.setUISize(prefs.uiSize);
+    }
+    if (prefs.theme === 'light' || prefs.theme === 'dark' || prefs.theme === 'system') {
+      this.setThemePreference(prefs.theme);
+    }
+    if (typeof prefs.animationsEnabled === 'boolean') {
+      this.setAnimationsEnabled(prefs.animationsEnabled);
+    }
+    if (typeof prefs.stayAwake === 'boolean') {
+      this.stayAwake.set(prefs.stayAwake);
+    }
+  }
+
+  setThemePreference(pref: ThemePreference): void {
+    this.themePreference.set(pref);
+    const resolved = this.resolveTheme(pref);
+    this.theme.set(resolved);
+    this.applyThemeAttr(resolved);
     try {
-      localStorage.setItem(THEME_STORAGE_KEY, next);
+      localStorage.setItem(THEME_STORAGE_KEY, pref);
     } catch {
       // ignore storage errors
     }
+  }
+
+  toggleTheme(): void {
+    const next: ThemeMode = this.theme() === 'light' ? 'dark' : 'light';
+    this.setThemePreference(next);
+  }
+
+  setAnimationsEnabled(enabled: boolean): void {
+    this.animationsEnabled.set(enabled);
+    this.applyMotionAttr(enabled);
+    try {
+      localStorage.setItem(MOTION_STORAGE_KEY, enabled ? 'on' : 'off');
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  setUISize(size: UISizePreset): void {
+    const valid: UISizePreset = UI_SIZE_PRESETS.includes(size) ? size : 480;
+    this.uiSize.set(valid);
+    try {
+      localStorage.setItem(UI_SIZE_STORAGE_KEY, String(valid));
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  setStayAwake(enabled: boolean): void {
+    this.stayAwake.set(enabled);
+  }
+
+  isMotionReduced(): boolean {
+    if (!this.animationsEnabled()) {
+      return true;
+    }
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      return true;
+    }
+    return false;
   }
 
   isPinned(id: string): boolean {
@@ -211,22 +272,66 @@ export class RolodexStateService {
     }
   }
 
-  private loadInitialTheme(): ThemeMode {
+  private applyMotionAttr(enabled: boolean): void {
+    if (typeof document !== 'undefined') {
+      if (enabled) {
+        document.documentElement.removeAttribute('data-motion');
+      } else {
+        document.documentElement.setAttribute('data-motion', 'off');
+      }
+    }
+  }
+
+  private resolveTheme(pref: ThemePreference): ThemeMode {
+    if (pref === 'light' || pref === 'dark') {
+      return pref;
+    }
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  }
+
+  private loadInitialThemePreference(): ThemePreference {
     if (typeof localStorage !== 'undefined') {
       try {
         const saved = localStorage.getItem(THEME_STORAGE_KEY);
-        if (saved === 'light' || saved === 'dark') {
-          this.hasManualTheme = true;
+        if (saved === 'light' || saved === 'dark' || saved === 'system') {
           return saved;
         }
       } catch {
         // ignore
       }
     }
-    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
+    return 'system';
+  }
+
+  private loadInitialAnimations(): boolean {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(MOTION_STORAGE_KEY);
+        if (saved === 'off') {
+          return false;
+        }
+      } catch {
+        // ignore
+      }
     }
-    return 'light';
+    return true;
+  }
+
+  private loadInitialUISize(): UISizePreset {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const raw = Number(localStorage.getItem(UI_SIZE_STORAGE_KEY));
+        if (raw === 460 || raw === 480 || raw === 560 || raw === 620) {
+          return raw;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return 480;
   }
 
   private triggerPinShake(id: string): void {

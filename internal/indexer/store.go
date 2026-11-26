@@ -575,6 +575,15 @@ func (s *Store) RecordCardUsed(ctx context.Context, cardID string) error {
 	return err
 }
 
+// ClearRecentCards removes all entries from card_recents.
+func (s *Store) ClearRecentCards(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.db.ExecContext(ctx, `DELETE FROM card_recents`)
+	return err
+}
+
 // ListRecentCards returns up to limit most recently used indexed cards (with up to 2 levels
 // of flat-on-disk children dynamically assembled via entity_links).
 func (s *Store) ListRecentCards(ctx context.Context, limit int) ([]models.SearchCard, error) {

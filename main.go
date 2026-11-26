@@ -14,6 +14,7 @@ import (
 	"vex/internal/models"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 //go:embed all:frontend/dist
@@ -118,16 +119,18 @@ func main() {
 		},
 	})
 
+	initialPrefs := normalizeUserPrefs(cfg.Prefs)
+
 	launcherWin := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            info.Name,
-		Width:            480,
+		Width:            initialPrefs.UISize,
 		Height:           680,
 		MinWidth:         420,
-		MinHeight:        480,
+		MinHeight:        120,
 		Frameless:        true,
-		AlwaysOnTop:      true,
-		Hidden:           cfg.Prefs.OnboardingCompleted,
-		HideOnFocusLost:  true,
+		AlwaysOnTop:      initialPrefs.StayAwake,
+		Hidden:           initialPrefs.OnboardingCompleted,
+		HideOnFocusLost:  false,
 		InitialPosition:  application.WindowCentered,
 		BackgroundType:   application.BackgroundTypeTransparent,
 		BackgroundColour: application.NewRGBA(0, 0, 0, 0),
@@ -139,6 +142,14 @@ func main() {
 			DisableFramelessWindowDecorations: true,
 			HiddenOnTaskbar:                   true,
 		},
+	})
+
+	launcherWin.OnWindowEvent(events.Common.WindowLostFocus, func(_ *application.WindowEvent) {
+		if !backend.AppService.GetStayAwake() {
+			application.InvokeAsync(func() {
+				launcherWin.Hide()
+			})
+		}
 	})
 
 	// System Tray integration
@@ -197,12 +208,65 @@ func main() {
 			launcherWin.EmitEvent("vex:anchor", string(anchor))
 			launcherWin.Show()
 			launcherWin.Focus()
+			launcherWin.EmitEvent("vex:focus")
 		})
 	}
 
 	backend.AppService.SetHideHandler(func() {
 		application.InvokeAsync(func() {
 			launcherWin.Hide()
+		})
+	})
+
+	backend.AppService.SetResizeHandler(func(width, height int) {
+		clampedH := height
+		if clampedH < 120 {
+			clampedH = 120
+		}
+		if clampedH > 720 {
+			clampedH = 720
+		}
+		application.InvokeAsync(func() {
+			oldW, oldH := launcherWin.Size()
+			clampedW := width
+			if clampedW <= 0 {
+				clampedW = oldW
+			}
+			if clampedW < 420 {
+				clampedW = 480
+			}
+			if clampedW > 660 {
+				clampedW = 660
+			}
+			if clampedW == oldW && clampedH == oldH {
+				return
+			}
+			relX, relY := launcherWin.RelativePosition()
+			launcherWin.SetSize(clampedW, clampedH)
+			if oldW > 0 && clampedW != oldW {
+				newRelX := relX - (clampedW-oldW)/2
+				screen, _ := launcherWin.GetScreen()
+				if screen == nil {
+					screen = app.Screen.GetPrimary()
+				}
+				if screen != nil {
+					wa := WorkAreaFromScreen(screen)
+					maxX := wa.Width - clampedW - defaultWindowMargin
+					if newRelX < defaultWindowMargin {
+						newRelX = defaultWindowMargin
+					}
+					if maxX > defaultWindowMargin && newRelX > maxX {
+						newRelX = maxX
+					}
+				}
+				launcherWin.SetRelativePosition(newRelX, relY)
+			}
+		})
+	})
+
+	backend.AppService.SetStayAwakeHandler(func(enabled bool) {
+		application.InvokeAsync(func() {
+			launcherWin.SetAlwaysOnTop(enabled)
 		})
 	})
 

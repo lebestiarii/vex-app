@@ -327,3 +327,64 @@ func TestAppService_FetchPatternLiveHTTPAndMCPPresets(t *testing.T) {
 		t.Fatalf("expected hydrated child card 'Hydrated Issue', got %+v", node)
 	}
 }
+
+func TestUserPrefsAndStayAwakePersistence(t *testing.T) {
+	baseDir := t.TempDir()
+	backend, err := InitBackend(baseDir, false)
+	if err != nil {
+		t.Fatalf("InitBackend: %v", err)
+	}
+	t.Cleanup(func() { backend.Close() })
+
+	svc := backend.AppService
+
+	// Defaults: uiSize=480, theme=system, animationsEnabled=true, stayAwake=false
+	defaults := svc.GetUserPrefs()
+	if defaults.UISize != 480 || defaults.Theme != "system" || defaults.AnimationsEnabled == nil || !*defaults.AnimationsEnabled || defaults.StayAwake {
+		t.Fatalf("unexpected default UserPrefs: %+v", defaults)
+	}
+	if svc.GetStayAwake() {
+		t.Fatal("expected GetStayAwake() to be false by default")
+	}
+
+	// SetStayAwake triggers handler and persists
+	var handlerCalls []bool
+	svc.SetStayAwakeHandler(func(enabled bool) {
+		handlerCalls = append(handlerCalls, enabled)
+	})
+	if err := svc.SetStayAwake(true); err != nil {
+		t.Fatalf("SetStayAwake(true): %v", err)
+	}
+	if !svc.GetStayAwake() || len(handlerCalls) != 1 || !handlerCalls[0] {
+		t.Fatalf("expected stayAwake=true and handler called once, got awake=%v calls=%v", svc.GetStayAwake(), handlerCalls)
+	}
+
+	// Update UserPrefs with uiSize=560, theme=dark, animationsEnabled=false, stayAwake=false
+	animOff := false
+	updated := UserPrefs{
+		OnboardingCompleted: true,
+		UISize:              560,
+		Theme:               "dark",
+		AnimationsEnabled:   &animOff,
+		StayAwake:           false,
+	}
+	if err := svc.SetUserPrefs(updated); err != nil {
+		t.Fatalf("SetUserPrefs: %v", err)
+	}
+	if svc.GetStayAwake() || len(handlerCalls) != 2 || handlerCalls[1] {
+		t.Fatalf("expected stayAwake=false and handler called twice, got awake=%v calls=%v", svc.GetStayAwake(), handlerCalls)
+	}
+
+	// Re-open backend from same baseDir to verify config.json persistence
+	backend.Close()
+	backend2, err := InitBackend(baseDir, false)
+	if err != nil {
+		t.Fatalf("reopen InitBackend: %v", err)
+	}
+	t.Cleanup(func() { backend2.Close() })
+
+	reloaded := backend2.AppService.GetUserPrefs()
+	if reloaded.UISize != 560 || reloaded.Theme != "dark" || reloaded.AnimationsEnabled == nil || *reloaded.AnimationsEnabled || reloaded.StayAwake {
+		t.Fatalf("unexpected reloaded UserPrefs: %+v", reloaded)
+	}
+}

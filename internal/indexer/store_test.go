@@ -419,6 +419,17 @@ func TestStoreCardRecents(t *testing.T) {
 	if len(recents[0].Children) != 1 || recents[0].Children[0].ID != "c1-child" {
 		t.Fatalf("expected hydrated child c1-child on recent card c1, got %+v", recents[0].Children)
 	}
+
+	if err := store.ClearRecentCards(ctx); err != nil {
+		t.Fatalf("ClearRecentCards: %v", err)
+	}
+	afterClear, err := store.ListRecentCards(ctx, 6)
+	if err != nil {
+		t.Fatalf("ListRecentCards after clear: %v", err)
+	}
+	if len(afterClear) != 0 {
+		t.Fatalf("expected 0 recents after ClearRecentCards, got %d", len(afterClear))
+	}
 }
 
 func TestStoreSearchPrecisionAndAntiSprawl(t *testing.T) {

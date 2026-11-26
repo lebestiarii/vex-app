@@ -43,9 +43,12 @@
 
 ---
 
+## Known Bugs
+- [ ] **[BUG] macOS Modal Open/Close Resize Animation Glitch (`Popup ↔ 620×620` Modules/Patterns)**: Opening or closing `Modules & MCP` / `Pattern Rules` exhibits minor redraw/jostle during the `ResizeWindow` + `<dialog>` scale choreography on macOS Wails v3 transparent `WKWebView`. Desired behavior: `Popup → Settings → Modal opens, then gracefully expands to 620×620`; `Modal → Close → modal thins down smoothly, then closes to show Popup` without window redraw jitter.
+
 ## Upcoming Backlog
 - [ ] **Refine 9 Card Template Layouts UI & Interaction Behavior**: Keep the locked-down 9 canonical layout interfaces/contracts (`group`, `link`, `action-list`, `facts`, `segments`, `steps`, `convert`, `table`, `snippet`) intact while polishing visual presentation, spacing/density, micro-interactions, and keyboard/click behavior across all 9 Angular template components (`frontend/src/app/templates/`) and `RolodexCardShellComponent`.
 - [ ] **Live Weather Chip Hydration on `group` Location Cards**: Wire optional client-side caching over `AppService.FetchWeather(lat, lon)` when `data.meta.lat`/`lon` is present.
-- [ ] **Persisting Light/Dark Theme Choice in `config.json` (`UserPrefs`)**: Add `theme: "system" | "light" | "dark"` to Go `UserPrefs` so Wails native window styling matches at startup.
+- [x] **Persisting Light/Dark Theme Choice in `config.json` (`UserPrefs`)**: Added `theme: "system" | "light" | "dark"` (plus `uiSize`, `animationsEnabled`, `stayAwake`) to Go `UserPrefs` (`feat/dynamic-window-resize`).
 - [ ] **Distribution & Self-Update Flow**: Host `manifest.json` and wire automated binary download + SHA-256 verification (`updater.VerifyFileSHA256`).
 - [ ] **AppService Modularization**: Split `app_service.go` into focused files (`config.go`, `weather.go`, `modules_rpc.go`, `patterns_rpc.go`).

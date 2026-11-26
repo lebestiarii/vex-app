@@ -8,9 +8,18 @@ description: Authoritative UI design system, 9-layout component contract, and An
 Use this skill whenever modifying Angular components, templates, dialogs, or styles in `frontend/`.
 
 ## 1. Visual System & Non-Negotiable Layout Rules
-- **Widget Frame:** `420px`–`520px` width (default `460px`), `max-height: 680px` internal scroll, Light & Dark mode (`[data-theme="light"]` / `[data-theme="dark"]`, `<meta name="color-scheme" content="light dark">`).
+- **Widget Frame:** User-selectable 4-tier width (`460` Compact · `480` Standard default · `560` Comfy · `620` Wide, persisted in `UserPrefs.uiSize`), `max-height: 680px` internal scroll, auto-expanding to `620×620` while **Modules & MCP** or **Pattern Rules** modals are open and gliding back on close. Frameless transparent OS window has a `+20px` transparent buffer around `.widget-frame` so shadows and spring settle never clip.
+- **Theme & Motion:** `Light | Dark | System` (`[data-theme="light"]` / `[data-theme="dark"]`, tracking `prefers-color-scheme: dark` live when `System`). Animations toggle (`On | Off`) sets `[data-motion="off"]` on `<html>` (and respects `prefers-reduced-motion: reduce`), immediately disabling all CSS transitions and spring physics.
+- **Unified Search Header (`[🔍 Input [☕] [✕]] [+] [⚙]`):**
+  - Inside right of search input: subdued line-art Stay Awake indicator (`☕`, rendered only when Stay Awake is enabled, immediately left of `✕`) and Clear (`✕`, rendered only when `query().length > 0`).
+  - Outside right of search input: borderless `28×28px` ghost `+` (Quick Add popover) and `⚙` (Settings popover: Manage counts, UI Size, Theme/Motion, Stay Awake switch).
+- **Adaptive Scope Pills & `26px` Footer:**
+  - Scope pill strip beneath the search bar stays `0px` hidden for `0` or `1` matched module and slides open (`28px`, `All (N)` + per-module hit counts) for `2+` modules, resetting to `All` on query clear.
+  - Whisper-quiet `26px` bottom bar shows neutral hints (`↑↓ Move · ↵ Open/Copy · Esc Clear`) on left and live count (`N indexed` / `X / N shown`) on right.
 - **Platform-Agnostic:** Zero OS window traffic lights or hardcoded OS key glyphs (`⌘`, `⌥`, `Win`).
-- **Zero Accordion Tree Lines:** Never render `border-left` rails or indentation. Every nested child spans **100% width** in `.nested-stack` (`gap: 8px`), depth `0 → 1 → 2` communicated strictly via alternating inset surfaces (`--surface-l0`, `--surface-l1`, `--surface-l2`) and 1px borders.
+- **Gentle Tactile Cards & Zero Accordion Tree Lines:**
+  - L0 cards use subtle hover micro-lift (`translateY(-1px)`, `150ms`) and press (`scale(0.994)`, `80ms`) with zero hover shine and zero 3D tilt, suppressed while `.rolodex-list.is-scrolling` is active (`100ms` passive scroll guard).
+  - Never render `border-left` rails or indentation. Every nested child spans **100% width** in `.nested-stack` (`gap: 8px`), animating via `grid-template-rows: 0fr → 1fr` (`210ms`), depth `0 → 1 → 2` communicated strictly via alternating inset surfaces (`--surface-l0`, `--surface-l1`, `--surface-l2`) and 1px borders.
 - **Top-Right Controls (`RolodexCardShellComponent`):**
   - **Pin (`📌`)**: Level 0 only, max 3 pins (`RolodexStateService`). Active pinned state MUST display the `--chip-blue-bg` / `--chip-blue-border` pill container (including on `link` cards).
   - **Expand Chevron (`▸` / `▼`)**: Render ONLY if the card has a leaf body OR resolved `children[]`. Never render an empty expandable accordion.
